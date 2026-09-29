@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚡ Systolic Array AI Hardware Visualizer</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #090d13;
+            --panel: #121824;
+            --panel-border: #232f3e;
+            --text-main: #e2e8f0;
+            --text-muted: #8899a6;
+            --accent: #38bdf8;
+            --accent-glow: rgba(56, 189, 248, 0.25);
+            --weight-color: #fb923c;
+            --act-color: #38bdf8;
+            --sum-color: #4ade80;
+            --border-radius: 10px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            padding: 16px 24px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--panel-border);
+            padding-bottom: 14px;
+            margin-bottom: 16px;
+        }
+
+        h1 {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .badge {
+            font-size: 0.75rem;
+            font-family: 'JetBrains Mono', monospace;
+            background: rgba(56, 189, 248, 0.12);
+            color: var(--accent);
+            border: 1px solid rgba(56, 189, 248, 0.35);
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-weight: 600;
+        }
+
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr 390px;
+            gap: 20px;
+            flex: 1;
+        }
+
+        .canvas-card {
+            background: var(--panel);
+            border: 1px solid var(--panel-border);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .controls-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #090d13;
+            padding: 10px 16px;
+            border-radius: var(--border-radius);
+            border: 1px solid var(--panel-border);
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: #1e293b;
+            color: #e2e8f0;
+            border: 1px solid var(--panel-border);
+            padding: 7px 13px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.82rem;
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        button:hover {
+            background: #334155;
+            color: #fff;
+            border-color: #64748b;
+        }
+
+        button.primary {
+            background: #0284c7;
+            border-color: #38bdf8;
+            color: #fff;
+        }
+
+        button.primary:hover {
+            background: #0369a1;
+        }
+
+        button.success {
+            background: #16a34a;
+            border-color: #4ade80;
+            color: #fff;
+        }
+
+        button.success:hover {
+            background: #15803d;
+        }
+
+        .timeline-slider {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 180px;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            accent-color: var(--accent);
+            cursor: pointer;
+        }
+
+        .cycle-badge {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            color: var(--accent);
+            font-size: 0.9rem;
+            min-width: 85px;
+        }
+
+        /* 2D Systolic Grid Area */
+        .grid-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            min-height: 480px;
+            background: #090d13;
+            border-radius: var(--border-radius);
+            border: 1px solid var(--panel-border);
+            overflow: auto;
+            position: relative;
+        }
+
+        .systolic-grid {
+            display: grid;
+            gap: 16px;
+            position: relative;
+        }
+
+        .pe-cell {
+            background: #121824;
+            border: 2px solid #232f3e;
+            border-radius: 8px;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.72rem;
+            position: relative;
+            transition: all 0.2s ease;
+            width: 125px;
+            height: 125px;
+        }
+
+        .pe-cell.active-compute {
+            border-color: var(--accent);
+            box-shadow: 0 0 16px var(--accent-glow);
+            background: #0f2744;
+        }
+
+        .pe-cell.active-load {
+            border-color: var(--weight-color);
+            box-shadow: 0 0 14px rgba(251, 146, 60, 0.3);
+            background: #271911;
+        }
+
+        .pe-header {
+            display: flex;
+            justify-content: space-between;
+            color: var(--text-muted);
+            font-size: 0.68rem;
+        }
+
+        .pe-body {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .tag-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 2px 4px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .val-weight { color: var(--weight-color); font-weight: 700; }
+        .val-act { color: var(--act-color); font-weight: 700; }
+        .val-sum { color: var(--sum-color); font-weight: 700; }
+
+        /* Output Collector Row */
+        .bottom-collector-row {
+            display: grid;
+            gap: 16px;
+            margin-top: 14px;
+        }
+
+        .collector-box {
+            background: #162235;
+            border: 2px dashed #38bdf8;
+            border-radius: 8px;
+            padding: 6px;
+            text-align: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            width: 125px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .collector-box.active-drain {
+            background: rgba(74, 222, 128, 0.25);
+            border-color: #4ade80;
+            border-style: solid;
+            box-shadow: 0 0 14px rgba(74, 222, 128, 0.4);
+        }
+
+        /* Side Panel */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            max-height: calc(100vh - 90px);
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--panel-border);
+            border-radius: var(--border-radius);
+            padding: 14px;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .card h3 {
+            font-size: 0.85rem;
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .matrix-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem;
+            text-align: center;
+        }
+
+        .matrix-table td {
+            border: 1px solid #232f3e;
+            padding: 4px 2px;
+        }
+
+        .matrix-table td input {
+            width: 100%;
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem;
+            text-align: center;
+            outline: none;
+        }
+
+        .matrix-table td input:focus {
+            background: rgba(56, 189, 248, 0.2);
+            border-radius: 2px;
+        }
+
+        .matrix-table td.harvested {
+            background: rgba(74, 222, 128, 0.25);
+            color: #4ade80;
+            font-weight: 700;
+        }
+
+        .matrix-table td.pending {
+            color: #475569;
+        }
+
+        .status-box {
+            font-size: 0.82rem;
+            line-height: 1.5;
+            color: var(--text-main);
+            background: #090d13;
+            padding: 12px 16px;
+            border-radius: 6px;
+            border: 1px solid var(--panel-border);
+            min-height: 60px;
+        }
+
+        .signal-pill {
+            display: inline-block;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.72rem;
+            padding: 2px 8px;
+            border-radius: 4px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            color: var(--text-muted);
+        }
+        .signal-pill.high {
+            background: rgba(74, 222, 128, 0.15);
+            color: #4ade80;
+            border-color: rgba(74, 222, 128, 0.4);
+        }
+
+        .config-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 8px;
+            font-size: 0.8rem;
+        }
+
+        select {
+            background: #1e293b;
+            color: #fff;
+            border: 1px solid #334155;
+            padding: 4px 8px;
+            border-radius: 4px;
+            outline: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div>
+            <h1>⚡ Interactive Systolic Array AI Engine <span class="badge" id="grid-dim-badge">4x4 Grid</span></h1>
+        </div>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <button id="btn-randomize" style="font-size: 0.75rem;">🎲 Randomize Matrices</button>
+            <button id="btn-recompute" class="success" style="font-size: 0.75rem;">⚡ Simulate Hardware</button>
+            <span class="badge" id="phase-badge">PHASE: READY</span>
+        </div>
+    </header>
+
+    <div class="main-layout">
+        <!-- Main Canvas Section -->
+        <div class="canvas-card">
+            <!-- Controls Toolbar -->
+            <div class="controls-toolbar">
+                <button id="btn-play-pause" class="primary">▶ Play</button>
+                <button id="btn-step-prev">⏮ Step Back</button>
+                <button id="btn-step-next">⏭ Step Fwd</button>
+                <button id="btn-reset">🔄 Reset</button>
+
+                <div class="timeline-slider">
+                    <span class="cycle-badge" id="cycle-display">Cycle: 0</span>
+                    <input type="range" id="cycle-slider" min="0" max="0" value="0">
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 6px; font-size: 0.78rem;">
+                    <label>Speed:</label>
+                    <input type="range" id="speed-slider" min="100" max="1500" value="700" step="50" style="width: 75px;">
+                </div>
+            </div>
+
+            <!-- Hardware Grid Visualization -->
+            <div class="grid-container">
+                <div class="systolic-grid" id="systolic-grid"></div>
+                
+                <!-- Bottom Hardware Output Pins / Collectors -->
+                <div class="bottom-collector-row" id="collector-row"></div>
+            </div>
+
+            <!-- Explanation Banner -->
+            <div class="status-box" id="cycle-description">
+                Ready. Click <strong>Play</strong> or <strong>Step Fwd</strong> to step clock cycles.
+            </div>
+        </div>
+
+        <!-- Sidebar Section: Live Interactive Matrices & Config -->
+        <div class="sidebar">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Array Configuration</h3>
+                </div>
+                <div class="config-row">
+                    <label>Grid Size (ROWS x COLS):</label>
+                    <select id="grid-size-select">
+                        <option value="2">2 x 2</option>
+                        <option value="3">3 x 3</option>
+                        <option value="4" selected>4 x 4 (Standard)</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 6px; margin-top: 6px;">
+                    <span class="signal-pill" id="sig-clk">clk: ↑</span>
+                    <span class="signal-pill" id="sig-en">en: 0</span>
+                    <span class="signal-pill" id="sig-wload">w_load: 0</span>
+                    <span class="signal-pill" id="sig-rst">rst_n: 1</span>
+                </div>
+            </div>
+
+            <!-- Editable Matrix A -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>Matrix A (Activations)</h3>
+                    <span style="font-size: 0.7rem; color: var(--text-muted);">(Click any cell to edit)</span>
+                </div>
+                <table class="matrix-table" id="table-a"></table>
+            </div>
+
+            <!-- Editable Matrix W -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>Matrix W (Weights)</h3>
+                    <span style="font-size: 0.7rem; color: var(--text-muted);">(Click any cell to edit)</span>
+                </div>
+                <table class="matrix-table" id="table-w"></table>
+            </div>
+
+            <!-- Real-time Harvested Hardware Matrix C -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>Hardware Harvested Matrix C</h3>
+                    <span class="badge" id="harvest-count" style="font-size: 0.65rem;">0 / 16 done</span>
+                </div>
+                <p style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 6px;">
+                    Green cells indicate results collected from bottom boundary pins!
+                </p>
+                <table class="matrix-table" id="table-c"></table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global State
+        let ROWS = 4;
+        let COLS = 4;
+        let M_BATCH = 4;
+
+        let A = [
+            [  5,  2, -3,  4 ],
+            [  1, -1,  2,  0 ],
+            [ -2,  3,  1, -4 ],
+            [  4,  0, -1,  2 ]
+        ];
+
+        let W = [
+            [  2, -1,  3,  1 ],
+            [  0,  4, -2,  3 ],
+            [ -3,  1,  0, -2 ],
+            [  1,  2,  4, -1 ]
+        ];
+
+        let traceData = null;
+        let currentCycle = 0;
+        let isPlaying = false;
+        let timer = null;
+
+        const gridEl = document.getElementById("systolic-grid");
+        const collectorRowEl = document.getElementById("collector-row");
+        const cycleDisplay = document.getElementById("cycle-display");
+        const cycleSlider = document.getElementById("cycle-slider");
+        const phaseBadge = document.getElementById("phase-badge");
+        const cycleDesc = document.getElementById("cycle-description");
+        const btnPlay = document.getElementById("btn-play-pause");
+        const speedSlider = document.getElementById("speed-slider");
+        const gridSizeSelect = document.getElementById("grid-size-select");
+        const harvestCountEl = document.getElementById("harvest-count");
+
+        // Cycle-Accurate Hardware Simulation Engine
+        function runHardwareSimulation(matA, matW) {
+            const rows = matW.length;
+            const cols = matW[0].length;
+            const m_batch = matA.length;
+
+            const C_golden = Array.from({ length: m_batch }, () => Array(cols).fill(0));
+            for (let i = 0; i < m_batch; i++) {
+                for (let j = 0; j < cols; j++) {
+                    for (let k = 0; k < rows; k++) {
+                        C_golden[i][j] += matA[i][k] * matW[k][j];
+                    }
+                }
+            }
+
+            let pe_weights = Array.from({ length: rows }, () => Array(cols).fill(0));
+            let pe_acts = Array.from({ length: rows }, () => Array(cols).fill(0));
+            let pe_sums = Array.from({ length: rows }, () => Array(cols).fill(0));
+            let skew_pipes = Array.from({ length: rows }, (_, r) => Array(r).fill(0));
+
+            const cycles = [];
+            const harvestedMatrix = Array.from({ length: m_batch }, () => Array(cols).fill(null));
+
+            // Phase 1: Weight Load (rows cycles)
+            for (let load_step = 0; load_step < rows; load_step++) {
+                const r_load = rows - 1 - load_step;
+                const current_weights = matW[r_load].slice();
+
+                for (let r = rows - 1; r > 0; r--) {
+                    pe_weights[r] = pe_weights[r - 1].slice();
+                }
+                pe_weights[0] = current_weights.slice();
+
+                cycles.push({
+                    cycle: load_step,
+                    phase: "WEIGHT_LOAD",
+                    description: `Shift-loading row ${r_load} of Matrix W into column inputs`,
+                    weight_load_en: 1,
+                    en: 0,
+                    weights_in: current_weights,
+                    activations_in: Array(rows).fill(0),
+                    sum_out_bot: Array(cols).fill(0),
+                    draining_cells: [],
+                    harvested_so_far: JSON.parse(JSON.stringify(harvestedMatrix)),
+                    pe_grid: Array.from({ length: rows }, (_, r) => 
+                        Array.from({ length: cols }, (_, c) => ({
+                            weight: pe_weights[r][c],
+                            act: pe_acts[r][c],
+                            sum: pe_sums[r][c]
+                        }))
+                    )
+                });
+            }
+
+            // Phase 2: Compute
+            const total_comp = m_batch + rows + cols + 2;
+            for (let comp_step = 0; comp_step < total_comp; comp_step++) {
+                const cycle_idx = rows + comp_step;
+                const raw_act = (comp_step < m_batch) ? matA[comp_step].slice() : Array(rows).fill(0);
+
+                const skewed_act = Array(rows).fill(0);
+                skewed_act[0] = raw_act[0];
+                for (let r = 1; r < rows; r++) {
+                    skewed_act[r] = (skew_pipes[r].length > 0) ? skew_pipes[r][skew_pipes[r].length - 1] : raw_act[r];
+                }
+
+                const h_act = Array.from({ length: rows }, () => Array(cols + 1).fill(0));
+                for (let r = 0; r < rows; r++) {
+                    h_act[r][0] = skewed_act[r];
+                    for (let c = 0; c < cols; c++) h_act[r][c + 1] = pe_acts[r][c];
+                }
+
+                const v_sum = Array.from({ length: rows + 1 }, () => Array(cols).fill(0));
+                for (let c = 0; c < cols; c++) {
+                    v_sum[0][c] = 0;
+                    for (let r = 0; r < rows; r++) v_sum[r + 1][c] = pe_sums[r][c];
+                }
+
+                const pe_grid_snap = [];
+                for (let r = 0; r < rows; r++) {
+                    const row_snap = [];
+                    for (let c = 0; c < cols; c++) {
+                        const ain = h_act[r][c];
+                        const sin = v_sum[r][c];
+                        const w = pe_weights[r][c];
+                        const mac = sin + (ain * w);
+                        row_snap.push({
+                            weight: w,
+                            act_in: ain,
+                            act: pe_acts[r][c],
+                            sum_in: sin,
+                            sum: pe_sums[r][c],
+                            mac_out: mac
+                        });
+                    }
+                    pe_grid_snap.push(row_snap);
+                }
+
+                // Check which output matrix elements C[i, c] exit the bottom pins on THIS cycle
+                const draining_cells = [];
+                const current_bot_pins = [];
+                for (let c = 0; c < cols; c++) {
+                    const bot_val = pe_sums[rows - 1][c];
+                    current_bot_pins.push(bot_val);
+
+                    // Output C[i, c] exits at cycle: i + c + rows - 1
+                    for (let i = 0; i < m_batch; i++) {
+                        if (cycle_idx === (i + c + rows - 1) && cycle_idx >= (rows + c)) {
+                            harvestedMatrix[i][c] = bot_val;
+                            draining_cells.push({ i, c, val: bot_val });
+                        }
+                    }
+                }
+
+                let desc = `Compute cycle ${comp_step}: streaming row activations and propagating partial sums`;
+                if (draining_cells.length > 0) {
+                    desc = `🎯 Collected Output: ` + draining_cells.map(d => `C[${d.i},${d.c}] = ${d.val}`).join(", ");
+                } else if (comp_step >= m_batch + rows) {
+                    desc = `✅ All matrix elements collected! Pipeline flushed.`;
+                }
+
+                cycles.push({
+                    cycle: cycle_idx,
+                    phase: "COMPUTE",
+                    description: desc,
+                    weight_load_en: 0,
+                    en: 1,
+                    weights_in: Array(cols).fill(0),
+                    activations_in: raw_act,
+                    sum_out_bot: current_bot_pins,
+                    draining_cells: draining_cells,
+                    harvested_so_far: JSON.parse(JSON.stringify(harvestedMatrix)),
+                    pe_grid: pe_grid_snap
+                });
+
+                // Sequential updates
+                for (let r = 1; r < rows; r++) {
+                    if (skew_pipes[r].length > 1) {
+                        for (let d = skew_pipes[r].length - 1; d > 0; d--) {
+                            skew_pipes[r][d] = skew_pipes[r][d - 1];
+                        }
+                    }
+                    if (skew_pipes[r].length > 0) skew_pipes[r][0] = raw_act[r];
+                }
+
+                const new_acts = Array.from({ length: rows }, () => Array(cols).fill(0));
+                const new_sums = Array.from({ length: rows }, () => Array(cols).fill(0));
+                for (let r = 0; r < rows; r++) {
+                    for (let c = 0; c < cols; c++) {
+                        new_acts[r][c] = h_act[r][c];
+                        new_sums[r][c] = pe_grid_snap[r][c].mac_out;
+                    }
+                }
+                pe_acts = new_acts;
+                pe_sums = new_sums;
+            }
+
+            return {
+                dimensions: { ROWS: rows, COLS: cols, M_BATCH: m_batch },
+                matrices: { A: matA, W: matW, C_golden: C_golden },
+                cycles: cycles
+            };
+        }
+
+        function buildGrid(rows, cols) {
+            gridEl.innerHTML = "";
+            gridEl.style.gridTemplateColumns = `repeat(${cols}, 125px)`;
+            gridEl.style.gridTemplateRows = `repeat(${rows}, 125px)`;
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const pe = document.createElement("div");
+                    pe.className = "pe-cell";
+                    pe.id = `pe-${r}-${c}`;
+                    pe.innerHTML = `
+                        <div class="pe-header">
+                            <span>PE[${r},${c}]</span>
+                            <span id="pe-calc-${r}-${c}"></span>
+                        </div>
+                        <div class="pe-body">
+                            <div class="tag-row"><span>Weight:</span><span class="val-weight" id="pe-w-${r}-${c}">0</span></div>
+                            <div class="tag-row"><span>Act In:</span><span class="val-act" id="pe-a-${r}-${c}">0</span></div>
+                            <div class="tag-row"><span>Sum:</span><span class="val-sum" id="pe-s-${r}-${c}">0</span></div>
+                        </div>
+                    `;
+                    gridEl.appendChild(pe);
+                }
+            }
+
+            // Build Bottom Output Collectors
+            collectorRowEl.innerHTML = "";
+            collectorRowEl.style.gridTemplateColumns = `repeat(${cols}, 125px)`;
+            for (let c = 0; c < cols; c++) {
+                const box = document.createElement("div");
+                box.className = "collector-box";
+                box.id = `collector-col-${c}`;
+                box.innerHTML = `
+                    <div style="font-size: 0.65rem; color: #8899a6;">Col ${c} Pin ⬇</div>
+                    <div id="col-val-${c}" style="font-weight:700; color:#38bdf8; font-size:0.95rem;">0</div>
+                `;
+                collectorRowEl.appendChild(box);
+            }
+        }
+
+        function renderEditableMatrix(tableId, mat, onUpdate) {
+            const table = document.getElementById(tableId);
+            table.innerHTML = "";
+            for (let r = 0; r < mat.length; r++) {
+                const tr = document.createElement("tr");
+                for (let c = 0; c < mat[r].length; c++) {
+                    const td = document.createElement("td");
+                    const inp = document.createElement("input");
+                    inp.type = "number";
+                    inp.value = mat[r][c];
+                    inp.addEventListener("change", (e) => {
+                        mat[r][c] = parseInt(e.target.value) || 0;
+                        if (onUpdate) onUpdate();
+                    });
+                    td.appendChild(inp);
+                    tr.appendChild(td);
+                }
+                table.appendChild(tr);
+            }
+        }
+
+        function renderHarvestedMatrix(harvestedMat, goldenMat) {
+            const table = document.getElementById("table-c");
+            table.innerHTML = "";
+            let completedCount = 0;
+            const totalCells = ROWS * COLS;
+
+            for (let r = 0; r < ROWS; r++) {
+                const tr = document.createElement("tr");
+                for (let c = 0; c < COLS; c++) {
+                    const td = document.createElement("td");
+                    const val = harvestedMat[r][c];
+                    if (val !== null) {
+                        td.innerText = val;
+                        td.className = "harvested";
+                        completedCount++;
+                    } else {
+                        td.innerText = `... (${goldenMat[r][c]})`;
+                        td.className = "pending";
+                    }
+                    tr.appendChild(td);
+                }
+                table.appendChild(tr);
+            }
+
+            harvestCountEl.innerText = `${completedCount} / ${totalCells} collected`;
+            if (completedCount === totalCells) {
+                harvestCountEl.style.color = "#4ade80";
+                harvestCountEl.innerText = `✅ All ${totalCells} Done!`;
+            } else {
+                harvestCountEl.style.color = "#38bdf8";
+            }
+        }
+
+        function renderCycle(cycleIdx) {
+            if (!traceData || !traceData.cycles[cycleIdx]) return;
+            const snap = traceData.cycles[cycleIdx];
+
+            currentCycle = cycleIdx;
+            cycleSlider.value = cycleIdx;
+            cycleDisplay.innerText = `Cycle: ${cycleIdx}`;
+            phaseBadge.innerText = `PHASE: ${snap.phase}`;
+            cycleDesc.innerHTML = `<strong>Cycle ${cycleIdx} [${snap.phase}]:</strong> ${snap.description}`;
+
+            // Control Signals
+            const sigEn = document.getElementById("sig-en");
+            const sigWload = document.getElementById("sig-wload");
+            sigEn.innerText = `en: ${snap.en}`;
+            sigEn.className = `signal-pill ${snap.en ? 'high' : ''}`;
+            sigWload.innerText = `w_load: ${snap.weight_load_en}`;
+            sigWload.className = `signal-pill ${snap.weight_load_en ? 'high' : ''}`;
+
+            // Update PEs
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    const peData = snap.pe_grid[r][c];
+                    const peEl = document.getElementById(`pe-${r}-${c}`);
+                    
+                    document.getElementById(`pe-w-${r}-${c}`).innerText = peData.weight;
+                    document.getElementById(`pe-a-${r}-${c}`).innerText = (peData.act_in !== undefined) ? peData.act_in : peData.act;
+                    document.getElementById(`pe-s-${r}-${c}`).innerText = peData.sum;
+
+                    if (snap.phase === "WEIGHT_LOAD" && snap.weight_load_en) {
+                        peEl.className = "pe-cell active-load";
+                    } else if (snap.phase === "COMPUTE" && ((peData.act_in || 0) !== 0 || (peData.act || 0) !== 0)) {
+                        peEl.className = "pe-cell active-compute";
+                    } else {
+                        peEl.className = "pe-cell";
+                    }
+                }
+            }
+
+            // Update Bottom Output Collectors
+            for (let c = 0; c < COLS; c++) {
+                const box = document.getElementById(`collector-col-${c}`);
+                const valEl = document.getElementById(`col-val-${c}`);
+                const pinVal = snap.sum_out_bot[c];
+                valEl.innerText = pinVal;
+
+                const isDraining = snap.draining_cells && snap.draining_cells.some(d => d.c === c);
+                if (isDraining) {
+                    box.className = "collector-box active-drain";
+                } else {
+                    box.className = "collector-box";
+                }
+            }
+
+            // Update Harvested Table
+            renderHarvestedMatrix(snap.harvested_so_far, traceData.matrices.C_golden);
+        }
+
+        function updateSimulation() {
+            pause();
+            traceData = runHardwareSimulation(A, W);
+            buildGrid(ROWS, COLS);
+            cycleSlider.max = traceData.cycles.length - 1;
+            renderCycle(0);
+        }
+
+        function randomizeMatrices() {
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    A[r][c] = Math.floor(Math.random() * 15) - 7;
+                    W[r][c] = Math.floor(Math.random() * 15) - 7;
+                }
+            }
+            renderEditableMatrix("table-a", A, updateSimulation);
+            renderEditableMatrix("table-w", W, updateSimulation);
+            updateSimulation();
+        }
+
+        function resizeGrid(newSize) {
+            ROWS = newSize;
+            COLS = newSize;
+            M_BATCH = newSize;
+            document.getElementById("grid-dim-badge").innerText = `${ROWS}x${COLS} Grid`;
+
+            A = Array.from({ length: ROWS }, () => 
+                Array.from({ length: COLS }, () => Math.floor(Math.random() * 10) - 5)
+            );
+            W = Array.from({ length: ROWS }, () => 
+                Array.from({ length: COLS }, () => Math.floor(Math.random() * 10) - 5)
+            );
+
+            renderEditableMatrix("table-a", A, updateSimulation);
+            renderEditableMatrix("table-w", W, updateSimulation);
+            updateSimulation();
+        }
+
+        function play() {
+            isPlaying = true;
+            btnPlay.innerText = "⏸ Pause";
+            btnPlay.className = "primary";
+            const speed = 1600 - parseInt(speedSlider.value);
+
+            timer = setInterval(() => {
+                if (currentCycle < traceData.cycles.length - 1) {
+                    renderCycle(currentCycle + 1);
+                } else {
+                    pause();
+                }
+            }, speed);
+        }
+
+        function pause() {
+            isPlaying = false;
+            btnPlay.innerText = "▶ Play";
+            btnPlay.className = "";
+            if (timer) clearInterval(timer);
+        }
+
+        // Event Listeners
+        btnPlay.addEventListener("click", () => isPlaying ? pause() : play());
+        document.getElementById("btn-step-next").addEventListener("click", () => {
+            pause();
+            if (currentCycle < traceData.cycles.length - 1) renderCycle(currentCycle + 1);
+        });
+        document.getElementById("btn-step-prev").addEventListener("click", () => {
+            pause();
+            if (currentCycle > 0) renderCycle(currentCycle - 1);
+        });
+        document.getElementById("btn-reset").addEventListener("click", () => {
+            pause();
+            renderCycle(0);
+        });
+        document.getElementById("btn-randomize").addEventListener("click", randomizeMatrices);
+        document.getElementById("btn-recompute").addEventListener("click", updateSimulation);
+        gridSizeSelect.addEventListener("change", (e) => resizeGrid(parseInt(e.target.value)));
+        cycleSlider.addEventListener("input", (e) => {
+            pause();
+            renderCycle(parseInt(e.target.value));
+        });
+
+        // Initialize UI
+        renderEditableMatrix("table-a", A, updateSimulation);
+        renderEditableMatrix("table-w", W, updateSimulation);
+        updateSimulation();
+    </script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+# ==============================================================================
+# .gitignore for Hardware Engineering & Pre-Silicon Emulation Platform
+# ==============================================================================
+
+# Python Virtual Environment & Caches
+.venv/
+env/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Simulation Waveforms & Traces
+*.vcd
+*.fst
+*.fsdb
+*.vpd
+*.wlf
+
+# Cocotb Simulator Build Artifacts & Test Logs
+sim/sim_build_*/
+sim/results.xml
+results.xml
+
+# Verilator Auto-Generated C++ & Executables
+cpp_emulation/verilated/
+cpp_emulation/obj_dir/
+cpp_emulation/emulator
+obj_dir/
+*.o
+*.d
+*.so
+*.a
+
+# Temporary generated visualization data
+visualizer/trace.json
+
+# Operating System & IDE Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+.idea/
+.vscode/
+*.swp
+*~
