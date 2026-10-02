@@ -33,9 +33,10 @@ class Lab01Multiplier(Scene):
         self.play(FadeIn(stat), run_time=0.6)
 
         # A matrix-multiply mini diagram: A @ W = C, with animated MAC pulses.
-        a_mat, a_cells = self._matrix([["a00", "a01"], ["a10", "a11"]], th.CYAN)
-        w_mat, w_cells = self._matrix([["w00", "w01"], ["w10", "w11"]], th.AMBER)
-        c_mat, c_cells = self._matrix([["c00", "c01"], ["c10", "c11"]], th.GREEN)
+        a_mat = th.matrix([["a00", "a01"], ["a10", "a11"]], color=th.CYAN)
+        w_mat = th.matrix([["w00", "w01"], ["w10", "w11"]], color=th.AMBER)
+        c_mat = th.matrix([["c00", "c01"], ["c10", "c11"]], color=th.GREEN)
+        c_cells = list(c_mat)[:4]
         times = Text("×", font=th.MONO, weight=BOLD, font_size=30, color=th.TEXT)
         equals = Text("=", font=th.MONO, weight=BOLD, font_size=30, color=th.TEXT)
         row = VGroup(a_mat, times, w_mat, equals, c_mat).arrange(RIGHT, buff=0.5)
@@ -143,18 +144,57 @@ class Lab01Multiplier(Scene):
                   FadeOut(res_grp), run_time=0.5)
 
         # =================================================================
+        # ACT 3b — SIGNED MULTIPLICATION: -2 × 3 = -6
+        # =================================================================
+        s_hdr, _, _ = th.header("LAB 01", "Signed Multiplication: -2 × 3")
+        self.play(FadeIn(s_hdr, shift=DOWN * 0.3), run_time=0.7)
+
+        # The trap: treat 4'b1110 as unsigned 14.
+        trap = th.card(9.0, 1.4, stroke=th.RED, fill=th.RED_DARK, radius=0.14)
+        trap.move_to(UP * 0.7)
+        trap_t = Text(
+            "Naive unsigned: 1110 is read as +14 →  14 × 3 = 42  (WRONG!)",
+            font=th.MONO, font_size=17, color=th.RED_LIGHT,
+        ).move_to(trap)
+        self.play(Create(trap), FadeIn(trap_t), run_time=0.7)
+        self.wait(0.8)
+
+        fix = Text(
+            "logic signed  →  synthesis inserts a signed Booth/Baugh-Wooley tree",
+            font=th.SANS, font_size=19, color=th.GREEN_LIGHT,
+        )
+        fix.next_to(trap, DOWN, buff=0.4)
+        self.play(FadeIn(fix), run_time=0.5)
+
+        # Correct signed product.
+        a2 = th.bit_row("1110", color=th.CYAN)   # -2
+        b2 = th.bit_row("0011", color=th.AMBER)  # 3
+        a2_l = Text("A = -2", font=th.MONO, font_size=16, color=th.CYAN)
+        b2_l = Text("B = +3", font=th.MONO, font_size=16, color=th.AMBER)
+        a2_g = VGroup(a2_l, a2).arrange(RIGHT, buff=0.3)
+        b2_g = VGroup(b2_l, b2).arrange(RIGHT, buff=0.3)
+        ops2 = VGroup(a2_g, b2_g).arrange(DOWN, buff=0.3, aligned_edge=LEFT)
+        ops2.next_to(fix, DOWN, buff=0.5)
+        self.play(FadeIn(ops2), run_time=0.5)
+
+        prod2 = Text("signed product = -6  ✓", font=th.MONO, weight=BOLD,
+                     font_size=20, color=th.GREEN)
+        prod2.next_to(ops2, DOWN, buff=0.5)
+        self.play(FadeIn(prod2), run_time=0.5)
+        self.wait(1.0)
+
+        self.play(FadeOut(s_hdr), FadeOut(trap), FadeOut(trap_t), FadeOut(fix),
+                  FadeOut(ops2), FadeOut(prod2), run_time=0.5)
+
+        # =================================================================
         # ACT 4 — O(N) vs O(N²) AREA
         # =================================================================
         a_hdr, _, _ = th.header("LAB 01", "The Silicon Cost: O(N²)")
         self.play(FadeIn(a_hdr, shift=DOWN * 0.3), run_time=0.7)
 
         # 8x8 dot grid of partial products fills in.
-        dots = VGroup()
-        for i in range(8):
-            for j in range(8):
-                d = Dot(point=np.array([(j - 3.5) * 0.46, (3.5 - i) * 0.42 - 0.4, 0]),
-                        radius=0.06, color=th.CYAN)
-                dots.add(d)
+        dots = th.dot_grid(8, 8, dx=0.46, dy=0.42, radius=0.06, color=th.CYAN)
+        dots.shift(DOWN * 0.4)
         grid_lbl = Text("8 × 8 = 64 partial products", font=th.SANS,
                         weight=BOLD, font_size=20, color=th.CYAN_LIGHT)
         grid_lbl.next_to(dots, UP, buff=0.4)
@@ -178,39 +218,38 @@ class Lab01Multiplier(Scene):
                   FadeOut(comp_grp), run_time=0.5)
 
         # =================================================================
+        # CHECKPOINT
+        # =================================================================
+        th.checkpoint(
+            self,
+            "Why does -128 × -128 need 16 bits, not 15?",
+            ["Two's complement is asymmetric: -128 has magnitude 128",
+             "+16,384 needs 15 magnitude bits + 1 sign bit = 16 bits"],
+        )
+
+        # =================================================================
+        # CHALLENGE
+        # =================================================================
+        th.challenge(
+            self,
+            ["Compute -128 × -1 in signed 8-bit arithmetic.",
+             "How many bits does the product need to be exact?"],
+            "Product = +128.  It fits in 16 bits (and in 9 bits), but not 8.",
+        )
+
+        # =================================================================
         # ACT 5 — RTL RECAP
         # =================================================================
-        card = th.card(10.0, 3.9, stroke=th.GREEN, radius=0.22)
-        t = Text("rtl/multiplier_int8.sv", font=th.SANS, weight=BOLD, font_size=26,
-                 color=th.GREEN_LIGHT)
-        t.next_to(card.get_top(), DOWN, buff=0.35)
-        pts = th.bullets(
+        th.recap(
+            self,
+            "rtl/multiplier_int8.sv",
             ["Inputs: signed [7:0] a, signed [7:0] b",
              "Output: signed [15:0] product — zero precision loss",
              "Pure combinational: assign product = a * b",
-             "Verified vs all 65,536 input pairs in Cocotb",
+             "Verified in Cocotb: 9 corner cases + 200 random pairs",
              "Next: Lab 02 — MAC Unit & Accumulator Headroom"],
-            font_size=18, buff=0.28, bullet_color=th.GREEN, color=th.TEXT,
         )
-        pts.next_to(t, DOWN, buff=0.4, aligned_edge=LEFT)
-        pts.move_to(card.get_center() + DOWN * 0.15)
-        self.play(Create(card), Write(t), FadeIn(pts, shift=UP * 0.2), run_time=1.1)
-        self.wait(2.4)
 
     # ------------------------------------------------------------------
-    def _matrix(self, vals, color):
-        """Build a small labelled 2x2 matrix. Returns (VGroup, cells as list)."""
-        cells = []
-        g = VGroup()
-        for r in range(2):
-            for c in range(2):
-                box = Square(side_length=0.62, stroke_color=th.BORDER,
-                             stroke_width=1.5, fill_color=th.CARD, fill_opacity=0.95)
-                box.move_to(np.array([c * 0.75, -r * 0.75, 0]))
-                lbl = Text(vals[r][c], font=th.MONO, font_size=17, color=color)
-                lbl.move_to(box)
-                unit = VGroup(box, lbl)
-                g.add(unit)
-                cells.append(unit)
-        g.move_to(ORIGIN)
-        return g, cells
+    # (matrix helper now lives in theme.matrix; kept out of the scene)
+

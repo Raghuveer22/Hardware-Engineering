@@ -259,20 +259,34 @@ class Lab00SaturationIntro(Scene):
                   FadeOut(arrow_out), run_time=0.5)
 
         # =================================================================
+        # CHECKPOINT
+        # =================================================================
+        th.checkpoint(
+            self,
+            "Adding two negatives overflows — does it clamp to +127 or -128?",
+            ["Two negatives overflow negative → clamp to MIN_NEG = -128",
+             "Positive overflow (+ sign) clamps to +127 (MAX_POS)"],
+        )
+
+        # =================================================================
+        # CHALLENGE
+        # =================================================================
+        th.challenge(
+            self,
+            ["Add -100 + -50 in 8-bit signed with saturate = 1.",
+             "What does the hardware output, and is the overflow flag set?"],
+            "sum = -128 (clamped), overflow = 1.  -150 < -128, so it clamps down.",
+        )
+
+        # =================================================================
         # ACT 5 — RECAP
         # =================================================================
-        card = th.card(10.0, 3.8, stroke=th.CYAN, radius=0.22)
-        t = Text("Lab 00 Takeaway", font=th.SANS, weight=BOLD, font_size=26,
-                 color=th.CYAN)
-        t.next_to(card.get_top(), DOWN, buff=0.35)
-        pts = th.bullets(
+        th.recap(
+            self,
+            "Lab 00 Takeaway",
             ["Plain addition wraps: +100 + +50 → -106 (sign corrupted)",
              "Overflow detector: A[7]==B[7] & SUM[7]!=A[7]",
              "Saturation mux clamps to +127 / -128 (rtl/adder.sv)",
              "Next: Lab 01 — The INT8 Multiplier & O(N²) Silicon"],
-            font_size=19, buff=0.3, bullet_color=th.GREEN, color=th.TEXT,
+            stroke=th.CYAN, title_color=th.CYAN, font_size=19,
         )
-        pts.next_to(t, DOWN, buff=0.4, aligned_edge=LEFT)
-        pts.move_to(card.get_center() + DOWN * 0.2)
-        self.play(Create(card), Write(t), FadeIn(pts, shift=UP * 0.2), run_time=1.1)
-        self.wait(2.4)

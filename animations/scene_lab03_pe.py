@@ -135,24 +135,66 @@ class Lab03ProcessingElement(Scene):
         self.play(FadeOut(c_hdr), FadeOut(Group(*self.mobjects)), run_time=0.6)
 
         # =================================================================
+        # ACT 3b — A NEGATIVE-ACTIVATION CYCLE
+        # =================================================================
+        n_hdr, _, _ = th.header("LAB 03", "Negative Activations Work Too")
+        self.play(FadeIn(n_hdr, shift=DOWN * 0.3), run_time=0.7)
+
+        # A small MAC block with values flowing.
+        w = Text("w = 5", font=th.MONO, font_size=20, color=th.AMBER_LIGHT)
+        a = Text("a_in = -4", font=th.MONO, font_size=20, color=th.CYAN)
+        s = Text("sum_in = 50", font=th.MONO, font_size=20, color=th.GREEN)
+        r = Text("sum_out = 50 + (-4 × 5) = 30", font=th.MONO, weight=BOLD,
+                 font_size=22, color=th.GREEN_LIGHT)
+        stack = VGroup(w, a, s, r).arrange(DOWN, aligned_edge=LEFT, buff=0.35)
+        stack.move_to(UP * 0.3)
+        self.play(FadeIn(stack, shift=UP * 0.15), run_time=0.8)
+        self.wait(0.8)
+
+        # Animated arithmetic: -4 × 5 = -20, then 50 + (-20) = 30.
+        m1 = Text("-4 × 5 = -20", font=th.MONO, font_size=20, color=th.AMBER)
+        m1.next_to(stack, DOWN, buff=0.6)
+        self.play(Write(m1), run_time=0.5)
+        m2 = Text("50 + (-20) = 30", font=th.MONO, font_size=20, color=th.GREEN)
+        m2.next_to(m1, DOWN, buff=0.4)
+        self.play(Write(m2), run_time=0.5)
+        self.wait(1.0)
+
+        self.play(FadeOut(n_hdr), FadeOut(stack), FadeOut(m1), FadeOut(m2),
+                  run_time=0.5)
+
+        # =================================================================
+        # CHECKPOINT
+        # =================================================================
+        th.checkpoint(
+            self,
+            "Why register a_out and sum_out instead of passing raw wires?",
+            ["Registered outputs pipeline the array: each hop = 1 clock",
+             "Wires alone would let one long combinational path span the chip"],
+        )
+
+        # =================================================================
+        # CHALLENGE
+        # =================================================================
+        th.challenge(
+            self,
+            ["A PE holds w = 5.  This cycle: a_in = 2, sum_in = 30.",
+             "On the next clock edge, what is sum_out?"],
+            "sum_out = 30 + (2 × 5) = 40, latched on the rising edge.",
+        )
+
+        # =================================================================
         # ACT 4 — RTL RECAP
         # =================================================================
-        card = th.card(10.0, 3.9, stroke=th.GREEN, radius=0.22)
-        t = Text("rtl/pe.sv", font=th.SANS, weight=BOLD, font_size=26,
-                 color=th.GREEN_LIGHT)
-        t.next_to(card.get_top(), DOWN, buff=0.35)
-        pts = th.bullets(
+        th.recap(
+            self,
+            "rtl/pe.sv",
             ["Weight stationary: loaded once, reused for every token",
              "a_out and sum_out registered → 1-clock pipeline delay",
              "48 D flip-flops per PE (8 + 8 + 32)",
              "always_ff @(posedge clk or negedge rst_n)",
              "Next: Lab 04 — The 4×4 Systolic Array"],
-            font_size=18, buff=0.28, bullet_color=th.GREEN, color=th.TEXT,
         )
-        pts.next_to(t, DOWN, buff=0.4, aligned_edge=LEFT)
-        pts.move_to(card.get_center() + DOWN * 0.15)
-        self.play(Create(card), Write(t), FadeIn(pts, shift=UP * 0.2), run_time=1.1)
-        self.wait(2.4)
 
     # ------------------------------------------------------------------
     def _show_cycle_table(self):
@@ -214,5 +256,4 @@ class Lab03ProcessingElement(Scene):
         self.play(FadeIn(note), run_time=0.5)
 
     def _flash_edge(self, edge_glyph):
-        self.play(edge_glyph.animate.set_color(th.RED), run_time=0.15)
-        self.play(edge_glyph.animate.set_color(th.PURPLE), run_time=0.2)
+        th.pulse_edge(self, edge_glyph)

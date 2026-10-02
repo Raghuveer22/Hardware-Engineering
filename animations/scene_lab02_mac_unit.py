@@ -73,6 +73,40 @@ class Lab02MACUnit(Scene):
         self.play(FadeOut(a_hdr), FadeOut(card), FadeOut(stack), run_time=0.5)
 
         # =================================================================
+        # ACT 2b — ACCUMULATION DEMO: 3 TERMS
+        # =================================================================
+        d2_hdr, _, _ = th.header("LAB 02", "Accumulation in Action")
+        self.play(FadeIn(d2_hdr, shift=DOWN * 0.3), run_time=0.7)
+
+        # A running accumulator counter.
+        acc_tracker = ValueTracker(0)
+        acc = th.make_counter(acc_tracker, prefix="sum = ", font_size=30,
+                              color=th.GREEN)
+        acc.move_to(UP * 0.7)
+        self.play(FadeIn(acc), run_time=0.4)
+
+        terms = [("+ 12 × 5", 60), ("+ 3 × -7", 39), ("+ -2 × 10", 19)]
+        term_group = VGroup()
+        for label, val in terms:
+            term_group.add(Text(label, font=th.MONO, font_size=20, color=th.AMBER))
+        term_group.arrange(RIGHT, buff=0.8)
+        term_group.next_to(acc, DOWN, buff=0.6)
+
+        for i, (tg, (label, val)) in enumerate(zip(term_group, terms)):
+            self.play(FadeIn(tg), run_time=0.3)
+            self.play(acc_tracker.animate.set_value(val), run_time=0.7)
+            self.wait(0.2)
+
+        result_t = Text("sum_out = 19", font=th.MONO, weight=BOLD,
+                        font_size=22, color=th.GREEN_LIGHT)
+        result_t.next_to(term_group, DOWN, buff=0.5)
+        self.play(FadeIn(result_t), run_time=0.4)
+        self.wait(1.0)
+
+        self.play(FadeOut(d2_hdr), FadeOut(acc), FadeOut(term_group),
+                  FadeOut(result_t), run_time=0.6)
+
+        # =================================================================
         # ACT 3 — THE ZERO-EXTENSION DISASTER
         # =================================================================
         d_hdr, _, _ = th.header("LAB 02", "The Zero-Extension Disaster")
@@ -185,21 +219,35 @@ class Lab02MACUnit(Scene):
         self.play(FadeOut(p_hdr), FadeOut(nodes), run_time=0.5)
 
         # =================================================================
+        # CHECKPOINT
+        # =================================================================
+        th.checkpoint(
+            self,
+            "What happens if you zero-extend -5 into a 32-bit accumulator?",
+            ["-5 (16-bit) padded with 16 zeros becomes +65,531",
+             "Sign-extension (replicate MSB) keeps it -5"],
+        )
+
+        # =================================================================
+        # CHALLENGE
+        # =================================================================
+        th.challenge(
+            self,
+            ["A model's hidden dimension doubles to K = 8192.",
+             "How many bits does the accumulator need now?",
+             "(Recall: 16 product bits + log2(K))"],
+            "16 + log2(8192) = 16 + 13 = 29 bits.  32 bits still has headroom.",
+        )
+
+        # =================================================================
         # ACT 5 — RTL RECAP
         # =================================================================
-        card = th.card(10.0, 3.9, stroke=th.GREEN, radius=0.22)
-        t = Text("rtl/mac_unit.sv", font=th.SANS, weight=BOLD, font_size=26,
-                 color=th.GREEN_LIGHT)
-        t.next_to(card.get_top(), DOWN, buff=0.35)
-        pts = th.bullets(
+        th.recap(
+            self,
+            "rtl/mac_unit.sv",
             ["assign mult_product = a * b",
              "Sign-extend: {{(ACC-16){MSB}}, product}",
              "assign sum_out = sum_in + extended product",
              "32-bit accumulator → zero overflow up to 65,536 terms",
              "Next: Lab 03 — The Weight-Stationary PE"],
-            font_size=18, buff=0.28, bullet_color=th.GREEN, color=th.TEXT,
         )
-        pts.next_to(t, DOWN, buff=0.4, aligned_edge=LEFT)
-        pts.move_to(card.get_center() + DOWN * 0.15)
-        self.play(Create(card), Write(t), FadeIn(pts, shift=UP * 0.2), run_time=1.1)
-        self.wait(2.4)

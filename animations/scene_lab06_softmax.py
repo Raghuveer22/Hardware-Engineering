@@ -79,12 +79,13 @@ class Lab06Softmax(Scene):
         p_hdr, _, _ = th.header("LAB 06", "Logits [12, 10, 8, 6] → Probabilities")
         self.play(FadeIn(p_hdr, shift=DOWN * 0.3), run_time=0.7)
 
-        # The four pipeline stages as cards.
+        # The four pipeline stages as cards. Numbers are the exact fixed-point
+        # values from rtl/softmax.sv's Q0.8 exp LUT + normalizer.
         stages = [
             ("1 · MAX", "max = 12", th.AMBER),
             ("2 · DELTA", "Δ = [0,-2,-4,-6]", th.CYAN),
-            ("3 · EXP LUT", "e^Δ ≈ [1.00,0.14,0.02,0.00]", th.PURPLE),
-            ("4 · NORMALIZE", "P = [0.87,0.12,0.02,0.00]", th.GREEN),
+            ("3 · EXP LUT", "e^Δ = [255,94,35,13]", th.PURPLE),
+            ("4 · NORMALIZE", "P = [163,60,22,8]", th.GREEN),
         ]
         cards = VGroup()
         for i, (name, detail, color) in enumerate(stages):
@@ -124,20 +125,74 @@ class Lab06Softmax(Scene):
                   run_time=0.5)
 
         # =================================================================
+        # ACT 3b — SECOND EXAMPLE: UNIFORM INPUT
+        # =================================================================
+        u_hdr, _, _ = th.header("LAB 06", "Uniform Logits [10, 10, 10, 10]")
+        self.play(FadeIn(u_hdr, shift=DOWN * 0.3), run_time=0.7)
+
+        u1 = Text("max = 10  →  Δ = [0, 0, 0, 0]", font=th.MONO, font_size=21,
+                  color=th.CYAN)
+        u1.move_to(UP * 0.9)
+        self.play(Write(u1), run_time=0.6)
+
+        u2 = Text("e^Δ = [255, 255, 255, 255]  (all 1.0 in Q0.8)",
+                  font=th.MONO, font_size=21, color=th.PURPLE_LIGHT)
+        u2.next_to(u1, DOWN, buff=0.5)
+        self.play(Write(u2), run_time=0.6)
+
+        u3 = Text("sum = 1020  →  P = [63, 63, 63, 63]  (each ≈ ¼)",
+                  font=th.MONO, weight=BOLD, font_size=22, color=th.GREEN_LIGHT)
+        u3.next_to(u2, DOWN, buff=0.5)
+        self.play(FadeIn(u3, shift=UP * 0.15), run_time=0.6)
+
+        # Equal bars.
+        bars = VGroup()
+        for i in range(4):
+            b = Rectangle(width=0.6, height=1.6, fill_color=th.GREEN,
+                          fill_opacity=0.9, stroke_width=0)
+            bars.add(b)
+        bars.arrange(RIGHT, buff=0.6)
+        bars.next_to(u3, DOWN, buff=0.7)
+        bar_lbl = Text("All four probabilities are equal (uniform)",
+                       font=th.SANS, font_size=18, color=th.MUTED)
+        bar_lbl.next_to(bars, DOWN, buff=0.25)
+        self.play(LaggedStart(*[GrowFromEdge(b, DOWN) for b in bars],
+                              lag_ratio=0.1), run_time=0.8)
+        self.play(FadeIn(bar_lbl), run_time=0.4)
+        self.wait(1.0)
+
+        self.play(FadeOut(u_hdr), FadeOut(u1), FadeOut(u2), FadeOut(u3),
+                  FadeOut(bars), FadeOut(bar_lbl), run_time=0.5)
+
+        # =================================================================
+        # CHECKPOINT
+        # =================================================================
+        th.checkpoint(
+            self,
+            "Why does subtracting the max leave softmax unchanged?",
+            ["e^(x-C) / Σ e^(x-C) = e^x / Σ e^x  (C cancels)",
+             "But now all exponents ≤ 1 → no overflow possible"],
+        )
+
+        # =================================================================
+        # CHALLENGE
+        # =================================================================
+        th.challenge(
+            self,
+            ["Run the RTL softmax on logits [5, 5, 0, 0].",
+             "Use the Q0.8 LUT: e^0 = 255, e^-5 = 21.",
+             "What is the output probability vector?"],
+            "exp = [255, 255, 21, 21], sum = 552 → P = [117, 117, 9, 9].",
+        )
+
+        # =================================================================
         # ACT 4 — RECAP
         # =================================================================
-        card = th.card(10.0, 3.7, stroke=th.GREEN, radius=0.22)
-        t = Text("rtl/softmax.sv", font=th.SANS, weight=BOLD, font_size=26,
-                 color=th.GREEN_LIGHT)
-        t.next_to(card.get_top(), DOWN, buff=0.35)
-        pts = th.bullets(
+        th.recap(
+            self,
+            "rtl/softmax.sv",
             ["Max tree → subtract → exp LUT → normalize",
              "Invariant: output probabilities sum to 255 (Q0.8 = 1.0)",
              "All exponents stay in (0,1] — no overflow possible",
              "Next: Lab 07 — Fast RSQRT for RMSNorm"],
-            font_size=18, buff=0.28, bullet_color=th.GREEN, color=th.TEXT,
         )
-        pts.next_to(t, DOWN, buff=0.4, aligned_edge=LEFT)
-        pts.move_to(card.get_center() + DOWN * 0.15)
-        self.play(Create(card), Write(t), FadeIn(pts, shift=UP * 0.2), run_time=1.1)
-        self.wait(2.4)

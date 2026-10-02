@@ -1,102 +1,237 @@
 """
-Lab 08: Hardware Exponential SFU (2^x & e^x) for SwiGLU
-Explains:
-1. Why SwiGLU and SiLU dominate >60% of modern LLM compute.
-2. The Silicon Base-2 Trick: e^x = 2^(x * log2(e)) = 2^I * 2^F.
-3. Barrel Shifter (2^I) + 16-Entry LUT (2^F) Datapath.
+Lab 08: Hardware Exponential SFU (2^x & e^x) for SwiGLU / SiLU
+
+Deep-dive structure:
+1.  SwiGLU/SiLU dominate >60% of modern LLM compute.
+2.  The base-2 trick: e^x = 2^(x·log2e) = 2^I · 2^F.
+3.  The datapath: scaler → split (I,F) → barrel shifter (2^I) + 16-entry
+    LUT (2^F) → multiplier. Animated packet flows through both branches.
+4.  Worked example: 2^3.5 = 2^3 · 2^0.5 = 8 · 1.414 ≈ 11.31.
+5.  The SiLU curve drawn, plus the RTL recap.
 """
 
 from manim import *
+import theme as th
+
 
 class Lab08ExponentialSFU(Scene):
     def construct(self):
-        self.camera.background_color = "#0f172a"
+        th.set_dark(self.camera)
 
-        # -----------------------------------------------------------
-        # SCENE 1: THE SWIGLU / SILU ACTIVATION CHALLENGE
-        # -----------------------------------------------------------
-        badge = Text("LAB 08: TRANSFORMER SFUS", font="Arial", weight=BOLD, font_size=20, color="#38bdf8")
-        title = Text("Hardware Exponential SFU for SwiGLU & SiLU", font="Arial", weight=BOLD, font_size=30, color=WHITE)
-        header = VGroup(badge, title).arrange(DOWN, buff=0.2).to_edge(UP, buff=0.6)
+        # =================================================================
+        # ACT 1 — SWIGLU / SILU MOTIVATION
+        # =================================================================
+        hdr, _, _ = th.header("LAB 08", "The Exponential SFU")
+        self.play(FadeIn(hdr, shift=DOWN * 0.3), run_time=0.7)
 
-        self.play(FadeIn(header, shift=DOWN * 0.3), run_time=0.8)
+        card = th.card(10.6, 2.6, stroke=th.AMBER, radius=0.18)
+        card.move_to(UP * 0.35)
 
-        card = RoundedRectangle(corner_radius=0.2, height=2.2, width=10.5, stroke_color="#f59e0b", fill_color="#1e293b", fill_opacity=0.95)
-        card.move_to(UP * 0.2)
+        c1 = Text("SiLU(x) = x / (1 + e⁻ˣ)",
+                  font=th.MONO, weight=BOLD, font_size=22, color=th.GREEN_LIGHT)
+        c2 = Text(">60% of FLOPs in LLaMA 3 / Mistral FFN blocks",
+                  font=th.SANS, font_size=18, color=th.TEXT)
+        c3 = Text("Taylor-series e^x = multi-cycle DSP stalls in silicon",
+                  font=th.MONO, font_size=18, color=th.RED_LIGHT)
+        stack = VGroup(c1, c2, c3).arrange(DOWN, aligned_edge=LEFT, buff=0.24)
+        stack.move_to(card)
+        self.play(Create(card), FadeIn(stack), run_time=0.9)
+        self.wait(1.0)
 
-        s1 = Text("In LLaMA 3 & Mistral, >60% of FLOPs are in SwiGLU FFN layers:", font="Arial", weight=BOLD, font_size=19, color=WHITE)
-        s2 = Text("SiLU(x) = x / (1 + e^(-x))", font="Courier", weight=BOLD, font_size=20, color="#38bdf8")
-        s3 = Text("🚨 Computing e^x via Taylor Series requires multi-cycle DSP stalls!", font="Courier", font_size=17, color="#ef4444")
-        s4 = Text("⚡ Hardware Solution: Base-2 Mathematical Decomposition!", font="Arial", weight=BOLD, font_size=18, color="#4ade80")
+        trick = Text("Hardware answer:  the base-2 decomposition",
+                     font=th.SANS, weight=BOLD, font_size=20, color=th.CYAN_LIGHT)
+        trick.next_to(card, DOWN, buff=0.4)
+        self.play(FadeIn(trick, shift=UP * 0.15), run_time=0.6)
+        self.wait(0.8)
 
-        s_stack = VGroup(s1, s2, s3, s4).arrange(DOWN, aligned_edge=LEFT, buff=0.18).move_to(card)
+        self.play(FadeOut(hdr), FadeOut(card), FadeOut(stack), FadeOut(trick),
+                  run_time=0.5)
 
-        self.play(Create(card), FadeIn(s_stack), run_time=1.0)
-        self.wait(1.8)
+        # =================================================================
+        # ACT 2 — THE BASE-2 TRICK
+        # =================================================================
+        b_hdr, _, _ = th.header("LAB 08", "eˣ = 2^I × 2^F")
+        self.play(FadeIn(b_hdr, shift=DOWN * 0.3), run_time=0.7)
 
-        self.play(FadeOut(header), FadeOut(card), FadeOut(s_stack), run_time=0.5)
+        d1 = Text("u = x · log2(e) = I + F", font=th.MONO, weight=BOLD,
+                  font_size=24, color=th.CYAN)
+        d1.move_to(UP * 1.0)
+        self.play(Write(d1), run_time=0.7)
 
-        # -----------------------------------------------------------
-        # SCENE 2: THE BASE-2 DECOMPOSITION FORMULA
-        # -----------------------------------------------------------
-        f_title = Text("The Base-2 Silicon Secret: e^x = 2^I × 2^F", font="Arial", weight=BOLD, font_size=28, color="#4ade80")
-        f_title.to_edge(UP, buff=0.6)
-        self.play(Write(f_title), run_time=0.6)
+        d2 = Text("2^u = 2^I · 2^F", font=th.MONO, weight=BOLD, font_size=24,
+                  color=th.GREEN)
+        d2.next_to(d1, DOWN, buff=0.5)
+        self.play(Write(d2), run_time=0.7)
 
-        decomp_card = RoundedRectangle(corner_radius=0.2, height=2.4, width=10.0, stroke_color="#38bdf8", fill_color="#1e293b", fill_opacity=0.9)
-        decomp_card.move_to(UP * 0.3)
+        d3 = th.bullets(
+            ["2^I  →  zero-delay barrel shifter (just shift bits!)",
+             "2^F  →  compact 16-entry lookup table (F ∈ [0,1))"],
+            font_size=20, buff=0.28, bullet_color=th.AMBER, color=th.TEXT,
+        )
+        d3.next_to(d2, DOWN, buff=0.55, aligned_edge=LEFT)
+        self.play(FadeIn(d3, shift=UP * 0.15), run_time=0.8)
+        self.wait(1.0)
 
-        d1 = Text("Step 1: Scale by log2(e) ➔  u = x × 1.442695", font="Courier", weight=BOLD, font_size=20, color="#38bdf8")
-        d2 = Text("Step 2: Split u into Integer (I) + Fractional (F in [0, 1))", font="Courier", weight=BOLD, font_size=18, color="#f59e0b")
-        d3 = Text("• 2^I  ➔  Evaluated via zero-delay hardware Barrel Shifter!", font="Arial", font_size=18, color="#4ade80")
-        d4 = Text("• 2^F  ➔  Evaluated via compact 16-entry seed lookup table (LUT)!", font="Arial", font_size=18, color="#86efac")
+        self.play(FadeOut(b_hdr), FadeOut(d1), FadeOut(d2), FadeOut(d3),
+                  run_time=0.5)
 
-        d_grp = VGroup(d1, d2, d3, d4).arrange(DOWN, aligned_edge=LEFT, buff=0.18).move_to(decomp_card)
+        # =================================================================
+        # ACT 3 — THE DATAPATH
+        # =================================================================
+        p_hdr, _, _ = th.header("LAB 08", "The SFU Datapath")
+        self.play(FadeIn(p_hdr, shift=DOWN * 0.3), run_time=0.7)
 
-        self.play(Create(decomp_card), FadeIn(d_grp), run_time=1.0)
-        self.wait(2.0)
+        scaler = th.card(2.5, 1.2, stroke=th.AMBER, radius=0.14)
+        scaler.shift(LEFT * 4.3)
+        sc_l = Text("Scaler\nu = x·log2e", font=th.MONO, font_size=14,
+                    color=th.AMBER_LIGHT).move_to(scaler)
 
-        self.play(FadeOut(f_title), FadeOut(decomp_card), FadeOut(d_grp), run_time=0.5)
+        split = th.card(2.3, 1.2, stroke=th.CYAN, radius=0.14)
+        split.shift(LEFT * 1.4)
+        sp_l = Text("Split\nu = I + F", font=th.MONO, font_size=14,
+                    color=th.CYAN_LIGHT).move_to(split)
 
-        # -----------------------------------------------------------
-        # SCENE 3: HARDWARE DATAPATH: rtl/exp2_sfu.sv
-        # -----------------------------------------------------------
-        dp_title = Text("Exponential SFU Datapath: rtl/exp2_sfu.sv", font="Arial", weight=BOLD, font_size=28, color="#38bdf8")
-        dp_title.to_edge(UP, buff=0.6)
-        self.play(Write(dp_title), run_time=0.6)
+        shifter = th.card(2.5, 1.0, stroke=th.GREEN, radius=0.14)
+        shifter.shift(RIGHT * 1.7 + UP * 0.9)
+        sh_l = Text("Barrel Shifter\n2^I", font=th.MONO, font_size=14,
+                    color=th.GREEN_LIGHT).move_to(shifter)
 
-        # Datapath nodes
-        scaler_node = RoundedRectangle(corner_radius=0.15, height=1.2, width=2.6, stroke_color="#f59e0b", fill_color="#1e293b", fill_opacity=0.9).shift(LEFT * 4.2)
-        sc_lbl = Text("Mode Selector\nu = x * log2(e)", font="Arial", font_size=14, color=WHITE).move_to(scaler_node)
+        lut = th.card(2.5, 1.0, stroke=th.PURPLE, radius=0.14)
+        lut.shift(RIGHT * 1.7 + DOWN * 0.9)
+        lu_l = Text("16-Entry LUT\n2^F", font=th.MONO, font_size=14,
+                    color=th.PURPLE_LIGHT).move_to(lut)
 
-        split_node = RoundedRectangle(corner_radius=0.15, height=1.2, width=2.4, stroke_color="#38bdf8", fill_color="#1e293b", fill_opacity=0.9).shift(LEFT * 1.4)
-        sp_lbl = Text("Decompose\nu = I + F", font="Arial", font_size=15, color=WHITE).move_to(split_node)
+        mul = th.card(2.3, 1.2, stroke=th.GREEN, radius=0.14)
+        mul.shift(RIGHT * 4.5)
+        mu_l = Text("Multiply\ny = 2^I·2^F", font=th.MONO, font_size=14,
+                    color=th.GREEN_LIGHT).move_to(mul)
 
-        shifter_node = RoundedRectangle(corner_radius=0.15, height=1.0, width=2.4, stroke_color="#4ade80", fill_color="#1e293b", fill_opacity=0.9).shift(RIGHT * 1.6 + UP * 0.8)
-        sh_lbl = Text("Barrel Shifter\n(2^I)", font="Arial", font_size=14, color=WHITE).move_to(shifter_node)
+        a1 = Arrow(scaler.get_right(), split.get_left(), buff=0.08, color=th.AMBER)
+        a_up = Arrow(split.get_right(), shifter.get_left(), buff=0.08, color=th.GREEN)
+        a_dn = Arrow(split.get_right(), lut.get_left(), buff=0.08, color=th.PURPLE)
+        a_c1 = Arrow(shifter.get_right(), mul.get_left() + UP * 0.3, buff=0.08,
+                     color=th.GREEN)
+        a_c2 = Arrow(lut.get_right(), mul.get_left() + DOWN * 0.3, buff=0.08,
+                     color=th.PURPLE)
 
-        lut_node = RoundedRectangle(corner_radius=0.15, height=1.0, width=2.4, stroke_color="#a855f7", fill_color="#1e293b", fill_opacity=0.9).shift(RIGHT * 1.6 + DOWN * 0.8)
-        lu_lbl = Text("16-Entry LUT\n(2^F)", font="Arial", font_size=14, color=WHITE).move_to(lut_node)
+        nodes = VGroup(scaler, sc_l, split, sp_l, shifter, sh_l, lut, lu_l,
+                       mul, mu_l, a1, a_up, a_dn, a_c1, a_c2)
+        self.play(FadeIn(nodes), run_time=1.0)
 
-        comb_node = RoundedRectangle(corner_radius=0.15, height=1.2, width=2.2, stroke_color="#4ade80", fill_color="#1e293b", fill_opacity=0.9).shift(RIGHT * 4.4)
-        co_lbl = Text("Multiplier\ny = 2^I * 2^F", font="Arial", font_size=14, color=WHITE).move_to(comb_node)
+        # Two packets: integer branch and fractional branch.
+        pi = th.packet(color=th.GREEN, radius=0.12)
+        pf = th.packet(color=th.PURPLE, radius=0.12)
+        pi.move_to(split.get_right())
+        pf.move_to(split.get_right())
+        self.play(FadeIn(pi), FadeIn(pf), run_time=0.25)
+        self.play(pi.animate.move_to(shifter), pf.animate.move_to(lut),
+                  run_time=0.5)
+        self.play(pi.animate.move_to(mul), pf.animate.move_to(mul), run_time=0.5)
+        self.play(FadeOut(pi), FadeOut(pf), run_time=0.25)
+        self.wait(0.6)
 
-        a1 = Arrow(start=scaler_node.get_right(), end=split_node.get_left(), buff=0.08, color="#94a3b8")
-        a_up = Arrow(start=split_node.get_right(), end=shifter_node.get_left(), buff=0.08, color="#4ade80")
-        a_dn = Arrow(start=split_node.get_right(), end=lut_node.get_left(), buff=0.08, color="#a855f7")
-        a_c1 = Arrow(start=shifter_node.get_right(), end=comb_node.get_left() + UP * 0.3, buff=0.08, color="#4ade80")
-        a_c2 = Arrow(start=lut_node.get_right(), end=comb_node.get_left() + DOWN * 0.3, buff=0.08, color="#a855f7")
+        self.play(FadeOut(p_hdr), FadeOut(nodes), run_time=0.5)
 
-        nodes = VGroup(scaler_node, sc_lbl, split_node, sp_lbl, shifter_node, sh_lbl,
-                       lut_node, lu_lbl, comb_node, co_lbl, a1, a_up, a_dn, a_c1, a_c2)
+        # =================================================================
+        # ACT 4 — WORKED EXAMPLE: 2^3.5
+        # =================================================================
+        w_hdr, _, _ = th.header("LAB 08", "Worked Example: 2^3.5")
+        self.play(FadeIn(w_hdr, shift=DOWN * 0.3), run_time=0.7)
 
-        self.play(FadeIn(nodes), run_time=1.2)
-        self.wait(1.5)
+        s1 = Text("u = 3.5  →  I = 3,  F = 0.5", font=th.MONO, font_size=21,
+                  color=th.CYAN)
+        s1.move_to(UP * 1.0)
+        self.play(Write(s1), run_time=0.6)
 
-        # Summary
-        summary_card = RoundedRectangle(corner_radius=0.2, height=1.4, width=10.0, stroke_color="#4ade80", fill_color="#1e293b", fill_opacity=0.95)
-        summary_card.to_edge(DOWN, buff=0.5)
-        s_msg = Text("✓ Hardware Speedup: Replaces 40-cycle software loops with ~3.2 ns combinational logic!\n🎓 You have mastered the entire Silicon AI Acceleration Architecture!", font="Arial", weight=BOLD, font_size=16, color="#86efac").move_to(summary_card)
+        s2 = Text("2^I = 2³ = 8  (shift left by 3)", font=th.MONO, font_size=21,
+                  color=th.GREEN)
+        s2.next_to(s1, DOWN, buff=0.5)
+        self.play(Write(s2), run_time=0.6)
 
-        self.play(Create(summary_card), Write(s_msg), run_time=0.8)
-        self.wait(2.5)
+        s3 = Text("2^F = 2^0.5 ≈ 1.414  (LUT)", font=th.MONO, font_size=21,
+                  color=th.PURPLE_LIGHT)
+        s3.next_to(s2, DOWN, buff=0.5)
+        self.play(Write(s3), run_time=0.6)
+
+        s4 = Text("2^3.5 = 8 × 1.414 ≈ 11.31  ✓", font=th.MONO, weight=BOLD,
+                  font_size=22, color=th.GREEN_LIGHT)
+        s4.next_to(s3, DOWN, buff=0.5)
+        self.play(FadeIn(s4, shift=UP * 0.15), run_time=0.6)
+        self.wait(1.0)
+
+        self.play(FadeOut(w_hdr), FadeOut(s1), FadeOut(s2), FadeOut(s3),
+                  FadeOut(s4), run_time=0.5)
+
+        # =================================================================
+        # ACT 5 — THE SILU CURVE
+        # =================================================================
+        c_hdr, _, _ = th.header("LAB 08", "The SiLU Activation Curve")
+        self.play(FadeIn(c_hdr, shift=DOWN * 0.3), run_time=0.7)
+
+        curve = self._silu_curve()
+        curve.move_to(DOWN * 0.2)
+        self.play(Create(curve[0]), run_time=1.2)
+
+        # Highlight the negative-x asymptote (→0) and linear positive region.
+        note = Text("SiLU(x) → 0 as x → -∞,  and SiLU(x) ≈ x for x ≫ 0",
+                    font=th.SANS, font_size=19, color=th.MUTED)
+        note.to_edge(DOWN, buff=0.5)
+        self.play(FadeIn(note), run_time=0.6)
+        self.wait(1.0)
+
+        self.play(FadeOut(c_hdr), FadeOut(curve), FadeOut(note), run_time=0.5)
+
+        # =================================================================
+        # CHECKPOINT
+        # =================================================================
+        th.checkpoint(
+            self,
+            "Why is base-2 friendlier to silicon than base-e?",
+            ["2^I is just a bit shift — zero gates of math",
+             "Only 2^F (a small bounded table) needs a lookup"],
+        )
+
+        # =================================================================
+        # CHALLENGE
+        # =================================================================
+        th.challenge(
+            self,
+            ["Compute 2^4.5 with the SFU.",
+             "Split u = 4.5 into I = 4 and F = 0.5.",
+             "The LUT gives 2^0.5 ≈ 362 in Q0.8."],
+            "362 shifted left by 4 = 5792 → 22.625 (true 2^4.5 ≈ 22.63).",
+        )
+
+        # =================================================================
+        # ACT 6 — RECAP
+        # =================================================================
+        th.recap(
+            self,
+            "rtl/exp2_sfu.sv",
+            ["mode_e: 1 = e^x (pre-scale by log2e),  0 = 2^x",
+             "Split u into integer I (barrel shift) + fraction F (LUT)",
+             "Overflow clamp saturates at Q8.8 max (65535)",
+             "~3.2 ns path replaces multi-cycle Taylor series",
+             "You have built the whole Silicon AI stack — 00 to 08!"],
+            wait=2.6,
+        )
+
+    # ------------------------------------------------------------------
+    def _silu_curve(self):
+        """Build the SiLU(x) = x·σ(x) curve as a VMobject over [-5, 5]."""
+        import numpy as np
+
+        def silu(x):
+            return x / (1.0 + np.exp(-x))
+
+        xs = np.linspace(-5, 5, 120)
+        ys = silu(xs)
+        # Normalize to the frame: x ∈ [-5,5] → [-5.5, 5.5]; y ∈ [-0.4, 5] → scale.
+        points = [np.array([x * 1.0, y * 0.72, 0]) for x, y in zip(xs, ys)]
+        curve = VMobject(color=th.CYAN, stroke_width=4)
+        curve.set_points_smoothly(points)
+
+        # A faint zero line.
+        zero = Line(np.array([-5, 0, 0]), np.array([5, 0, 0]),
+                    color=th.BORDER, stroke_width=1.5)
+        return VGroup(curve, zero)

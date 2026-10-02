@@ -246,28 +246,38 @@ class Lab00PrepPrimer(Scene):
                   run_time=0.6)
 
         # =================================================================
+        # CHECKPOINT
+        # =================================================================
+        th.checkpoint(
+            self,
+            "Which construct holds state, and which reacts instantly?",
+            ["Combinational logic: no memory, output reacts instantly",
+             "Sequential logic: D flip-flops store state on the clock edge"],
+        )
+
+        # =================================================================
+        # CHALLENGE
+        # =================================================================
+        th.challenge(
+            self,
+            ["You have a module with three inputs A, B, C",
+             "and one output Y = (A AND B) OR C.",
+             "Does changing C change Y immediately — or only on a clock edge?"],
+            "Immediately.  It is pure combinational logic: no register, no clock.",
+        )
+
+        # =================================================================
         # ACT 5 — RECAP
         # =================================================================
-        card = th.card(10.0, 3.6, stroke=th.CYAN, radius=0.22)
-        sum_t = Text("Ready to Build Real AI Silicon",
-                     font=th.SANS, weight=BOLD, font_size=26, color=th.CYAN)
-        sum_t.next_to(card.get_top(), DOWN, buff=0.35)
-
-        pts = th.bullets(
+        th.recap(
+            self,
+            "Ready to Build Real AI Silicon",
             ["You are NOT writing code that runs on a CPU",
              "You are drawing a blueprint of copper wires & transistors",
              "Combinational gates react instantly; registers wait for the clock",
              "Next: Lab 00 — Signed Adder & Saturation Arithmetic"],
-            font_size=19, buff=0.3,
-            bullet_color=th.GREEN, color=th.TEXT,
+            stroke=th.CYAN, title_color=th.CYAN, font_size=19,
         )
-        pts.arrange(DOWN, aligned_edge=LEFT, buff=0.3)
-        pts.next_to(sum_t, DOWN, buff=0.4, aligned_edge=LEFT)
-        pts.move_to(card.get_center() + DOWN * 0.2)
-
-        self.play(Create(card), Write(sum_t), FadeIn(pts, shift=UP * 0.2),
-                  run_time=1.1)
-        self.wait(2.4)
 
     # ------------------------------------------------------------------
     # Helpers
@@ -323,5 +333,4 @@ class Lab00PrepPrimer(Scene):
 
     def _pulse_clock(self, edge_glyph):
         """Flash the clock glyph to represent one rising edge."""
-        self.play(edge_glyph.animate.set_color(th.RED), run_time=0.15)
-        self.play(edge_glyph.animate.set_color(th.PURPLE), run_time=0.2)
+        th.pulse_edge(self, edge_glyph)

@@ -63,19 +63,24 @@ class Lab05SquareRoot(Scene):
         w_hdr, _, _ = th.header("LAB 05", "Worked Example: √64")
         self.play(FadeIn(w_hdr, shift=DOWN * 0.3), run_time=0.7)
 
-        radicand = Text("radicand = 64  (0100 0000)", font=th.MONO,
+        radicand = Text("radicand = 64  (0000 0000 0100 0000)", font=th.MONO,
                         font_size=20, color=th.CYAN)
         radicand.next_to(w_hdr, DOWN, buff=0.5)
         self.play(FadeIn(radicand), run_time=0.5)
 
-        # Bit-pair extraction: group radicand bits into pairs from MSB.
-        pairs = ["01", "00", "00", "00"]
+        # Bit-pair extraction: group the 16-bit radicand into 8 pairs, MSB first.
+        pairs = ["00", "00", "00", "00", "01", "00", "00", "00"]
         pair_group = VGroup()
         for p in pairs:
             pair_group.add(th.bit_row(p, color=th.CYAN))
-        pair_group.arrange(RIGHT, buff=0.3)
+        pair_group.arrange(RIGHT, buff=0.16)
         pair_group.next_to(radicand, DOWN, buff=0.6)
         self.play(FadeIn(pair_group), run_time=0.5)
+
+        pair_note = Text("16-bit radicand → 8 bit-pairs, scanned MSB first",
+                         font=th.MONO, font_size=15, color=th.MUTED)
+        pair_note.next_to(pair_group, DOWN, buff=0.3)
+        self.play(FadeIn(pair_note), run_time=0.4)
 
         # Root register filling in, MSB first.
         root_title = Text("root (built bit-by-bit)", font=th.MONO, font_size=17,
@@ -84,12 +89,14 @@ class Lab05SquareRoot(Scene):
 
         self.play(FadeIn(root_title), run_time=0.3)
 
-        # Show the recurrence result at each stage.
+        # Show the recurrence result at each of the 8 stages (root built MSB
+        # first; the first four stages see leading zeros and set nothing).
         stages = [
-            ("stage 1:  rem=1,  root=1", th.AMBER),
-            ("stage 2:  rem=0,  root=10", th.AMBER),
-            ("stage 3:  rem=0,  root=100", th.AMBER),
-            ("stage 4:  rem=0,  root=1000", th.GREEN),
+            ("i=7..4:  rem=0,  root=0      (leading zeros)", th.FAINT),
+            ("i=3:     rem=0,  root=1", th.AMBER),
+            ("i=2:     rem=0,  root=10", th.AMBER),
+            ("i=1:     rem=0,  root=100", th.AMBER),
+            ("i=0:     rem=0,  root=1000", th.GREEN),
         ]
         stage_group = VGroup()
         for s, c in stages:
@@ -113,21 +120,71 @@ class Lab05SquareRoot(Scene):
                   run_time=0.5)
 
         # =================================================================
+        # ACT 3b — A SECOND EXAMPLE WITH A REMAINDER: √144
+        # =================================================================
+        w2_hdr, _, _ = th.header("LAB 05", "Worked Example: √144")
+        self.play(FadeIn(w2_hdr, shift=DOWN * 0.3), run_time=0.7)
+
+        rad2 = Text("radicand = 144  (0000 0000 1001 0000)", font=th.MONO,
+                    font_size=20, color=th.CYAN)
+        rad2.next_to(w2_hdr, DOWN, buff=0.5)
+        self.play(FadeIn(rad2), run_time=0.5)
+
+        # Show identity: 144 = 12² + 0 (perfect square) — but also demo a
+        # non-square: √100 = 10 exactly; contrast √101 → root 10, remainder 1.
+        ident = Text("144 = 12²  →  root = 12,  remainder = 0",
+                     font=th.MONO, font_size=20, color=th.GREEN)
+        ident.next_to(rad2, DOWN, buff=0.5)
+        self.play(FadeIn(ident), run_time=0.5)
+
+        nonsq = Text("Contrast:  √101 = 10, remainder 1   (10² + 1 = 101)",
+                     font=th.MONO, font_size=19, color=th.AMBER_LIGHT)
+        nonsq.next_to(ident, DOWN, buff=0.5)
+        self.play(FadeIn(nonsq), run_time=0.5)
+
+        # Visualize: a 12×12 square of dots filling up (area = 144).
+        dots = th.dot_grid(12, 12, dx=0.24, dy=0.24, radius=0.045, color=th.GREEN)
+        dots.next_to(nonsq, DOWN, buff=0.6)
+        area = Text("12 × 12 = 144  (the square of the root)",
+                    font=th.MONO, font_size=17, color=th.MUTED)
+        area.next_to(dots, UP, buff=0.2)
+        self.play(FadeIn(area), run_time=0.3)
+        self.play(LaggedStart(*[GrowFromCenter(d) for d in dots], lag_ratio=0.008),
+                  run_time=1.3)
+        self.wait(1.0)
+
+        self.play(FadeOut(w2_hdr), FadeOut(rad2), FadeOut(ident), FadeOut(nonsq),
+                  FadeOut(area), FadeOut(dots), run_time=0.5)
+
+        # =================================================================
+        # CHECKPOINT
+        # =================================================================
+        th.checkpoint(
+            self,
+            "Why does the root engine pull 2 radicand bits per root bit?",
+            ["Each root bit doubles the value: (2^k)² = 2^(2k)",
+             "So each bit of root consumes exactly 2 bits of radicand"],
+        )
+
+        # =================================================================
+        # CHALLENGE
+        # =================================================================
+        th.challenge(
+            self,
+            ["What is the hardware result of sqrt(10,000)?",
+             "Give both the root and the remainder."],
+            "root = 100, remainder = 0  (10,000 is a perfect square).",
+        )
+
+        # =================================================================
         # ACT 4 — RECAP
         # =================================================================
-        card = th.card(10.0, 3.7, stroke=th.GREEN, radius=0.22)
-        t = Text("rtl/sqrt.sv", font=th.SANS, weight=BOLD, font_size=26,
-                 color=th.GREEN_LIGHT)
-        t.next_to(card.get_top(), DOWN, buff=0.35)
-        pts = th.bullets(
+        th.recap(
+            self,
+            "rtl/sqrt.sv",
             ["16-bit radicand → 8-bit root (floor) + remainder",
              "Digit recurrence: rem = (rem<<2) | next 2 bits",
              "Trial subtract: if rem ≥ (root<<2 | 1), set bit & subtract",
              "Attention use: 1/√d_k scales logits to unit variance",
              "Next: Lab 06 — Safe Softmax & FlashAttention"],
-            font_size=18, buff=0.28, bullet_color=th.GREEN, color=th.TEXT,
         )
-        pts.next_to(t, DOWN, buff=0.4, aligned_edge=LEFT)
-        pts.move_to(card.get_center() + DOWN * 0.15)
-        self.play(Create(card), Write(t), FadeIn(pts, shift=UP * 0.2), run_time=1.1)
-        self.wait(2.4)

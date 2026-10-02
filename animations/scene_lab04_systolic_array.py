@@ -54,8 +54,8 @@ class Lab04SystolicArray(Scene):
         self.play(Create(self.pe_grid, lag_ratio=0.04), run_time=1.0)
 
         # Show the input vector A = [1, 2] and weight matrix W.
-        a_vec = self._matrix_row([["1", "2"]], th.CYAN, label="A row")
-        w_mat = self._matrix_2x2([["5", "6"], ["7", "8"]], th.AMBER, label="W")
+        a_vec = th.matrix([["1", "2"]], color=th.CYAN, label="A row")
+        w_mat = th.matrix([["5", "6"], ["7", "8"]], color=th.AMBER, label="W")
         a_vec.next_to(self.pe_grid, LEFT, buff=1.4)
         w_mat.next_to(self.pe_grid, UP, buff=0.5)
         self.play(FadeIn(a_vec), FadeIn(w_mat), run_time=0.7)
@@ -184,24 +184,37 @@ class Lab04SystolicArray(Scene):
                   FadeOut(verify), run_time=0.5)
 
         # =================================================================
+        # CHECKPOINT
+        # =================================================================
+        th.checkpoint(
+            self,
+            "Why must Row k be delayed by exactly k clock cycles?",
+            ["Row 0's partial sum takes k hops to reach Row k",
+             "Delaying Row k by k aligns its data with the arriving sum"],
+        )
+
+        # =================================================================
+        # CHALLENGE
+        # =================================================================
+        th.challenge(
+            self,
+            ["Compute A·W for A = [3, 4] and W = [[1, 2], [3, 4]].",
+             "What is the result vector C?"],
+            "C = [3·1 + 4·3, 3·2 + 4·4] = [15, 22].",
+        )
+
+        # =================================================================
         # ACT 5 — SCALE & RECAP
         # =================================================================
-        card = th.card(10.0, 4.3, stroke=th.GREEN, radius=0.22)
-        t = Text("Scaling Up: rtl/systolic_array.sv", font=th.SANS, weight=BOLD,
-                 font_size=26, color=th.GREEN_LIGHT)
-        t.next_to(card.get_top(), DOWN, buff=0.35)
-        pts = th.bullets(
+        th.recap(
+            self,
+            "Scaling Up: rtl/systolic_array.sv",
             ["4×4 array = 16 PEs = 16 MACs every clock cycle",
              "Skew registers: Row k delayed by k cycles (built-in flip-flops)",
              "Latency = 3N - 2 = 10 cycles for N=4 (initiation interval 1)",
              "Each input byte is loaded exactly once — O(N²) loads, not O(N³)",
              "Next: Lab 05 — Hardware Square Root & Attention Scaling"],
-            font_size=18, buff=0.26, bullet_color=th.GREEN, color=th.TEXT,
         )
-        pts.next_to(t, DOWN, buff=0.4, aligned_edge=LEFT)
-        pts.move_to(card.get_center() + DOWN * 0.1)
-        self.play(Create(card), Write(t), FadeIn(pts, shift=UP * 0.2), run_time=1.1)
-        self.wait(2.4)
 
     # ------------------------------------------------------------------
     def _build_grid(self, n, show_weights=False):
@@ -230,37 +243,4 @@ class Lab04SystolicArray(Scene):
             cells.append(row)
         g.move_to(ORIGIN)
         self.cells = cells
-        return g
-
-    def _matrix_row(self, vals, color, label=None):
-        g = VGroup()
-        for c, v in enumerate(vals[0]):
-            box = Square(side_length=0.6, stroke_color=th.BORDER, stroke_width=1.5,
-                         fill_color=th.CARD, fill_opacity=0.95)
-            box.move_to(RIGHT * c * 0.7)
-            lbl = Text(v, font=th.MONO, font_size=18, color=color)
-            lbl.move_to(box)
-            g.add(VGroup(box, lbl))
-        if label:
-            l = Text(label, font=th.MONO, font_size=15, color=th.MUTED)
-            l.next_to(g, UP, buff=0.15)
-            g.add(l)
-        g.move_to(ORIGIN)
-        return g
-
-    def _matrix_2x2(self, vals, color, label=None):
-        g = VGroup()
-        for r in range(2):
-            for c in range(2):
-                box = Square(side_length=0.6, stroke_color=th.BORDER, stroke_width=1.5,
-                             fill_color=th.CARD, fill_opacity=0.95)
-                box.move_to(np.array([c * 0.7, -r * 0.7, 0]))
-                lbl = Text(vals[r][c], font=th.MONO, font_size=18, color=color)
-                lbl.move_to(box)
-                g.add(VGroup(box, lbl))
-        if label:
-            l = Text(label, font=th.MONO, font_size=15, color=th.MUTED)
-            l.next_to(g, UP, buff=0.15)
-            g.add(l)
-        g.move_to(ORIGIN)
         return g
