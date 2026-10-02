@@ -3,11 +3,14 @@
 ==============================================================================
 File: synthesis/generate_schematics.py
 Description: Generates fully interactive, hierarchical, collapsible SVG schematics
-             for hardware modules (multiplier_int8, mac_unit, pe, systolic_array).
+             with integrated Hardware Synthesis & Complexity Dashboards (HUD)
+             for all Silicon & SFU hardware modules (Lab 00 through Lab 08).
              
 Features:
+- Integrated Hardware Synthesis & Complexity Dashboard (Registers, Gate Complexity,
+  Latency, Throughput, and Precision) embedded directly in the SVG canvas.
 - Components collapse/expand on click to reveal internal logic and submodules.
-- Multi-bit bus lines with bitwidth badges instead of exploding into wire spaghetti.
+- Multi-bit bus lines with bitwidth badges and pin tooltips.
 - Clean routing with pin stubs and toggleable global control nets (clk, rst_n, en).
 - Interactive net highlighting on hover/click with glowing signal paths.
 - Embedded SVG JavaScript and CSS for standalone operation in any browser or viewer.
@@ -149,20 +152,15 @@ def create_svg_header(width, height, title, view_box=None):
             fill: var(--highlight);
         }}
         
-        /* Tooltip */
-        #svg-tooltip {{
-            position: absolute;
-            display: none;
-            background: rgba(17, 24, 39, 0.95);
-            color: #fff;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-family: 'JetBrains Mono', monospace;
-            border: 1px solid #38bdf8;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            pointer-events: none;
-            z-index: 1000;
+        /* Dashboard Card Styling */
+        .hud-card {{
+            filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.4));
+        }}
+        .hud-card-rect {{
+            transition: stroke 0.2s ease, fill 0.2s ease;
+        }}
+        .hud-card:hover .hud-card-rect {{
+            stroke: var(--accent);
         }}
         
         /* Toolbar inside SVG */
@@ -187,6 +185,11 @@ def create_svg_header(width, height, title, view_box=None):
         <stop offset="100%" stop-color="#04070c" />
     </linearGradient>
     
+    <linearGradient id="hudGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#141c2b" />
+        <stop offset="100%" stop-color="#0c1320" />
+    </linearGradient>
+
     <linearGradient id="peGrad" x1="0%" y1="0%" x2="0%" y2="100%">
         <stop offset="0%" stop-color="#1e293b" />
         <stop offset="100%" stop-color="#0f172a" />
@@ -266,7 +269,6 @@ def create_svg_footer():
 </g>
 
 <script><![CDATA[
-    // Interactive Collapsible Schematic Logic
     let showControlNets = true;
     let currentHighlightedNet = null;
 
@@ -347,7 +349,6 @@ def create_svg_footer():
         bg.setAttribute('x', bbox.x - 8);
         bg.setAttribute('y', bbox.y - 6);
         
-        // Position near mouse
         const pt = getSVGPoint(evt);
         tt.setAttribute('transform', `translate(${pt.x + 12}, ${pt.y - 20})`);
         tt.style.display = 'block';
@@ -405,10 +406,64 @@ def create_svg_footer():
 ]]></script>
 </svg>"""
 
+def create_hud_dashboard(x, y, total_width, dff_text, gates_text, latency_text, extra_text, extra_label="🎯 ARITHMETIC / FORMAT"):
+    """
+    Renders a unified 4-card Hardware Synthesis & Complexity Dashboard (HUD) inside the SVG.
+    """
+    card_w = (total_width - 36) // 4
+    card_h = 92
+
+    return f"""
+    <!-- ============================================================================== -->
+    <!-- 📊 HARDWARE SYNTHESIS & COMPLEXITY DASHBOARD (HUD)                           -->
+    <!-- ============================================================================== -->
+    <g id="synthesis_hud" transform="translate({x}, {y})">
+        <!-- Container Panel Background -->
+        <rect x="0" y="0" width="{total_width}" height="{card_h + 30}" rx="12" fill="url(#hudGrad)" stroke="#1e293b" stroke-width="1.5" />
+        
+        <!-- Header Banner -->
+        <g transform="translate(16, 18)">
+            <text x="0" y="0" fill="#38bdf8" font-size="11" font-weight="700" letter-spacing="1">📊 HARDWARE SYNTHESIS &amp; COMPLEXITY ANALYSIS</text>
+            <text x="{total_width - 32}" y="0" fill="#64748b" font-size="10" text-anchor="end" font-family="'JetBrains Mono', monospace">YOSYS &amp; GATE-LEVEL METRICS</text>
+        </g>
+        
+        <!-- Card 1: Sequential DFF Registers -->
+        <g class="hud-card" transform="translate(12, 26)">
+            <rect class="hud-card-rect" width="{card_w}" height="{card_h}" rx="8" fill="#111827" stroke="#10b981" stroke-width="1.5" />
+            <text x="14" y="22" fill="#34d399" font-size="10" font-weight="700">💾 REGISTERS (DFF)</text>
+            <text x="14" y="48" fill="#ffffff" font-size="16" font-weight="800" font-family="'JetBrains Mono', monospace">{dff_text.split('(')[0].strip()}</text>
+            <text x="14" y="70" fill="#9ca3af" font-size="10">{dff_text.split('(')[1].replace(')', '') if '(' in dff_text else 'Sequential storage'}</text>
+        </g>
+        
+        <!-- Card 2: Silicon Complexity & Gate Count -->
+        <g class="hud-card" transform="translate({12 + card_w + 12}, 26)">
+            <rect class="hud-card-rect" width="{card_w}" height="{card_h}" rx="8" fill="#111827" stroke="#f59e0b" stroke-width="1.5" />
+            <text x="14" y="22" fill="#fbbf24" font-size="10" font-weight="700">⚙️ SILICON COMPLEXITY</text>
+            <text x="14" y="48" fill="#ffffff" font-size="16" font-weight="800" font-family="'JetBrains Mono', monospace">{gates_text.split('(')[0].strip()}</text>
+            <text x="14" y="70" fill="#9ca3af" font-size="10">{gates_text.split('(')[1].replace(')', '') if '(' in gates_text else 'Logic Gate scaling'}</text>
+        </g>
+        
+        <!-- Card 3: Latency & Critical Path -->
+        <g class="hud-card" transform="translate({12 + (card_w + 12) * 2}, 26)">
+            <rect class="hud-card-rect" width="{card_w}" height="{card_h}" rx="8" fill="#111827" stroke="#6366f1" stroke-width="1.5" />
+            <text x="14" y="22" fill="#818cf8" font-size="10" font-weight="700">⏱️ LATENCY &amp; PATH</text>
+            <text x="14" y="48" fill="#ffffff" font-size="16" font-weight="800" font-family="'JetBrains Mono', monospace">{latency_text.split('(')[0].strip()}</text>
+            <text x="14" y="70" fill="#9ca3af" font-size="10">{latency_text.split('(')[1].replace(')', '') if '(' in latency_text else 'Critical path timing'}</text>
+        </g>
+        
+        <!-- Card 4: Precision / Special Features -->
+        <g class="hud-card" transform="translate({12 + (card_w + 12) * 3}, 26)">
+            <rect class="hud-card-rect" width="{card_w}" height="{card_h}" rx="8" fill="#111827" stroke="#ec4899" stroke-width="1.5" />
+            <text x="14" y="22" fill="#f472b6" font-size="10" font-weight="700">{extra_label}</text>
+            <text x="14" y="48" fill="#ffffff" font-size="16" font-weight="800" font-family="'JetBrains Mono', monospace">{extra_text.split('(')[0].strip()}</text>
+            <text x="14" y="70" fill="#9ca3af" font-size="10">{extra_text.split('(')[1].replace(')', '') if '(' in extra_text else 'Data format properties'}</text>
+        </g>
+    </g>
+    """
+
 def save_and_validate_svg(svg_content, out_path):
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(svg_content)
-    # Strictly validate XML well-formedness
     try:
         ET.parse(out_path)
     except Exception as e:
@@ -417,170 +472,277 @@ def save_and_validate_svg(svg_content, out_path):
     print(f"✅ Generated & Validated SVG: {out_path}")
 
 # ==============================================================================
-# 1. MULTIPLIER_INT8 SCHEMATIC GENERATOR
+# LAB 00: ADDER SCHEMATIC GENERATOR
 # ==============================================================================
-def generate_multiplier_svg(out_path):
-    width, height = 1100, 700
-    svg = [create_svg_header(width, height, "multiplier_int8 - 8-Bit Signed Multiplier")]
+def generate_adder_svg(out_path):
+    width, height = 1180, 750
+    svg = [create_svg_header(width, height, "adder - Parameterized Signed Adder with Saturation")]
 
-    # Title Banner
     svg.append("""
-    <g transform="translate(40, 80)">
-        <text x="0" y="0" fill="#f8fafc" font-size="22" font-weight="700">🔬 MODULE: multiplier_int8</text>
-        <text x="0" y="24" fill="#94a3b8" font-size="13">High-Radix Signed Booth Multiplier (8-bit x 8-bit = 16-bit Product)</text>
+    <g transform="translate(40, 75)">
+        <text x="0" y="0" fill="#f8fafc" font-size="22" font-weight="700">🔬 MODULE: adder (Lab 00)</text>
+        <text x="0" y="24" fill="#94a3b8" font-size="13">Parameterized Signed Adder with Overflow Detection &amp; Saturation Clamping</text>
     </g>
-    """)
 
-    # Main Collapsible Multiplier Component Box
-    svg.append("""
-    <g id="comp_multiplier" class="collapsible-comp expanded" transform="translate(180, 140)">
-        <!-- Container Box -->
-        <g class="component-box" onclick="toggleComponent('comp_multiplier')">
-            <rect class="box-rect" x="0" y="0" width="740" height="480" rx="12" fill="#1e1329" stroke="#c084fc" stroke-width="2" />
-            <rect x="0" y="0" width="740" height="42" rx="12" fill="#3b0764" />
-            <rect x="0" y="30" width="740" height="12" fill="#3b0764" />
+    <!-- Main Adder Component Box -->
+    <g id="comp_adder" class="collapsible-comp expanded" transform="translate(180, 130)">
+        <g class="component-box" onclick="toggleComponent('comp_adder')">
+            <rect class="box-rect" x="0" y="0" width="760" height="390" rx="12" fill="#0f172a" stroke="#38bdf8" stroke-width="2" />
+            <rect x="0" y="0" width="760" height="42" rx="12" fill="#0369a1" />
+            <rect x="0" y="30" width="760" height="12" fill="#0369a1" />
             
-            <text x="24" y="27" fill="#f3e8ff" font-size="15" font-weight="700">⚙️ multiplier_int8 Core</text>
-            <text x="220" y="26" fill="#d8b4fe" font-size="12" font-family="'JetBrains Mono', monospace">DATA_WIDTH = 8, PROD_WIDTH = 16</text>
+            <text x="24" y="27" fill="#f0f9ff" font-size="15" font-weight="700">⚙️ adder Core (Signed + Saturation)</text>
+            <text x="350" y="26" fill="#bae6fd" font-size="12" font-family="'JetBrains Mono', monospace">DATA_WIDTH = 8, Dynamic Range = [-128, +127]</text>
             
-            <!-- Toggle Badge -->
-            <g class="toggle-badge" transform="translate(705, 21)">
-                <circle cx="0" cy="0" r="12" fill="#6b21a8" stroke="#d8b4fe" stroke-width="1.5" />
-                <text x="0" y="4" fill="#ffffff" font-size="14" font-weight="bold" text-anchor="middle">−</text>
+            <g class="toggle-badge" transform="translate(725, 21)">
+                <circle cx="0" cy="0" r="11" fill="#0284c7" stroke="#bae6fd" stroke-width="1.5" />
+                <text x="0" y="4" fill="#ffffff" font-size="13" font-weight="bold" text-anchor="middle">−</text>
             </g>
         </g>
         
-        <!-- COLLAPSED ONLY VIEW: Clean High-Level Multiplier Function -->
-        <g class="collapsed-only" transform="translate(220, 150)">
-            <rect x="0" y="0" width="300" height="180" rx="10" fill="#2e1065" stroke="#a855f7" stroke-width="2" />
-            <text x="150" y="70" fill="#f3e8ff" font-size="28" font-weight="bold" text-anchor="middle">✖️ MULTIPLIER</text>
-            <text x="150" y="105" fill="#c084fc" font-size="14" font-family="'JetBrains Mono', monospace" text-anchor="middle">product = a * b (Signed)</text>
-            <text x="150" y="140" fill="#9333ea" font-size="12" text-anchor="middle">Click anywhere to expand internal logic</text>
-            
-            <!-- Internal Flow Bus in collapsed view -->
-            <path d="M -160 50 L 0 50" class="net-bus" data-net="a" />
-            <path d="M -160 130 L 0 130" class="net-bus" data-net="b" />
-            <path d="M 300 90 L 460 90" class="net-bus" data-net="product" />
+        <!-- Collapsed View -->
+        <g class="collapsed-only" transform="translate(230, 100)">
+            <rect x="0" y="0" width="300" height="180" rx="10" fill="#0369a1" stroke="#38bdf8" stroke-width="2" />
+            <text x="150" y="70" fill="#ffffff" font-size="28" font-weight="bold" text-anchor="middle">➕ ADDER</text>
+            <text x="150" y="105" fill="#bae6fd" font-size="14" font-family="'JetBrains Mono', monospace" text-anchor="middle">sum = a + b (Saturated)</text>
+            <text x="150" y="140" fill="#0284c7" font-size="12" text-anchor="middle">Click anywhere to expand internal logic</text>
         </g>
-        
-        <!-- EXPANDED ONLY VIEW: 4 Internal Functional Stages -->
+
+        <!-- Expanded View -->
         <g class="collapsible-content expanded-only">
-            <!-- Stage 1: Booth Radix-4 Encoder -->
-            <g id="sub_booth" class="collapsible-comp expanded" transform="translate(40, 80)">
-                <rect class="box-rect" x="0" y="0" width="180" height="340" rx="8" fill="#1e1b4b" stroke="#818cf8" stroke-width="1.5" />
-                <rect x="0" y="0" width="180" height="32" rx="8" fill="#312e81" />
-                <text x="12" y="21" fill="#e0e7ff" font-size="12" font-weight="700">1. Radix-4 Booth Enc</text>
-                <text x="90" y="70" fill="#c7d2fe" font-size="11" text-anchor="middle">Recodes Operand B</text>
-                <text x="90" y="90" fill="#94a3b8" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">b[7:0] + b[-1]=0</text>
-                <rect x="20" y="120" width="140" height="180" rx="6" fill="#0f172a" stroke="#4338ca" />
-                <text x="90" y="150" fill="#a5b4fc" font-size="11" text-anchor="middle">4 Partial Multipliers:</text>
-                <text x="90" y="180" fill="#cbd5e1" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">PP0: {0, ±1a, ±2a}</text>
-                <text x="90" y="210" fill="#cbd5e1" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">PP1: {0, ±1a, ±2a}</text>
-                <text x="90" y="240" fill="#cbd5e1" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">PP2: {0, ±1a, ±2a}</text>
-                <text x="90" y="270" fill="#cbd5e1" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">PP3: {0, ±1a, ±2a}</text>
+            <!-- 8-Bit Ripple Carry Core -->
+            <g transform="translate(40, 65)">
+                <rect class="box-rect" x="0" y="0" width="300" height="290" rx="8" fill="#1e293b" stroke="#60a5fa" stroke-width="1.5" />
+                <rect x="0" y="0" width="300" height="32" rx="8" fill="#1d4ed8" />
+                <text x="14" y="21" fill="#eff6ff" font-size="13" font-weight="700">1. Full Adder Array (8x FA Slices)</text>
+                <text x="150" y="70" fill="#93c5fd" font-size="11" text-anchor="middle">Two's Complement Addition with Sign-Ext</text>
+                
+                <rect x="20" y="90" width="260" height="145" rx="6" fill="#0f172a" stroke="#3b82f6" />
+                <text x="150" y="120" fill="#60a5fa" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">raw_sum = {a[7], a} + {b[7], b}</text>
+                <text x="150" y="150" fill="#38bdf8" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">carry_out = raw_sum[8]</text>
+                <text x="150" y="180" fill="#94a3b8" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">raw_sum[7:0] = 8-bit sum</text>
+                <text x="150" y="215" fill="#4ade80" font-size="11" font-weight="600" text-anchor="middle">Linear Gate Complexity: O(N)</text>
             </g>
-            
-            <!-- Stage 2: Partial Product Generator -->
-            <g id="sub_ppgen" transform="translate(260, 80)">
-                <rect x="0" y="0" width="190" height="340" rx="8" fill="#14253d" stroke="#38bdf8" stroke-width="1.5" />
-                <rect x="0" y="0" width="190" height="32" rx="8" fill="#0369a1" />
-                <text x="12" y="21" fill="#e0f2fe" font-size="12" font-weight="700">2. PP Generator</text>
-                <text x="95" y="65" fill="#bae6fd" font-size="11" text-anchor="middle">Sign Extension &amp; Shift</text>
+
+            <!-- Overflow & Saturation MUX -->
+            <g transform="translate(380, 65)">
+                <rect class="box-rect" x="0" y="0" width="340" height="290" rx="8" fill="#1e293b" stroke="#f59e0b" stroke-width="1.5" />
+                <rect x="0" y="0" width="340" height="32" rx="8" fill="#b45309" />
+                <text x="14" y="21" fill="#fffbeb" font-size="13" font-weight="700">2. Overflow Detector &amp; Saturation MUX</text>
+                <text x="170" y="70" fill="#fde68a" font-size="11" text-anchor="middle">AI Numerical Clamping Engine</text>
                 
-                <rect x="15" y="90" width="160" height="45" rx="5" fill="#0c4a6e" />
-                <text x="95" y="118" fill="#ffffff" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">PP0 (16-bit) &lt;&lt; 0</text>
-                
-                <rect x="15" y="150" width="160" height="45" rx="5" fill="#0c4a6e" />
-                <text x="95" y="178" fill="#ffffff" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">PP1 (16-bit) &lt;&lt; 2</text>
-                
-                <rect x="15" y="210" width="160" height="45" rx="5" fill="#0c4a6e" />
-                <text x="95" y="238" fill="#ffffff" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">PP2 (16-bit) &lt;&lt; 4</text>
-                
-                <rect x="15" y="270" width="160" height="45" rx="5" fill="#0c4a6e" />
-                <text x="95" y="298" fill="#ffffff" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">PP3 (16-bit) &lt;&lt; 6</text>
+                <rect x="20" y="90" width="300" height="175" rx="6" fill="#0f172a" stroke="#d97706" />
+                <text x="170" y="120" fill="#fcd34d" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">overflow = (a7 == b7) &amp;&amp; (s7 != a7)</text>
+                <text x="170" y="150" fill="#f87171" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">if (saturate &amp;&amp; overflow):</text>
+                <text x="170" y="178" fill="#38bdf8" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">  Pos Over: clamp to +127 (8'h7F)</text>
+                <text x="170" y="204" fill="#a78bfa" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">  Neg Over: clamp to -128 (8'h80)</text>
+                <text x="170" y="240" fill="#6ee7b7" font-size="11" font-weight="600" text-anchor="middle">Guarantees Monotonic Gradient Flow</text>
             </g>
-            
-            <!-- Stage 3: Wallace / CSA Tree Reduction -->
-            <g id="sub_csatree" transform="translate(490, 80)">
-                <rect x="0" y="0" width="210" height="180" rx="8" fill="#064e3b" stroke="#34d399" stroke-width="1.5" />
-                <rect x="0" y="0" width="210" height="32" rx="8" fill="#047857" />
-                <text x="12" y="21" fill="#ecfdf5" font-size="12" font-weight="700">3. CSA Reduction Tree</text>
-                <text x="105" y="65" fill="#a7f3d0" font-size="11" text-anchor="middle">4:2 Compressor Tree</text>
-                
-                <rect x="20" y="90" width="170" height="30" rx="4" fill="#065f46" />
-                <text x="105" y="110" fill="#d1fae5" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">Carry Vector [15:0]</text>
-                
-                <rect x="20" y="130" width="170" height="30" rx="4" fill="#065f46" />
-                <text x="105" y="150" fill="#d1fae5" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">Sum Vector [15:0]</text>
-            </g>
-            
-            <!-- Stage 4: Final CPA Adder -->
-            <g id="sub_cpa" transform="translate(490, 290)">
-                <rect x="0" y="0" width="210" height="130" rx="8" fill="#713f12" stroke="#facc15" stroke-width="1.5" />
-                <rect x="0" y="0" width="210" height="32" rx="8" fill="#a16207" />
-                <text x="12" y="21" fill="#fefce8" font-size="12" font-weight="700">4. Final CPA (Adder)</text>
-                <text x="105" y="65" fill="#fde047" font-size="11" text-anchor="middle">Carry Lookahead 16-bit</text>
-                <text x="105" y="100" fill="#ffffff" font-size="13" font-family="'JetBrains Mono', monospace" text-anchor="middle">Product = Sum + Carry</text>
-            </g>
-            
-            <!-- Internal Interconnect Buses -->
-            <path d="M 220 200 L 260 200" class="net-bus" data-net="booth_ctrl" />
-            <path d="M 450 140 L 490 140" class="net-bus" data-net="pp_vectors" />
-            <path d="M 595 260 L 595 290" class="net-bus" data-net="csa_vectors" />
         </g>
+    </g>
+
+    <!-- External Ports -->
+    <g class="port-group" onmouseover="highlightNet('a')" onmouseout="clearHighlight()">
+        <rect x="30" y="190" width="100" height="36" rx="6" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5" />
+        <text x="80" y="213" fill="#38bdf8" font-size="13" font-weight="700" text-anchor="middle">a [7:0]</text>
+        <path d="M 130 208 L 180 208" class="net-bus" data-net="a" marker-end="url(#bus-arrow)" />
+        <circle cx="180" cy="208" r="4" fill="#38bdf8" class="pin-node" onmouseover="showTooltip(event, 'Port: a [7:0] (Signed INT8 activation operand)')" onmouseout="hideTooltip()" />
+    </g>
+    
+    <g class="port-group" onmouseover="highlightNet('b')" onmouseout="clearHighlight()">
+        <rect x="30" y="270" width="100" height="36" rx="6" fill="#1e293b" stroke="#fb923c" stroke-width="1.5" />
+        <text x="80" y="293" fill="#fb923c" font-size="13" font-weight="700" text-anchor="middle">b [7:0]</text>
+        <path d="M 130 288 L 180 288" class="net-bus" data-net="b" marker-end="url(#bus-arrow)" />
+        <circle cx="180" cy="288" r="4" fill="#fb923c" class="pin-node" onmouseover="showTooltip(event, 'Port: b [7:0] (Signed INT8 operand)')" onmouseout="hideTooltip()" />
+    </g>
+    
+    <g class="port-group" transform="translate(30, 350)">
+        <rect x="0" y="0" width="100" height="30" rx="4" fill="#1f1a10" stroke="#f59e0b" />
+        <text x="50" y="19" fill="#f59e0b" font-size="11" font-weight="600" text-anchor="middle">saturate</text>
+        <path d="M 100 15 L 180 15" class="net-control" />
+    </g>
+    
+    <g class="port-group" onmouseover="highlightNet('sum')" onmouseout="clearHighlight()">
+        <path d="M 940 260 L 990 260" class="net-bus" data-net="sum" marker-end="url(#bus-arrow)" />
+        <rect x="990" y="242" width="120" height="36" rx="6" fill="#1e293b" stroke="#4ade80" stroke-width="1.5" />
+        <text x="1050" y="265" fill="#4ade80" font-size="13" font-weight="700" text-anchor="middle">sum [7:0]</text>
+        <circle cx="940" cy="260" r="4" fill="#4ade80" class="pin-node" onmouseover="showTooltip(event, 'Port: sum [7:0] (Saturated signed output)')" onmouseout="hideTooltip()" />
+    </g>
+
+    <g class="port-group" transform="translate(990, 320)">
+        <path d="M -50 15 L 0 15" class="net-wire" />
+        <rect x="0" y="0" width="120" height="30" rx="4" fill="#1e293b" stroke="#38bdf8" />
+        <text x="60" y="19" fill="#38bdf8" font-size="11" font-weight="600" text-anchor="middle">overflow / carry</text>
     </g>
     """)
 
-    # External Ports and Clean Bus Lines
-    svg.append("""
-    <!-- External Ports and Buses -->
-    <!-- Input A -->
-    <g class="port-group" onmouseover="highlightNet('a')" onmouseout="clearHighlight()">
-        <rect x="30" y="240" width="100" height="36" rx="6" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5" />
-        <text x="80" y="263" fill="#38bdf8" font-size="13" font-weight="700" text-anchor="middle">a [7:0]</text>
-        <path d="M 130 258 L 180 258" class="net-bus" data-net="a" marker-end="url(#bus-arrow)" />
-        <circle cx="180" cy="258" r="4" fill="#38bdf8" class="pin-node" onmouseover="showTooltip(event, 'Port: a [7:0] (Signed INT8 operand)')" onmouseout="hideTooltip()" />
-    </g>
-    
-    <!-- Input B -->
-    <g class="port-group" onmouseover="highlightNet('b')" onmouseout="clearHighlight()">
-        <rect x="30" y="380" width="100" height="36" rx="6" fill="#1e293b" stroke="#fb923c" stroke-width="1.5" />
-        <text x="80" y="403" fill="#fb923c" font-size="13" font-weight="700" text-anchor="middle">b [7:0]</text>
-        <path d="M 130 398 L 180 398" class="net-bus" data-net="b" marker-end="url(#bus-arrow)" />
-        <circle cx="180" cy="398" r="4" fill="#fb923c" class="pin-node" onmouseover="showTooltip(event, 'Port: b [7:0] (Signed INT8 operand)')" onmouseout="hideTooltip()" />
-    </g>
-    
-    <!-- Output Product -->
-    <g class="port-group" onmouseover="highlightNet('product')" onmouseout="clearHighlight()">
-        <path d="M 920 375 L 970 375" class="net-bus" data-net="product" marker-end="url(#bus-arrow)" />
-        <rect x="970" y="357" width="110" height="36" rx="6" fill="#1e293b" stroke="#4ade80" stroke-width="1.5" />
-        <text x="1025" y="380" fill="#4ade80" font-size="13" font-weight="700" text-anchor="middle">product [15:0]</text>
-        <circle cx="920" cy="375" r="4" fill="#4ade80" class="pin-node" onmouseover="showTooltip(event, 'Port: product [15:0] (Signed INT16 output)')" onmouseout="hideTooltip()" />
-    </g>
-    """)
+    # Append Dashboard HUD
+    svg.append(create_hud_dashboard(
+        x=40, y=560, total_width=1100,
+        dff_text="0 DFFs (Pure Combinational)",
+        gates_text="O(N) Linear (~42 Logic Gates)",
+        latency_text="0 Cycles (~1.2 ns Critical Path)",
+        extra_text="INT8 Clamped ([-128, +127] Saturation)",
+        extra_label="🎯 ARITHMETIC DYNAMICS"
+    ))
 
     svg.append(create_svg_footer())
     save_and_validate_svg("\n".join(svg), out_path)
 
 # ==============================================================================
-# 2. MAC_UNIT SCHEMATIC GENERATOR
+# LAB 01: MULTIPLIER_INT8 SCHEMATIC GENERATOR
+# ==============================================================================
+def generate_multiplier_svg(out_path):
+    width, height = 1200, 780
+    svg = [create_svg_header(width, height, "multiplier_int8 - 8-Bit Signed Multiplier")]
+
+    svg.append("""
+    <g transform="translate(40, 75)">
+        <text x="0" y="0" fill="#f8fafc" font-size="22" font-weight="700">🔬 MODULE: multiplier_int8 (Lab 01)</text>
+        <text x="0" y="24" fill="#94a3b8" font-size="13">High-Radix Signed Booth Multiplier (8-bit x 8-bit = 16-bit Product)</text>
+    </g>
+
+    <!-- Main Multiplier Component Box -->
+    <g id="comp_multiplier" class="collapsible-comp expanded" transform="translate(180, 130)">
+        <g class="component-box" onclick="toggleComponent('comp_multiplier')">
+            <rect class="box-rect" x="0" y="0" width="760" height="420" rx="12" fill="#1e1329" stroke="#c084fc" stroke-width="2" />
+            <rect x="0" y="0" width="760" height="42" rx="12" fill="#3b0764" />
+            <rect x="0" y="30" width="760" height="12" fill="#3b0764" />
+            
+            <text x="24" y="27" fill="#f3e8ff" font-size="15" font-weight="700">⚙️ multiplier_int8 Core</text>
+            <text x="220" y="26" fill="#d8b4fe" font-size="12" font-family="'JetBrains Mono', monospace">A_WIDTH = 8, B_WIDTH = 8, PROD_WIDTH = 16</text>
+            
+            <g class="toggle-badge" transform="translate(725, 21)">
+                <circle cx="0" cy="0" r="11" fill="#6b21a8" stroke="#d8b4fe" stroke-width="1.5" />
+                <text x="0" y="4" fill="#ffffff" font-size="13" font-weight="bold" text-anchor="middle">−</text>
+            </g>
+        </g>
+        
+        <!-- COLLAPSED ONLY VIEW -->
+        <g class="collapsed-only" transform="translate(230, 120)">
+            <rect x="0" y="0" width="300" height="180" rx="10" fill="#2e1065" stroke="#a855f7" stroke-width="2" />
+            <text x="150" y="70" fill="#f3e8ff" font-size="28" font-weight="bold" text-anchor="middle">✖️ MULTIPLIER</text>
+            <text x="150" y="105" fill="#c084fc" font-size="14" font-family="'JetBrains Mono', monospace" text-anchor="middle">product = a * b (Signed)</text>
+            <text x="150" y="140" fill="#9333ea" font-size="12" text-anchor="middle">Click anywhere to expand internal logic</text>
+        </g>
+        
+        <!-- EXPANDED ONLY VIEW: 4 Internal Functional Stages -->
+        <g class="collapsible-content expanded-only">
+            <!-- Stage 1: Booth Radix-4 Encoder -->
+            <g id="sub_booth" transform="translate(30, 65)">
+                <rect class="box-rect" x="0" y="0" width="160" height="320" rx="8" fill="#1e1b4b" stroke="#818cf8" stroke-width="1.5" />
+                <rect x="0" y="0" width="160" height="30" rx="8" fill="#312e81" />
+                <text x="10" y="20" fill="#e0e7ff" font-size="11" font-weight="700">1. Radix-4 Booth Enc</text>
+                <text x="80" y="60" fill="#c7d2fe" font-size="10" text-anchor="middle">Recodes Operand B</text>
+                <rect x="15" y="85" width="130" height="210" rx="6" fill="#0f172a" stroke="#4338ca" />
+                <text x="80" y="115" fill="#a5b4fc" font-size="10" text-anchor="middle">4 Partial Multipliers:</text>
+                <text x="80" y="145" fill="#cbd5e1" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">PP0: {0,±1a,±2a}</text>
+                <text x="80" y="180" fill="#cbd5e1" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">PP1: {0,±1a,±2a}</text>
+                <text x="80" y="215" fill="#cbd5e1" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">PP2: {0,±1a,±2a}</text>
+                <text x="80" y="250" fill="#cbd5e1" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">PP3: {0,±1a,±2a}</text>
+            </g>
+            
+            <!-- Stage 2: Partial Product Generator -->
+            <g id="sub_ppgen" transform="translate(210, 65)">
+                <rect x="0" y="0" width="160" height="320" rx="8" fill="#14253d" stroke="#38bdf8" stroke-width="1.5" />
+                <rect x="0" y="0" width="160" height="30" rx="8" fill="#0369a1" />
+                <text x="10" y="20" fill="#e0f2fe" font-size="11" font-weight="700">2. PP Generator</text>
+                <text x="80" y="55" fill="#bae6fd" font-size="10" text-anchor="middle">Sign Extension &amp; Shift</text>
+                
+                <rect x="12" y="75" width="136" height="42" rx="4" fill="#0c4a6e" />
+                <text x="80" y="100" fill="#ffffff" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">PP0 (16b) &lt;&lt; 0</text>
+                
+                <rect x="12" y="130" width="136" height="42" rx="4" fill="#0c4a6e" />
+                <text x="80" y="155" fill="#ffffff" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">PP1 (16b) &lt;&lt; 2</text>
+                
+                <rect x="12" y="185" width="136" height="42" rx="4" fill="#0c4a6e" />
+                <text x="80" y="210" fill="#ffffff" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">PP2 (16b) &lt;&lt; 4</text>
+                
+                <rect x="12" y="240" width="136" height="42" rx="4" fill="#0c4a6e" />
+                <text x="80" y="265" fill="#ffffff" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">PP3 (16b) &lt;&lt; 6</text>
+            </g>
+            
+            <!-- Stage 3: Wallace / CSA Tree Reduction -->
+            <g id="sub_csatree" transform="translate(390, 65)">
+                <rect x="0" y="0" width="170" height="320" rx="8" fill="#064e3b" stroke="#34d399" stroke-width="1.5" />
+                <rect x="0" y="0" width="170" height="30" rx="8" fill="#047857" />
+                <text x="10" y="20" fill="#ecfdf5" font-size="11" font-weight="700">3. CSA Reduction Tree</text>
+                <text x="85" y="55" fill="#a7f3d0" font-size="10" text-anchor="middle">4:2 Compressor Tree</text>
+                
+                <rect x="15" y="85" width="140" height="90" rx="5" fill="#065f46" />
+                <text x="85" y="125" fill="#d1fae5" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">Carry Vector</text>
+                <text x="85" y="145" fill="#a7f3d0" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">[15:0]</text>
+                
+                <rect x="15" y="195" width="140" height="90" rx="5" fill="#065f46" />
+                <text x="85" y="235" fill="#d1fae5" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">Sum Vector</text>
+                <text x="85" y="255" fill="#a7f3d0" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">[15:0]</text>
+            </g>
+            
+            <!-- Stage 4: Final CPA Adder -->
+            <g id="sub_cpa" transform="translate(580, 65)">
+                <rect x="0" y="0" width="150" height="320" rx="8" fill="#713f12" stroke="#facc15" stroke-width="1.5" />
+                <rect x="0" y="0" width="150" height="30" rx="8" fill="#a16207" />
+                <text x="10" y="20" fill="#fefce8" font-size="11" font-weight="700">4. Final CPA Adder</text>
+                <text x="75" y="55" fill="#fde047" font-size="10" text-anchor="middle">Carry Lookahead 16b</text>
+                <rect x="15" y="110" width="120" height="130" rx="6" fill="#451a03" />
+                <text x="75" y="160" fill="#ffffff" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">Product =</text>
+                <text x="75" y="185" fill="#facc15" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">Sum + Carry</text>
+            </g>
+        </g>
+    </g>
+
+    <!-- External Ports -->
+    <g class="port-group" onmouseover="highlightNet('a')" onmouseout="clearHighlight()">
+        <rect x="30" y="220" width="100" height="36" rx="6" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5" />
+        <text x="80" y="243" fill="#38bdf8" font-size="13" font-weight="700" text-anchor="middle">a [7:0]</text>
+        <path d="M 130 238 L 180 238" class="net-bus" data-net="a" marker-end="url(#bus-arrow)" />
+        <circle cx="180" cy="238" r="4" fill="#38bdf8" class="pin-node" onmouseover="showTooltip(event, 'Port: a [7:0] (Signed INT8 operand)')" onmouseout="hideTooltip()" />
+    </g>
+    
+    <g class="port-group" onmouseover="highlightNet('b')" onmouseout="clearHighlight()">
+        <rect x="30" y="340" width="100" height="36" rx="6" fill="#1e293b" stroke="#fb923c" stroke-width="1.5" />
+        <text x="80" y="363" fill="#fb923c" font-size="13" font-weight="700" text-anchor="middle">b [7:0]</text>
+        <path d="M 130 358 L 180 358" class="net-bus" data-net="b" marker-end="url(#bus-arrow)" />
+        <circle cx="180" cy="358" r="4" fill="#fb923c" class="pin-node" onmouseover="showTooltip(event, 'Port: b [7:0] (Signed INT8 operand)')" onmouseout="hideTooltip()" />
+    </g>
+    
+    <g class="port-group" onmouseover="highlightNet('product')" onmouseout="clearHighlight()">
+        <path d="M 940 340 L 990 340" class="net-bus" data-net="product" marker-end="url(#bus-arrow)" />
+        <rect x="990" y="322" width="120" height="36" rx="6" fill="#1e293b" stroke="#4ade80" stroke-width="1.5" />
+        <text x="1050" y="345" fill="#4ade80" font-size="13" font-weight="700" text-anchor="middle">product [15:0]</text>
+        <circle cx="940" cy="340" r="4" fill="#4ade80" class="pin-node" onmouseover="showTooltip(event, 'Port: product [15:0] (Signed INT16 output)')" onmouseout="hideTooltip()" />
+    </g>
+    """)
+
+    svg.append(create_hud_dashboard(
+        x=40, y=590, total_width=1120,
+        dff_text="0 DFFs (Pure Combinational)",
+        gates_text="O(N^2) Quadratic (~456 Gates: 64 ANDs + CSA Tree)",
+        latency_text="0 Cycles (~2.8 ns CSA Critical Path)",
+        extra_text="16-bit Product ([-16,256 to +16,384] Range)",
+        extra_label="🎯 BIT GROWTH / RANGE"
+    ))
+
+    svg.append(create_svg_footer())
+    save_and_validate_svg("\n".join(svg), out_path)
+
+# ==============================================================================
+# LAB 02: MAC_UNIT SCHEMATIC GENERATOR
 # ==============================================================================
 def generate_mac_unit_svg(out_path):
-    width, height = 1150, 720
+    width, height = 1200, 780
     svg = [create_svg_header(width, height, "mac_unit - Multiply-Accumulate Unit")]
 
     svg.append("""
     <g transform="translate(40, 75)">
-        <text x="0" y="0" fill="#f8fafc" font-size="22" font-weight="700">🔬 MODULE: mac_unit</text>
-        <text x="0" y="24" fill="#94a3b8" font-size="13">Combinational Multiply-Accumulator: sum_out = sum_in + (a * b)</text>
+        <text x="0" y="0" fill="#f8fafc" font-size="22" font-weight="700">🔬 MODULE: mac_unit (Lab 02)</text>
+        <text x="0" y="24" fill="#94a3b8" font-size="13">Fused Combinational Multiply-Accumulator: sum_out = sum_in + (a * b)</text>
     </g>
-    """)
 
-    # Main MAC Unit Box
-    svg.append("""
+    <!-- Main MAC Unit Box -->
     <g id="comp_mac" class="collapsible-comp expanded" transform="translate(180, 130)">
         <g class="component-box" onclick="toggleComponent('comp_mac')">
-            <rect class="box-rect" x="0" y="0" width="760" height="500" rx="12" fill="#13172e" stroke="#6366f1" stroke-width="2" />
+            <rect class="box-rect" x="0" y="0" width="760" height="420" rx="12" fill="#13172e" stroke="#6366f1" stroke-width="2" />
             <rect x="0" y="0" width="760" height="42" rx="12" fill="#312e81" />
             <rect x="0" y="30" width="760" height="12" fill="#312e81" />
             
@@ -588,416 +750,213 @@ def generate_mac_unit_svg(out_path):
             <text x="320" y="26" fill="#a5b4fc" font-size="12" font-family="'JetBrains Mono', monospace">DATA_WIDTH = 8, ACC_WIDTH = 32</text>
             
             <g class="toggle-badge" transform="translate(725, 21)">
-                <circle cx="0" cy="0" r="12" fill="#4338ca" stroke="#c7d2fe" stroke-width="1.5" />
-                <text x="0" y="4" fill="#ffffff" font-size="14" font-weight="bold" text-anchor="middle">−</text>
+                <circle cx="0" cy="0" r="11" fill="#4338ca" stroke="#c7d2fe" stroke-width="1.5" />
+                <text x="0" y="4" fill="#ffffff" font-size="13" font-weight="bold" text-anchor="middle">−</text>
             </g>
         </g>
         
         <!-- COLLAPSED ONLY VIEW -->
-        <g class="collapsed-only" transform="translate(230, 160)">
+        <g class="collapsed-only" transform="translate(230, 120)">
             <rect x="0" y="0" width="300" height="180" rx="10" fill="#1e1b4b" stroke="#818cf8" stroke-width="2" />
             <text x="150" y="70" fill="#f3e8ff" font-size="26" font-weight="bold" text-anchor="middle">MAC CELL</text>
             <text x="150" y="105" fill="#a5b4fc" font-size="14" font-family="'JetBrains Mono', monospace" text-anchor="middle">sum_out = sum_in + (a*b)</text>
             <text x="150" y="140" fill="#6366f1" font-size="12" text-anchor="middle">Click to expand submodules</text>
-            
-            <path d="M -170 40 L 0 40" class="net-bus" data-net="a" />
-            <path d="M -170 90 L 0 90" class="net-bus" data-net="b" />
-            <path d="M -170 140 L 0 140" class="net-bus" data-net="sum_in" />
-            <path d="M 300 90 L 470 90" class="net-bus" data-net="sum_out" />
         </g>
         
-        <!-- EXPANDED VIEW: Multiplier Submodule + Sign Extender + Adder -->
+        <!-- EXPANDED VIEW -->
         <g class="collapsible-content expanded-only">
             <!-- Submodule 1: Multiplier Block -->
-            <g id="sub_mac_mult" class="collapsible-comp expanded" transform="translate(50, 70)">
-                <g class="component-box" onclick="toggleComponent('sub_mac_mult')">
-                    <rect class="box-rect" x="0" y="0" width="260" height="240" rx="8" fill="#2d1230" stroke="#f43f5e" stroke-width="1.5" />
-                    <rect x="0" y="0" width="260" height="32" rx="8" fill="#881337" />
-                    <text x="14" y="21" fill="#ffe4e6" font-size="13" font-weight="700">✖️ u_mult (multiplier_int8)</text>
-                    <g class="toggle-badge" transform="translate(235, 16)">
-                        <circle cx="0" cy="0" r="9" fill="#be123c" stroke="#fecdd3" stroke-width="1" />
-                        <text x="0" y="3" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">−</text>
-                    </g>
-                </g>
-                
-                <g class="collapsed-only" transform="translate(30, 80)">
-                    <rect x="0" y="0" width="200" height="110" rx="6" fill="#4c0519" />
-                    <text x="100" y="50" fill="#fda4af" font-size="14" font-weight="bold" text-anchor="middle">8x8 Multiplier</text>
-                    <text x="100" y="75" fill="#f43f5e" font-size="11" text-anchor="middle">Output: 16-bit Product</text>
-                </g>
-                
-                <g class="expanded-only" transform="translate(20, 50)">
-                    <rect x="0" y="0" width="220" height="165" rx="6" fill="#1c0514" stroke="#9f1239" />
-                    <text x="110" y="30" fill="#fb7185" font-size="12" font-weight="600" text-anchor="middle">Booth 8x8 Core</text>
-                    <rect x="15" y="45" width="190" height="40" rx="4" fill="#881337" />
-                    <text x="110" y="70" fill="#fff" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">Radix-4 Partial Products</text>
-                    <rect x="15" y="95" width="190" height="40" rx="4" fill="#881337" />
-                    <text x="110" y="120" fill="#fff" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">16-bit Product = a * b</text>
-                </g>
+            <g id="sub_mac_mult" transform="translate(40, 65)">
+                <rect class="box-rect" x="0" y="0" width="240" height="230" rx="8" fill="#2d1230" stroke="#f43f5e" stroke-width="1.5" />
+                <rect x="0" y="0" width="240" height="30" rx="8" fill="#881337" />
+                <text x="12" y="20" fill="#ffe4e6" font-size="12" font-weight="700">✖️ u_mult (multiplier_int8)</text>
+                <rect x="15" y="55" width="210" height="150" rx="6" fill="#1c0514" stroke="#9f1239" />
+                <text x="120" y="90" fill="#fb7185" font-size="12" font-weight="600" text-anchor="middle">Booth 8x8 Core</text>
+                <text x="120" y="125" fill="#fff" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">a[7:0] * b[7:0]</text>
+                <text x="120" y="165" fill="#fca5a5" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">Output: 16-bit Product</text>
             </g>
             
             <!-- Submodule 2: Sign-Extension Block -->
-            <g id="sub_sign_ext" transform="translate(360, 160)">
-                <rect class="box-rect" x="0" y="0" width="130" height="110" rx="8" fill="#172554" stroke="#60a5fa" stroke-width="1.5" />
-                <rect x="0" y="0" width="130" height="28" rx="8" fill="#1e40af" />
-                <text x="10" y="19" fill="#dbeafe" font-size="11" font-weight="700">Sign-Extend</text>
-                <text x="65" y="55" fill="#93c5fd" font-size="11" text-anchor="middle">16-bit ➔ 32-bit</text>
-                <text x="65" y="78" fill="#bfdbfe" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">{{16{MSB}}, P}</text>
+            <g id="sub_sign_ext" transform="translate(320, 120)">
+                <rect class="box-rect" x="0" y="0" width="150" height="120" rx="8" fill="#172554" stroke="#60a5fa" stroke-width="1.5" />
+                <rect x="0" y="0" width="150" height="28" rx="8" fill="#1e40af" />
+                <text x="10" y="19" fill="#dbeafe" font-size="11" font-weight="700">Sign-Extension</text>
+                <text x="75" y="60" fill="#93c5fd" font-size="11" text-anchor="middle">16-bit ➔ 32-bit</text>
+                <text x="75" y="90" fill="#bfdbfe" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">{{16{MSB}}, P}</text>
             </g>
             
             <!-- Submodule 3: 32-Bit Accumulator Adder -->
-            <g id="sub_adder" class="collapsible-comp expanded" transform="translate(540, 190)">
-                <g class="component-box" onclick="toggleComponent('sub_adder')">
-                    <rect class="box-rect" x="0" y="0" width="180" height="240" rx="8" fill="#064e3b" stroke="#34d399" stroke-width="1.5" />
-                    <rect x="0" y="0" width="180" height="32" rx="8" fill="#065f46" />
-                    <text x="12" y="21" fill="#ecfdf5" font-size="13" font-weight="700">➕ 32-Bit Adder</text>
-                    <g class="toggle-badge" transform="translate(158, 16)">
-                        <circle cx="0" cy="0" r="9" fill="#047857" stroke="#a7f3d0" stroke-width="1" />
-                        <text x="0" y="3" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">−</text>
-                    </g>
-                </g>
+            <g id="sub_adder" transform="translate(510, 100)">
+                <rect class="box-rect" x="0" y="0" width="210" height="280" rx="8" fill="#064e3b" stroke="#34d399" stroke-width="1.5" />
+                <rect x="0" y="0" width="210" height="30" rx="8" fill="#065f46" />
+                <text x="12" y="20" fill="#ecfdf5" font-size="12" font-weight="700">➕ 32-Bit CLA Adder</text>
                 
-                <g class="collapsed-only" transform="translate(15, 60)">
-                    <rect x="0" y="0" width="150" height="130" rx="6" fill="#022c22" />
-                    <text x="75" y="60" fill="#a7f3d0" font-size="14" font-weight="bold" text-anchor="middle">32b ADDER</text>
-                    <text x="75" y="85" fill="#6ee7b7" font-size="11" text-anchor="middle">ACC_WIDTH = 32</text>
-                </g>
-                
-                <g class="expanded-only" transform="translate(15, 50)">
-                    <rect x="0" y="0" width="150" height="165" rx="6" fill="#022c22" stroke="#059669" />
-                    <text x="75" y="28" fill="#6ee7b7" font-size="11" font-weight="600" text-anchor="middle">Carry-Lookahead</text>
-                    <rect x="12" y="45" width="126" height="40" rx="4" fill="#047857" />
-                    <text x="75" y="70" fill="#fff" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">Input A: sum_in</text>
-                    <rect x="12" y="98" width="126" height="40" rx="4" fill="#047857" />
-                    <text x="75" y="123" fill="#fff" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">Input B: ext_prod</text>
-                </g>
+                <rect x="15" y="55" width="180" height="200" rx="6" fill="#022c22" stroke="#059669" />
+                <text x="105" y="95" fill="#6ee7b7" font-size="11" font-weight="600" text-anchor="middle">32-Bit Carry-Lookahead</text>
+                <text x="105" y="135" fill="#fff" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">Input A: sum_in [31:0]</text>
+                <text x="105" y="170" fill="#fff" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">Input B: ext_prod [31:0]</text>
+                <text x="105" y="215" fill="#34d399" font-size="11" font-weight="700" text-anchor="middle">sum_out = A + B</text>
             </g>
-            
-            <!-- Internal Routing Buses -->
-            <path d="M 310 215 L 360 215" class="net-bus" data-net="mult_prod" />
-            <rect x="315" y="200" width="40" height="18" rx="3" fill="#1e293b" />
-            <text x="335" y="213" fill="#fb7185" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">[15:0]</text>
-            
-            <path d="M 490 215 L 515 215 L 515 280 L 540 280" class="net-bus" data-net="ext_prod" />
-            <rect x="495" y="240" width="40" height="18" rx="3" fill="#1e293b" />
-            <text x="515" y="253" fill="#60a5fa" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">[31:0]</text>
-            
-            <path d="M 0 380 L 540 380" class="net-bus" data-net="sum_in" />
-            <rect x="250" y="365" width="40" height="18" rx="3" fill="#1e293b" />
-            <text x="270" y="378" fill="#4ade80" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">[31:0]</text>
-            
-            <path d="M 720 330 L 760 330" class="net-bus" data-net="sum_out" />
         </g>
     </g>
-    """)
 
-    # External Ports
-    svg.append("""
     <!-- External Ports -->
     <g class="port-group" onmouseover="highlightNet('a')" onmouseout="clearHighlight()">
-        <rect x="30" y="190" width="100" height="36" rx="6" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5" />
-        <text x="80" y="213" fill="#38bdf8" font-size="13" font-weight="700" text-anchor="middle">a [7:0]</text>
-        <path d="M 130 208 L 230 208" class="net-bus" data-net="a" marker-end="url(#bus-arrow)" />
-        <circle cx="230" cy="208" r="4" fill="#38bdf8" class="pin-node" onmouseover="showTooltip(event, 'Port: a [7:0] (Signed INT8 activation operand)')" onmouseout="hideTooltip()" />
+        <rect x="30" y="170" width="100" height="36" rx="6" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5" />
+        <text x="80" y="193" fill="#38bdf8" font-size="13" font-weight="700" text-anchor="middle">a [7:0]</text>
+        <path d="M 130 188 L 220 188" class="net-bus" data-net="a" marker-end="url(#bus-arrow)" />
     </g>
     
     <g class="port-group" onmouseover="highlightNet('b')" onmouseout="clearHighlight()">
-        <rect x="30" y="270" width="100" height="36" rx="6" fill="#1e293b" stroke="#fb923c" stroke-width="1.5" />
-        <text x="80" y="293" fill="#fb923c" font-size="13" font-weight="700" text-anchor="middle">b [7:0]</text>
-        <path d="M 130 288 L 230 288" class="net-bus" data-net="b" marker-end="url(#bus-arrow)" />
-        <circle cx="230" cy="288" r="4" fill="#fb923c" class="pin-node" onmouseover="showTooltip(event, 'Port: b [7:0] (Signed INT8 weight operand)')" onmouseout="hideTooltip()" />
+        <rect x="30" y="240" width="100" height="36" rx="6" fill="#1e293b" stroke="#fb923c" stroke-width="1.5" />
+        <text x="80" y="263" fill="#fb923c" font-size="13" font-weight="700" text-anchor="middle">b [7:0]</text>
+        <path d="M 130 258 L 220 258" class="net-bus" data-net="b" marker-end="url(#bus-arrow)" />
     </g>
     
     <g class="port-group" onmouseover="highlightNet('sum_in')" onmouseout="clearHighlight()">
-        <rect x="30" y="490" width="100" height="36" rx="6" fill="#1e293b" stroke="#4ade80" stroke-width="1.5" />
-        <text x="80" y="513" fill="#4ade80" font-size="13" font-weight="700" text-anchor="middle">sum_in [31:0]</text>
-        <path d="M 130 508 L 180 508" class="net-bus" data-net="sum_in" marker-end="url(#bus-arrow)" />
-        <circle cx="180" cy="508" r="4" fill="#4ade80" class="pin-node" onmouseover="showTooltip(event, 'Port: sum_in [31:0] (Previous partial sum)')" onmouseout="hideTooltip()" />
+        <rect x="30" y="440" width="110" height="36" rx="6" fill="#1e293b" stroke="#4ade80" stroke-width="1.5" />
+        <text x="85" y="463" fill="#4ade80" font-size="13" font-weight="700" text-anchor="middle">sum_in [31:0]</text>
+        <path d="M 140 458 L 690 458 L 690 380" class="net-bus" data-net="sum_in" marker-end="url(#bus-arrow)" />
     </g>
     
     <g class="port-group" onmouseover="highlightNet('sum_out')" onmouseout="clearHighlight()">
-        <path d="M 940 460 L 990 460" class="net-bus" data-net="sum_out" marker-end="url(#bus-arrow)" />
-        <rect x="990" y="442" width="120" height="36" rx="6" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5" />
-        <text x="1050" y="465" fill="#38bdf8" font-size="13" font-weight="700" text-anchor="middle">sum_out [31:0]</text>
-        <circle cx="940" cy="460" r="4" fill="#38bdf8" class="pin-node" onmouseover="showTooltip(event, 'Port: sum_out [31:0] (Accumulated output)')" onmouseout="hideTooltip()" />
+        <path d="M 940 280 L 990 280" class="net-bus" data-net="sum_out" marker-end="url(#bus-arrow)" />
+        <rect x="990" y="262" width="130" height="36" rx="6" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5" />
+        <text x="1055" y="285" fill="#38bdf8" font-size="13" font-weight="700" text-anchor="middle">sum_out [31:0]</text>
     </g>
     """)
+
+    svg.append(create_hud_dashboard(
+        x=40, y=590, total_width=1120,
+        dff_text="0 DFFs (Pure Combinational)",
+        gates_text="O(N^2 + M) (~310 Gates: Mult + Ext + 32b CLA)",
+        latency_text="0 Cycles (~3.6 ns Combined Path)",
+        extra_text="32-bit INT32 (65,536 Terms Headroom)",
+        extra_label="🎯 ACCUMULATOR HEADROOM"
+    ))
 
     svg.append(create_svg_footer())
     save_and_validate_svg("\n".join(svg), out_path)
 
 # ==============================================================================
-# 3. PE (PROCESSING ELEMENT) SCHEMATIC GENERATOR
+# LAB 03: PE (PROCESSING ELEMENT) SCHEMATIC GENERATOR
 # ==============================================================================
 def generate_pe_svg(out_path):
-    width, height = 1300, 850
+    width, height = 1320, 880
     svg = [create_svg_header(width, height, "pe - Systolic Processing Element")]
 
     svg.append("""
     <g transform="translate(40, 75)">
-        <text x="0" y="0" fill="#f8fafc" font-size="22" font-weight="700">🔬 MODULE: pe (Processing Element)</text>
+        <text x="0" y="0" fill="#f8fafc" font-size="22" font-weight="700">🔬 MODULE: pe (Processing Element - Lab 03)</text>
         <text x="0" y="24" fill="#94a3b8" font-size="13">Weight-Stationary Systolic Unit with Internal Pipeline Registers &amp; MAC Core</text>
     </g>
-    """)
 
-    # Main PE Component Container
-    svg.append("""
+    <!-- Main PE Component Container -->
     <g id="comp_pe" class="collapsible-comp expanded" transform="translate(180, 130)">
         <g class="component-box" onclick="toggleComponent('comp_pe')">
-            <rect class="box-rect" x="0" y="0" width="920" height="640" rx="14" fill="#0f172a" stroke="#38bdf8" stroke-width="2.5" />
-            <rect x="0" y="0" width="920" height="46" rx="14" fill="#1e293b" />
-            <rect x="0" y="32" width="920" height="14" fill="#1e293b" />
+            <rect class="box-rect" x="0" y="0" width="940" height="520" rx="14" fill="#0f172a" stroke="#38bdf8" stroke-width="2.5" />
+            <rect x="0" y="0" width="940" height="46" rx="14" fill="#1e293b" />
+            <rect x="0" y="32" width="940" height="14" fill="#1e293b" />
             
             <text x="24" y="30" fill="#38bdf8" font-size="17" font-weight="700">⚡ pe (Processing Element Cell)</text>
             <text x="300" y="29" fill="#94a3b8" font-size="13" font-family="'JetBrains Mono', monospace">Weight-Stationary Arch | INT8 Weights &amp; Acts | INT32 Acc</text>
             
-            <g class="toggle-badge" transform="translate(880, 23)">
+            <g class="toggle-badge" transform="translate(900, 23)">
                 <circle cx="0" cy="0" r="13" fill="#0284c7" stroke="#bae6fd" stroke-width="1.5" />
                 <text x="0" y="5" fill="#ffffff" font-size="16" font-weight="bold" text-anchor="middle">−</text>
             </g>
         </g>
         
-        <!-- COLLAPSED ONLY VIEW: Clean Black-Box PE Cell -->
-        <g class="collapsed-only" transform="translate(280, 200)">
-            <rect x="0" y="0" width="360" height="240" rx="12" fill="#1e293b" stroke="#0ea5e9" stroke-width="2" />
-            <text x="180" y="80" fill="#ffffff" font-size="28" font-weight="bold" text-anchor="middle">PE CELL</text>
-            <text x="180" y="115" fill="#38bdf8" font-size="15" font-family="'JetBrains Mono', monospace" text-anchor="middle">Weight-Stationary</text>
-            <text x="180" y="150" fill="#94a3b8" font-size="13" text-anchor="middle">Registers: a_reg, weight_reg, sum_reg</text>
-            <text x="180" y="180" fill="#64748b" font-size="12" text-anchor="middle">Click to expand internal structure</text>
-        </g>
-        
-        <!-- EXPANDED ONLY VIEW: Full Internal Hardware Architecture -->
+        <!-- EXPANDED VIEW: Full Internal Hardware Architecture -->
         <g class="collapsible-content expanded-only">
             <!-- 1. Weight Register & Load Multiplexer Block -->
-            <g id="block_weight_reg" class="collapsible-comp expanded" transform="translate(40, 70)">
-                <g class="component-box" onclick="toggleComponent('block_weight_reg')">
-                    <rect class="box-rect" x="0" y="0" width="220" height="180" rx="8" fill="#1e2417" stroke="#84cc16" stroke-width="1.5" />
-                    <rect x="0" y="0" width="220" height="30" rx="8" fill="#365314" />
-                    <text x="12" y="20" fill="#ecfccb" font-size="12" font-weight="700">💾 weight_reg [7:0]</text>
-                    <g class="toggle-badge" transform="translate(198, 15)">
-                        <circle cx="0" cy="0" r="8" fill="#4d7c0f" stroke="#d9f99d" />
-                        <text x="0" y="3" fill="#ffffff" font-size="10" font-weight="bold" text-anchor="middle">−</text>
-                    </g>
-                </g>
+            <g id="block_weight_reg" transform="translate(40, 65)">
+                <rect class="box-rect" x="0" y="0" width="220" height="160" rx="8" fill="#1e2417" stroke="#84cc16" stroke-width="1.5" />
+                <rect x="0" y="0" width="220" height="30" rx="8" fill="#365314" />
+                <text x="12" y="20" fill="#ecfccb" font-size="12" font-weight="700">💾 weight_reg [7:0]</text>
                 
-                <g class="collapsed-only" transform="translate(15, 45)">
-                    <rect x="0" y="0" width="190" height="115" rx="5" fill="#141c0c" />
-                    <text x="95" y="65" fill="#bef264" font-size="13" font-weight="bold" text-anchor="middle">Weight DFF</text>
-                </g>
-                
-                <g class="expanded-only" transform="translate(15, 45)">
-                    <!-- Load MUX -->
-                    <polygon points="10,20 40,30 40,70 10,80" fill="#3f6212" stroke="#a3e635" />
-                    <text x="25" y="55" fill="#ffffff" font-size="10" text-anchor="middle">MUX</text>
-                    
-                    <!-- DFF Register -->
-                    <rect x="65" y="15" width="120" height="80" rx="6" fill="#1a2e05" stroke="#65a30d" />
-                    <text x="125" y="45" fill="#d9f99d" font-size="12" font-weight="700" text-anchor="middle">8-Bit DFF</text>
-                    <text x="125" y="68" fill="#a3e635" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">weight_reg</text>
-                    
-                    <path d="M 40 50 L 65 50" class="net-bus" data-net="w_mux_dff" />
-                    <text x="5" y="110" fill="#bef264" font-size="9">En: weight_load_en</text>
-                </g>
+                <rect x="20" y="45" width="180" height="95" rx="6" fill="#1a2e05" stroke="#65a30d" />
+                <text x="110" y="80" fill="#d9f99d" font-size="12" font-weight="700" text-anchor="middle">8-Bit DFF Register</text>
+                <text x="110" y="105" fill="#bef264" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">Holds W Stationary</text>
             </g>
             
             <!-- 2. Activation Register (a_reg) Block -->
-            <g id="block_a_reg" class="collapsible-comp expanded" transform="translate(40, 270)">
-                <g class="component-box" onclick="toggleComponent('block_a_reg')">
-                    <rect class="box-rect" x="0" y="0" width="220" height="160" rx="8" fill="#132433" stroke="#38bdf8" stroke-width="1.5" />
-                    <rect x="0" y="0" width="220" height="30" rx="8" fill="#0369a1" />
-                    <text x="12" y="20" fill="#e0f2fe" font-size="12" font-weight="700">💾 a_reg [7:0] (Pipeline)</text>
-                    <g class="toggle-badge" transform="translate(198, 15)">
-                        <circle cx="0" cy="0" r="8" fill="#0284c7" stroke="#bae6fd" />
-                        <text x="0" y="3" fill="#ffffff" font-size="10" font-weight="bold" text-anchor="middle">−</text>
-                    </g>
-                </g>
+            <g id="block_a_reg" transform="translate(40, 250)">
+                <rect class="box-rect" x="0" y="0" width="220" height="160" rx="8" fill="#132433" stroke="#38bdf8" stroke-width="1.5" />
+                <rect x="0" y="0" width="220" height="30" rx="8" fill="#0369a1" />
+                <text x="12" y="20" fill="#e0f2fe" font-size="12" font-weight="700">💾 a_reg [7:0] (Pipeline)</text>
                 
-                <g class="collapsed-only" transform="translate(15, 45)">
-                    <rect x="0" y="0" width="190" height="95" rx="5" fill="#082f49" />
-                    <text x="95" y="55" fill="#7dd3fc" font-size="13" font-weight="bold" text-anchor="middle">Activation DFF</text>
-                </g>
-                
-                <g class="expanded-only" transform="translate(15, 45)">
-                    <rect x="40" y="10" width="145" height="75" rx="6" fill="#0c4a6e" stroke="#0284c7" />
-                    <text x="112" y="40" fill="#e0f2fe" font-size="12" font-weight="700" text-anchor="middle">8-Bit DFF</text>
-                    <text x="112" y="62" fill="#7dd3fc" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">a_reg &lt;= a_in</text>
-                    <text x="5" y="98" fill="#38bdf8" font-size="9">En: compute_en</text>
-                </g>
+                <rect x="20" y="45" width="180" height="95" rx="6" fill="#0c4a6e" stroke="#0284c7" />
+                <text x="110" y="80" fill="#e0f2fe" font-size="12" font-weight="700" text-anchor="middle">8-Bit DFF Register</text>
+                <text x="110" y="105" fill="#7dd3fc" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">Forwards A to East</text>
             </g>
             
             <!-- 3. Combinational MAC Submodule (u_mac) -->
-            <g id="block_u_mac" class="collapsible-comp expanded" transform="translate(330, 110)">
-                <g class="component-box" onclick="toggleComponent('block_u_mac')">
-                    <rect class="box-rect" x="0" y="0" width="310" height="380" rx="10" fill="#1e1838" stroke="#a855f7" stroke-width="2" />
-                    <rect x="0" y="0" width="310" height="36" rx="10" fill="#581c87" />
-                    <rect x="0" y="24" width="310" height="12" fill="#581c87" />
-                    <text x="16" y="24" fill="#f3e8ff" font-size="13" font-weight="700">⚙️ u_mac (mac_unit)</text>
-                    <g class="toggle-badge" transform="translate(285, 18)">
-                        <circle cx="0" cy="0" r="10" fill="#7e22ce" stroke="#e9d5ff" />
-                        <text x="0" y="4" fill="#ffffff" font-size="12" font-weight="bold" text-anchor="middle">−</text>
-                    </g>
-                </g>
+            <g id="block_u_mac" transform="translate(320, 100)">
+                <rect class="box-rect" x="0" y="0" width="310" height="310" rx="10" fill="#1e1838" stroke="#a855f7" stroke-width="2" />
+                <rect x="0" y="0" width="310" height="36" rx="10" fill="#581c87" />
+                <text x="16" y="24" fill="#f3e8ff" font-size="13" font-weight="700">⚙️ u_mac (mac_unit)</text>
                 
-                <g class="collapsed-only" transform="translate(20, 60)">
-                    <rect x="0" y="0" width="270" height="280" rx="8" fill="#2e1065" stroke="#9333ea" />
-                    <text x="135" y="120" fill="#f3e8ff" font-size="20" font-weight="bold" text-anchor="middle">MAC CORE</text>
-                    <text x="135" y="155" fill="#d8b4fe" font-size="13" font-family="'JetBrains Mono', monospace" text-anchor="middle">mac_result =</text>
-                    <text x="135" y="180" fill="#c084fc" font-size="13" font-family="'JetBrains Mono', monospace" text-anchor="middle">sum_in + (a * w)</text>
-                    <text x="135" y="220" fill="#7e22ce" font-size="11" text-anchor="middle">Click to expand MAC internals</text>
-                </g>
+                <rect x="20" y="55" width="270" height="100" rx="6" fill="#3b0764" stroke="#c084fc" />
+                <text x="155" y="90" fill="#f5d0fe" font-size="12" font-weight="700" text-anchor="middle">✖️ Signed Multiplier (8x8)</text>
+                <text x="155" y="118" fill="#d8b4fe" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">prod = a_in * weight_reg</text>
                 
-                <g class="expanded-only" transform="translate(20, 50)">
-                    <!-- Multiplier Core inside MAC -->
-                    <rect x="15" y="15" width="240" height="120" rx="6" fill="#3b0764" stroke="#c084fc" />
-                    <text x="135" y="45" fill="#f5d0fe" font-size="12" font-weight="700" text-anchor="middle">✖️ Signed Multiplier (8x8)</text>
-                    <text x="135" y="70" fill="#d8b4fe" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">prod = a_in * weight_reg</text>
-                    <rect x="35" y="85" width="200" height="30" rx="4" fill="#581c87" />
-                    <text x="135" y="105" fill="#fae8ff" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">Sign-Extend ➔ 32-bit</text>
-                    
-                    <!-- 32-bit Adder inside MAC -->
-                    <rect x="15" y="165" width="240" height="135" rx="6" fill="#064e3b" stroke="#34d399" />
-                    <text x="135" y="195" fill="#d1fae5" font-size="12" font-weight="700" text-anchor="middle">➕ 32-Bit Accumulator Adder</text>
-                    <text x="135" y="225" fill="#6ee7b7" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">sum_in + ext_prod</text>
-                    <text x="135" y="255" fill="#a7f3d0" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">mac_result [31:0]</text>
-                    
-                    <!-- Internal MAC Wire -->
-                    <path d="M 135 135 L 135 165" class="net-bus" data-net="internal_prod" />
-                </g>
+                <rect x="20" y="175" width="270" height="110" rx="6" fill="#064e3b" stroke="#34d399" />
+                <text x="155" y="210" fill="#d1fae5" font-size="12" font-weight="700" text-anchor="middle">➕ 32-Bit Accumulator Adder</text>
+                <text x="155" y="240" fill="#6ee7b7" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">mac_result = sum_in + ext_prod</text>
             </g>
             
             <!-- 4. Accumulator Register (sum_reg) Block -->
-            <g id="block_sum_reg" class="collapsible-comp expanded" transform="translate(680, 240)">
-                <g class="component-box" onclick="toggleComponent('block_sum_reg')">
-                    <rect class="box-rect" x="0" y="0" width="200" height="220" rx="8" fill="#063e32" stroke="#10b981" stroke-width="1.5" />
-                    <rect x="0" y="0" width="200" height="30" rx="8" fill="#047857" />
-                    <text x="12" y="20" fill="#ecfdf5" font-size="12" font-weight="700">💾 sum_reg [31:0]</text>
-                    <g class="toggle-badge" transform="translate(178, 15)">
-                        <circle cx="0" cy="0" r="8" fill="#059669" stroke="#a7f3d0" />
-                        <text x="0" y="3" fill="#ffffff" font-size="10" font-weight="bold" text-anchor="middle">−</text>
-                    </g>
-                </g>
+            <g id="block_sum_reg" transform="translate(680, 160)">
+                <rect class="box-rect" x="0" y="0" width="220" height="250" rx="8" fill="#063e32" stroke="#10b981" stroke-width="1.5" />
+                <rect x="0" y="0" width="220" height="30" rx="8" fill="#047857" />
+                <text x="12" y="20" fill="#ecfdf5" font-size="12" font-weight="700">💾 sum_reg [31:0]</text>
                 
-                <g class="collapsed-only" transform="translate(15, 45)">
-                    <rect x="0" y="0" width="170" height="155" rx="5" fill="#022c22" />
-                    <text x="85" y="85" fill="#6ee7b7" font-size="13" font-weight="bold" text-anchor="middle">Sum DFF</text>
-                </g>
-                
-                <g class="expanded-only" transform="translate(15, 45)">
-                    <rect x="15" y="20" width="140" height="110" rx="6" fill="#064e3b" stroke="#059669" />
-                    <text x="85" y="55" fill="#a7f3d0" font-size="12" font-weight="700" text-anchor="middle">32-Bit DFF</text>
-                    <text x="85" y="80" fill="#ffffff" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">sum_reg &lt;=</text>
-                    <text x="85" y="98" fill="#ffffff" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">mac_result</text>
-                    <text x="5" y="150" fill="#10b981" font-size="9">En: compute_en</text>
-                </g>
+                <rect x="20" y="55" width="180" height="160" rx="6" fill="#064e3b" stroke="#059669" />
+                <text x="110" y="95" fill="#a7f3d0" font-size="13" font-weight="700" text-anchor="middle">32-Bit DFF</text>
+                <text x="110" y="125" fill="#ffffff" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">sum_out &lt;=</text>
+                <text x="110" y="150" fill="#ffffff" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">mac_result</text>
+                <text x="110" y="185" fill="#6ee7b7" font-size="10" text-anchor="middle">Passes Sum to South</text>
             </g>
-            
-            <!-- PE Internal Interconnect Buses -->
-            <path d="M 260 160 L 330 160" class="net-bus" data-net="weight_reg" />
-            <circle cx="295" cy="160" r="3" fill="#84cc16" />
-            
-            <path d="M 295 160 L 295 560 L 150 560 L 150 640" class="net-bus" data-net="weight_out" />
-            
-            <path d="M 0 350 L 40 350" class="net-bus" data-net="a_in" />
-            <path d="M 25 350 L 25 210 L 330 210" class="net-bus" data-net="a_in" />
-            
-            <path d="M 260 350 L 310 350 L 310 500 L 920 500" class="net-bus" data-net="a_out" />
-            
-            <path d="M 480 0 L 480 110" class="net-bus" data-net="sum_in" />
-            
-            <path d="M 640 350 L 680 350" class="net-bus" data-net="mac_result" />
-            
-            <path d="M 780 460 L 780 640" class="net-bus" data-net="sum_out" />
         </g>
+    </g>
+
+    <!-- External Boundary Pins -->
+    <g class="port-group" onmouseover="highlightNet('a_in')" onmouseout="clearHighlight()">
+        <rect x="30" y="380" width="110" height="36" rx="6" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5" />
+        <text x="85" y="403" fill="#38bdf8" font-size="13" font-weight="700" text-anchor="middle">a_in [7:0]</text>
+        <path d="M 140 398 L 180 398" class="net-bus" data-net="a_in" marker-end="url(#bus-arrow)" />
+    </g>
+    
+    <g class="port-group" onmouseover="highlightNet('a_out')" onmouseout="clearHighlight()">
+        <path d="M 1120 420 L 1160 420" class="net-bus" data-net="a_out" marker-end="url(#bus-arrow)" />
+        <rect x="1160" y="402" width="110" height="36" rx="6" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5" />
+        <text x="1215" y="425" fill="#38bdf8" font-size="13" font-weight="700" text-anchor="middle">a_out [7:0]</text>
     </g>
     """)
 
-    # External Port Connectors
-    svg.append("""
-    <!-- External Boundary Pins and Buses -->
-    <!-- Weight In (Top) -->
-    <g class="port-group" onmouseover="highlightNet('weight_in')" onmouseout="clearHighlight()">
-        <rect x="220" y="30" width="130" height="34" rx="6" fill="#1e293b" stroke="#84cc16" stroke-width="1.5" />
-        <text x="285" y="52" fill="#84cc16" font-size="12" font-weight="700" text-anchor="middle">weight_in [7:0]</text>
-        <path d="M 285 64 L 285 130" class="net-bus" data-net="weight_in" marker-end="url(#bus-arrow)" />
-        <circle cx="285" cy="130" r="4" fill="#84cc16" class="pin-node" onmouseover="showTooltip(event, 'Port: weight_in [7:0] (Shifts weights from top neighbor)')" onmouseout="hideTooltip()" />
-    </g>
-    
-    <!-- Weight Out (Bottom) -->
-    <g class="port-group" onmouseover="highlightNet('weight_out')" onmouseout="clearHighlight()">
-        <path d="M 330 770 L 330 810" class="net-bus" data-net="weight_out" marker-end="url(#bus-arrow)" />
-        <rect x="265" y="810" width="130" height="34" rx="6" fill="#1e293b" stroke="#84cc16" stroke-width="1.5" />
-        <text x="330" y="832" fill="#84cc16" font-size="12" font-weight="700" text-anchor="middle">weight_out [7:0]</text>
-        <circle cx="330" cy="770" r="4" fill="#84cc16" class="pin-node" onmouseover="showTooltip(event, 'Port: weight_out [7:0] (Passes weight down to bottom neighbor)')" onmouseout="hideTooltip()" />
-    </g>
-    
-    <!-- Activation In (Left) -->
-    <g class="port-group" onmouseover="highlightNet('a_in')" onmouseout="clearHighlight()">
-        <rect x="30" y="460" width="110" height="36" rx="6" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5" />
-        <text x="85" y="483" fill="#38bdf8" font-size="13" font-weight="700" text-anchor="middle">a_in [7:0]</text>
-        <path d="M 140 478 L 180 478" class="net-bus" data-net="a_in" marker-end="url(#bus-arrow)" />
-        <circle cx="180" cy="478" r="4" fill="#38bdf8" class="pin-node" onmouseover="showTooltip(event, 'Port: a_in [7:0] (Activation entering from left neighbor)')" onmouseout="hideTooltip()" />
-    </g>
-    
-    <!-- Activation Out (Right) -->
-    <g class="port-group" onmouseover="highlightNet('a_out')" onmouseout="clearHighlight()">
-        <path d="M 1100 630 L 1150 630" class="net-bus" data-net="a_out" marker-end="url(#bus-arrow)" />
-        <rect x="1150" y="612" width="110" height="36" rx="6" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5" />
-        <text x="1205" y="635" fill="#38bdf8" font-size="13" font-weight="700" text-anchor="middle">a_out [7:0]</text>
-        <circle cx="1100" cy="630" r="4" fill="#38bdf8" class="pin-node" onmouseover="showTooltip(event, 'Port: a_out [7:0] (Registered activation leaving to right neighbor)')" onmouseout="hideTooltip()" />
-    </g>
-    
-    <!-- Partial Sum In (Top) -->
-    <g class="port-group" onmouseover="highlightNet('sum_in')" onmouseout="clearHighlight()">
-        <rect x="595" y="30" width="130" height="34" rx="6" fill="#1e293b" stroke="#4ade80" stroke-width="1.5" />
-        <text x="660" y="52" fill="#4ade80" font-size="12" font-weight="700" text-anchor="middle">sum_in [31:0]</text>
-        <path d="M 660 64 L 660 130" class="net-bus" data-net="sum_in" marker-end="url(#bus-arrow)" />
-        <circle cx="660" cy="130" r="4" fill="#4ade80" class="pin-node" onmouseover="showTooltip(event, 'Port: sum_in [31:0] (Partial sum from top neighbor)')" onmouseout="hideTooltip()" />
-    </g>
-    
-    <!-- Partial Sum Out (Bottom) -->
-    <g class="port-group" onmouseover="highlightNet('sum_out')" onmouseout="clearHighlight()">
-        <path d="M 960 770 L 960 810" class="net-bus" data-net="sum_out" marker-end="url(#bus-arrow)" />
-        <rect x="895" y="810" width="130" height="34" rx="6" fill="#1e293b" stroke="#4ade80" stroke-width="1.5" />
-        <text x="960" y="832" fill="#4ade80" font-size="12" font-weight="700" text-anchor="middle">sum_out [31:0]</text>
-        <circle cx="960" cy="770" r="4" fill="#4ade80" class="pin-node" onmouseover="showTooltip(event, 'Port: sum_out [31:0] (Accumulated sum to bottom neighbor)')" onmouseout="hideTooltip()" />
-    </g>
-    
-    <!-- Global Control Pins -->
-    <g class="control-port" transform="translate(30, 180)">
-        <rect x="0" y="0" width="90" height="26" rx="4" fill="#1f1a10" stroke="#f59e0b" />
-        <text x="45" y="17" fill="#f59e0b" font-size="11" font-weight="600" text-anchor="middle">clk</text>
-        <path d="M 90 13 L 180 13" class="net-control" />
-    </g>
-    <g class="control-port" transform="translate(30, 220)">
-        <rect x="0" y="0" width="90" height="26" rx="4" fill="#1f1a10" stroke="#f59e0b" />
-        <text x="45" y="17" fill="#f59e0b" font-size="11" font-weight="600" text-anchor="middle">rst_n</text>
-        <path d="M 90 13 L 180 13" class="net-control" />
-    </g>
-    <g class="control-port" transform="translate(30, 260)">
-        <rect x="0" y="0" width="90" height="26" rx="4" fill="#1f1a10" stroke="#f59e0b" />
-        <text x="45" y="17" fill="#f59e0b" font-size="11" font-weight="600" text-anchor="middle">en</text>
-        <path d="M 90 13 L 180 13" class="net-control" />
-    </g>
-    <g class="control-port" transform="translate(30, 300)">
-        <rect x="0" y="0" width="130" height="26" rx="4" fill="#1f1a10" stroke="#f59e0b" />
-        <text x="65" y="17" fill="#f59e0b" font-size="11" font-weight="600" text-anchor="middle">weight_load_en</text>
-        <path d="M 130 13 L 180 13" class="net-control" />
-    </g>
-    """)
+    svg.append(create_hud_dashboard(
+        x=40, y=690, total_width=1240,
+        dff_text="48 DFFs (Weight: 8, Act: 8, Sum: 32)",
+        gates_text="O(N^2 + M) (~385 Gates + 48 DFF Cells)",
+        latency_text="1 Cycle Latency (II = 1, Fmax ~ 850 MHz)",
+        extra_text="Weight-Stationary (Zero DRAM Weight Traffic)",
+        extra_label="🎯 SPATIAL DATAFLOW"
+    ))
 
     svg.append(create_svg_footer())
     save_and_validate_svg("\n".join(svg), out_path)
 
 # ==============================================================================
-# 4. SYSTOLIC_ARRAY (4x4 2D GRID) SCHEMATIC GENERATOR
+# LAB 04: SYSTOLIC_ARRAY SCHEMATIC GENERATOR
 # ==============================================================================
 def generate_systolic_array_svg(out_path):
-    width, height = 1800, 1500
+    width, height = 1800, 1600
     svg = [create_svg_header(width, height, "systolic_array - 4x4 Weight-Stationary Matrix Multiplier")]
 
     svg.append("""
     <g transform="translate(50, 75)">
-        <text x="0" y="0" fill="#f8fafc" font-size="24" font-weight="700">🔬 MODULE: systolic_array (4x4 2D Grid)</text>
+        <text x="0" y="0" fill="#f8fafc" font-size="24" font-weight="700">🔬 MODULE: systolic_array (4x4 2D Grid - Lab 04)</text>
         <text x="0" y="26" fill="#94a3b8" font-size="14">Parameterized 2D Systolic Tensor Core: 16 Processing Elements with Skew Pipelines</text>
         <text x="0" y="48" fill="#38bdf8" font-size="12">💡 Interactive: Click on ANY PE Cell to expand its internal architecture in-place!</text>
     </g>
@@ -1087,28 +1046,23 @@ def generate_systolic_array_svg(out_path):
                 
                 <!-- EXPANDED VIEW -->
                 <g class="expanded-only" transform="translate(8, 38)">
-                    <!-- Mini Weight Reg -->
                     <rect x="8" y="8" width="85" height="40" rx="4" fill="#365314" stroke="#84cc16" />
                     <text x="50" y="32" fill="#d9f99d" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">W_reg [7:0]</text>
                     
-                    <!-- Mini Activation Reg -->
                     <rect x="8" y="58" width="85" height="40" rx="4" fill="#0c4a6e" stroke="#38bdf8" />
                     <text x="50" y="82" fill="#bae6fd" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">A_reg [7:0]</text>
                     
-                    <!-- Mini MAC Arithmetic Unit -->
                     <rect x="105" y="8" width="110" height="90" rx="5" fill="#3b0764" stroke="#c084fc" />
                     <text x="160" y="32" fill="#fae8ff" font-size="11" font-weight="700" text-anchor="middle">u_mac</text>
                     <text x="160" y="52" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">Mult 8x8</text>
                     <text x="160" y="72" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">+ Acc 32b</text>
                     
-                    <!-- Mini Sum Reg -->
                     <rect x="105" y="108" width="110" height="40" rx="4" fill="#064e3b" stroke="#34d399" />
                     <text x="160" y="132" fill="#d1fae5" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">Sum_reg [31:0]</text>
                 </g>
             </g>
             """)
 
-            # Horizontal Activation Interconnect Wires
             if c < 3:
                 svg.append(f"""
                 <path d="M {x_pos + pe_w} {y_pos + 120} L {x_pos + spacing_x} {y_pos + 120}" class="net-bus" data-net="h_act_{r}_{c}" marker-end="url(#bus-arrow)" />
@@ -1120,7 +1074,6 @@ def generate_systolic_array_svg(out_path):
                 <text x="{x_pos + pe_w + 85}" y="{y_pos + 125}" fill="#38bdf8" font-size="11" font-weight="bold" text-anchor="middle">A_out[{r}]</text>
                 """)
 
-            # Vertical Partial Sum Interconnect Wires
             if r < 3:
                 svg.append(f"""
                 <path d="M {x_pos + 160} {y_pos + pe_h} L {x_pos + 160} {y_pos + spacing_y}" class="net-bus" data-net="v_sum_{r}_{c}" marker-end="url(#bus-arrow)" />
@@ -1132,7 +1085,6 @@ def generate_systolic_array_svg(out_path):
                 <text x="{x_pos + 160}" y="{y_pos + pe_h + 81}" fill="#4ade80" font-size="11" font-weight="bold" text-anchor="middle">C_out[{c}] [31:0]</text>
                 """)
 
-            # Vertical Weight Shift Wires
             if r == 0:
                 svg.append(f"""
                 <rect x="{x_pos + 15}" y="{y_pos - 75}" width="95" height="30" rx="4" fill="#1e293b" stroke="#84cc16" />
@@ -1151,182 +1103,416 @@ def generate_systolic_array_svg(out_path):
 
     svg.append("""</g>""")
 
-    svg.append(create_svg_footer())
-    save_and_validate_svg("\n".join(svg), out_path)
-
-# ==============================================================================
-# 5. ADDER SCHEMATIC GENERATOR
-# ==============================================================================
-def generate_adder_svg(out_path):
-    width, height = 1000, 600
-    svg = [create_svg_header(width, height, "adder - Parameterized Signed Adder with Saturation")]
-
-    svg.append("""
-    <g transform="translate(40, 80)">
-        <text x="0" y="0" fill="#f8fafc" font-size="22" font-weight="700">🔬 MODULE: adder</text>
-        <text x="0" y="24" fill="#94a3b8" font-size="13">Parameterized Signed Adder with Overflow Detection &amp; Saturation Logic</text>
-    </g>
-
-    <!-- Main Adder Component Box -->
-    <g id="comp_adder" class="collapsible-comp expanded" transform="translate(180, 140)">
-        <g class="component-box" onclick="toggleComponent('comp_adder')">
-            <rect class="box-rect" x="0" y="0" width="640" height="380" rx="12" fill="#0f172a" stroke="#38bdf8" stroke-width="2" />
-            <rect x="0" y="0" width="640" height="42" rx="12" fill="#0369a1" />
-            <rect x="0" y="30" width="640" height="12" fill="#0369a1" />
-            
-            <text x="24" y="27" fill="#f0f9ff" font-size="15" font-weight="700">⚙️ adder Core (Signed + Saturation)</text>
-            <text x="320" y="26" fill="#bae6fd" font-size="12" font-family="'JetBrains Mono', monospace">DATA_WIDTH = 8</text>
-        </g>
-        
-        <!-- Collapsed View -->
-        <g class="collapsed-only" transform="translate(170, 100)">
-            <rect x="0" y="0" width="300" height="180" rx="10" fill="#0369a1" stroke="#38bdf8" stroke-width="2" />
-            <text x="150" y="70" fill="#ffffff" font-size="28" font-weight="bold" text-anchor="middle">➕ ADDER</text>
-            <text x="150" y="105" fill="#bae6fd" font-size="14" font-family="'JetBrains Mono', monospace" text-anchor="middle">sum = a + b (Saturated)</text>
-        </g>
-
-        <!-- Expanded View -->
-        <g class="collapsible-content expanded-only">
-            <!-- 8-Bit Ripple Carry Core -->
-            <g transform="translate(40, 70)">
-                <rect class="box-rect" x="0" y="0" width="240" height="260" rx="8" fill="#1e293b" stroke="#60a5fa" stroke-width="1.5" />
-                <rect x="0" y="0" width="240" height="32" rx="8" fill="#1d4ed8" />
-                <text x="12" y="21" fill="#eff6ff" font-size="13" font-weight="700">1. Full Adder Array (8x FA)</text>
-                <text x="120" y="80" fill="#93c5fd" font-size="12" text-anchor="middle">Two's Complement Addition</text>
-                <rect x="20" y="110" width="200" height="120" rx="6" fill="#0f172a" stroke="#3b82f6" />
-                <text x="120" y="145" fill="#60a5fa" font-size="12" font-family="'JetBrains Mono', monospace" text-anchor="middle">raw_sum = {a[7], a}</text>
-                <text x="120" y="175" fill="#60a5fa" font-size="12" font-family="'JetBrains Mono', monospace" text-anchor="middle">+ {b[7], b}</text>
-                <text x="120" y="205" fill="#4ade80" font-size="11" text-anchor="middle">~42 Logic Gates Total</text>
-            </g>
-
-            <!-- Overflow & Saturation MUX -->
-            <g transform="translate(340, 70)">
-                <rect class="box-rect" x="0" y="0" width="260" height="260" rx="8" fill="#1e293b" stroke="#f59e0b" stroke-width="1.5" />
-                <rect x="0" y="0" width="260" height="32" rx="8" fill="#b45309" />
-                <text x="12" y="21" fill="#fffbeb" font-size="13" font-weight="700">2. Overflow &amp; Saturation MUX</text>
-                <text x="130" y="70" fill="#fde68a" font-size="12" text-anchor="middle">AI Saturation Clamp Logic</text>
-                <rect x="20" y="90" width="220" height="140" rx="6" fill="#0f172a" stroke="#d97706" />
-                <text x="130" y="125" fill="#fcd34d" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">overflow = (a7 == b7) &amp;&amp; (s7 != a7)</text>
-                <text x="130" y="160" fill="#f87171" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">Pos Over: clamp to +127</text>
-                <text x="130" y="195" fill="#60a5fa" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">Neg Over: clamp to -128</text>
-            </g>
-        </g>
-    </g>
-    """)
+    svg.append(create_hud_dashboard(
+        x=50, y=1420, total_width=1700,
+        dff_text="816 DFFs (16 PEs x 48 + 48 Skew DFFs)",
+        gates_text="O(K^2 · N^2) (~6,160 Gates + 816 DFF Cells)",
+        latency_text="3N - 2 = 10 Cycles (Wavefront Pipeline II = 1)",
+        extra_text="16 MACs/cycle (32 FLOPs/cycle @ 850 MHz)",
+        extra_label="🚀 COMPUTE DENSITY"
+    ))
 
     svg.append(create_svg_footer())
     save_and_validate_svg("\n".join(svg), out_path)
 
 # ==============================================================================
-# 6. SQRT SCHEMATIC GENERATOR
+# LAB 05: SQRT SCHEMATIC GENERATOR
 # ==============================================================================
 def generate_sqrt_svg(out_path):
-    width, height = 1000, 600
+    width, height = 1180, 750
     svg = [create_svg_header(width, height, "sqrt - Non-Restoring Hardware Square Root Unit")]
 
     svg.append("""
-    <g transform="translate(40, 80)">
-        <text x="0" y="0" fill="#f8fafc" font-size="22" font-weight="700">🔬 MODULE: sqrt</text>
+    <g transform="translate(40, 75)">
+        <text x="0" y="0" fill="#f8fafc" font-size="22" font-weight="700">🔬 MODULE: sqrt (Lab 05)</text>
         <text x="0" y="24" fill="#94a3b8" font-size="13">Digit-by-Digit Hardware Square Root Unit for Attention Scaling (1 / sqrt(d_k))</text>
     </g>
 
     <!-- Main Sqrt Component Box -->
-    <g id="comp_sqrt" class="collapsible-comp expanded" transform="translate(180, 140)">
+    <g id="comp_sqrt" class="collapsible-comp expanded" transform="translate(180, 130)">
         <g class="component-box" onclick="toggleComponent('comp_sqrt')">
-            <rect class="box-rect" x="0" y="0" width="640" height="380" rx="12" fill="#141e2e" stroke="#10b981" stroke-width="2" />
-            <rect x="0" y="0" width="640" height="42" rx="12" fill="#065f46" />
-            <rect x="0" y="30" width="640" height="12" fill="#065f46" />
+            <rect class="box-rect" x="0" y="0" width="760" height="390" rx="12" fill="#141e2e" stroke="#10b981" stroke-width="2" />
+            <rect x="0" y="0" width="760" height="42" rx="12" fill="#065f46" />
+            <rect x="0" y="30" width="760" height="12" fill="#065f46" />
             
             <text x="24" y="27" fill="#ecfdf5" font-size="15" font-weight="700">⚙️ sqrt Core (Digit Recurrence)</text>
-            <text x="320" y="26" fill="#a7f3d0" font-size="12" font-family="'JetBrains Mono', monospace">RADICAND=16, ROOT=8</text>
+            <text x="320" y="26" fill="#a7f3d0" font-size="12" font-family="'JetBrains Mono', monospace">RADICAND_WIDTH = 16, ROOT_WIDTH = 8</text>
+            
+            <g class="toggle-badge" transform="translate(725, 21)">
+                <circle cx="0" cy="0" r="11" fill="#047857" stroke="#a7f3d0" stroke-width="1.5" />
+                <text x="0" y="4" fill="#ffffff" font-size="13" font-weight="bold" text-anchor="middle">−</text>
+            </g>
         </g>
         
         <g class="collapsible-content expanded-only">
             <!-- 8 Shift-and-Subtract Stages -->
-            <g transform="translate(40, 70)">
-                <rect class="box-rect" x="0" y="0" width="560" height="260" rx="8" fill="#0f172a" stroke="#059669" stroke-width="1.5" />
-                <rect x="0" y="0" width="560" height="32" rx="8" fill="#047857" />
-                <text x="12" y="21" fill="#ecfdf5" font-size="13" font-weight="700">Digit-by-Digit Recurrence Pipeline (8 Stages)</text>
-                <text x="280" y="70" fill="#6ee7b7" font-size="12" text-anchor="middle">Iteratively processes bit-pairs from MSB [15:14] down to LSB [1:0]</text>
+            <g transform="translate(40, 65)">
+                <rect class="box-rect" x="0" y="0" width="680" height="290" rx="8" fill="#0f172a" stroke="#059669" stroke-width="1.5" />
+                <rect x="0" y="0" width="680" height="32" rx="8" fill="#047857" />
+                <text x="14" y="21" fill="#ecfdf5" font-size="13" font-weight="700">Digit-by-Digit Recurrence Pipeline (8 Unrolled Stages)</text>
+                <text x="340" y="70" fill="#6ee7b7" font-size="12" text-anchor="middle">Iteratively processes bit-pairs from MSB [15:14] down to LSB [1:0]</text>
                 
-                <rect x="30" y="90" width="500" height="140" rx="6" fill="#134e4a" stroke="#0d9488" />
-                <text x="280" y="125" fill="#ccfbf1" font-size="12" font-family="'JetBrains Mono', monospace" text-anchor="middle">rem = (rem &lt;&lt; 2) | radicand[2i+1:2i]</text>
-                <text x="280" y="155" fill="#ccfbf1" font-size="12" font-family="'JetBrains Mono', monospace" text-anchor="middle">test_val = {root, 2'b01}</text>
-                <text x="280" y="185" fill="#fef08a" font-size="12" font-family="'JetBrains Mono', monospace" text-anchor="middle">if (rem &gt;= test_val) -&gt; rem -= test_val; root = (root &lt;&lt; 1) | 1'b1</text>
-                <text x="280" y="215" fill="#a7f3d0" font-size="11" text-anchor="middle">Zero Multipliers Required • Exact Integer Root &amp; Remainder</text>
+                <rect x="30" y="90" width="620" height="170" rx="6" fill="#134e4a" stroke="#0d9488" />
+                <text x="340" y="125" fill="#ccfbf1" font-size="12" font-family="'JetBrains Mono', monospace" text-anchor="middle">rem = (rem &lt;&lt; 2) | radicand[2i+1:2i]</text>
+                <text x="340" y="155" fill="#ccfbf1" font-size="12" font-family="'JetBrains Mono', monospace" text-anchor="middle">test_val = {root, 2'b01}</text>
+                <text x="340" y="190" fill="#fef08a" font-size="12" font-family="'JetBrains Mono', monospace" text-anchor="middle">if (rem &gt;= test_val) -&gt; rem -= test_val; root = (root &lt;&lt; 1) | 1'b1</text>
+                <text x="340" y="225" fill="#a7f3d0" font-size="12" font-weight="600" text-anchor="middle">Zero Multipliers or Dividers Required • Exact Integer Root &amp; Remainder</text>
             </g>
         </g>
     </g>
+
+    <!-- External Ports -->
+    <g class="port-group" transform="translate(30, 240)">
+        <rect x="0" y="0" width="120" height="36" rx="6" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5" />
+        <text x="60" y="23" fill="#38bdf8" font-size="12" font-weight="700" text-anchor="middle">radicand [15:0]</text>
+        <path d="M 120 18 L 180 18" class="net-bus" marker-end="url(#bus-arrow)" />
+    </g>
+    
+    <g class="port-group" transform="translate(980, 220)">
+        <path d="M -40 18 L 0 18" class="net-bus" marker-end="url(#bus-arrow)" />
+        <rect x="0" y="0" width="120" height="36" rx="6" fill="#1e293b" stroke="#4ade80" stroke-width="1.5" />
+        <text x="60" y="23" fill="#4ade80" font-size="12" font-weight="700" text-anchor="middle">root_out [7:0]</text>
+    </g>
+    
+    <g class="port-group" transform="translate(980, 300)">
+        <path d="M -40 18 L 0 18" class="net-bus" marker-end="url(#bus-arrow)" />
+        <rect x="0" y="0" width="140" height="36" rx="6" fill="#1e293b" stroke="#fb923c" stroke-width="1.5" />
+        <text x="70" y="23" fill="#fb923c" font-size="11" font-weight="700" text-anchor="middle">remainder [15:0]</text>
+    </g>
     """)
+
+    svg.append(create_hud_dashboard(
+        x=40, y=560, total_width=1100,
+        dff_text="0 DFFs (Pure Combinational)",
+        gates_text="O(N^2) (~180 Gates: 8 Subtract Stages)",
+        latency_text="0 Cycles (~4.2 ns 8-Stage Path)",
+        extra_text="Exact Integer Root + Remainder Output",
+        extra_label="🎯 ATTENTION SCALING"
+    ))
 
     svg.append(create_svg_footer())
     save_and_validate_svg("\n".join(svg), out_path)
 
 # ==============================================================================
-# 7. SOFTMAX SCHEMATIC GENERATOR
+# LAB 06: SOFTMAX SCHEMATIC GENERATOR
 # ==============================================================================
 def generate_softmax_svg(out_path):
-    width, height = 1000, 600
+    width, height = 1200, 780
     svg = [create_svg_header(width, height, "softmax - Hardware Safe Softmax Unit")]
 
     svg.append("""
-    <g transform="translate(40, 80)">
-        <text x="0" y="0" fill="#f8fafc" font-size="22" font-weight="700">🔬 MODULE: softmax</text>
+    <g transform="translate(40, 75)">
+        <text x="0" y="0" fill="#f8fafc" font-size="22" font-weight="700">🔬 MODULE: softmax (Lab 06)</text>
         <text x="0" y="24" fill="#94a3b8" font-size="13">Safe Softmax Pipeline: Max Search → Delta Subtraction → Exp LUT → Normalizer</text>
     </g>
 
     <!-- Main Softmax Component Box -->
-    <g id="comp_softmax" class="collapsible-comp expanded" transform="translate(180, 140)">
+    <g id="comp_softmax" class="collapsible-comp expanded" transform="translate(180, 130)">
         <g class="component-box" onclick="toggleComponent('comp_softmax')">
-            <rect class="box-rect" x="0" y="0" width="640" height="380" rx="12" fill="#1e1b4b" stroke="#a855f7" stroke-width="2" />
-            <rect x="0" y="0" width="640" height="42" rx="12" fill="#6b21a8" />
-            <rect x="0" y="30" width="640" height="12" fill="#6b21a8" />
+            <rect class="box-rect" x="0" y="0" width="760" height="420" rx="12" fill="#1e1b4b" stroke="#a855f7" stroke-width="2" />
+            <rect x="0" y="0" width="760" height="42" rx="12" fill="#6b21a8" />
+            <rect x="0" y="30" width="760" height="12" fill="#6b21a8" />
             
             <text x="24" y="27" fill="#faf5ff" font-size="15" font-weight="700">⚙️ softmax Pipeline (Safe Max-Subtraction)</text>
-            <text x="360" y="26" fill="#e9d5ff" font-size="12" font-family="'JetBrains Mono', monospace">VEC_SIZE = 4, DATA = 8</text>
+            <text x="360" y="26" fill="#e9d5ff" font-size="12" font-family="'JetBrains Mono', monospace">VECTOR_SIZE = 4, DATA_WIDTH = 8</text>
+            
+            <g class="toggle-badge" transform="translate(725, 21)">
+                <circle cx="0" cy="0" r="11" fill="#7e22ce" stroke="#e9d5ff" stroke-width="1.5" />
+                <text x="0" y="4" fill="#ffffff" font-size="13" font-weight="bold" text-anchor="middle">−</text>
+            </g>
         </g>
         
         <g class="collapsible-content expanded-only">
             <!-- 4 Stages of Safe Softmax -->
-            <g transform="translate(25, 65)">
+            <g transform="translate(30, 65)">
                 <!-- Stage 1: Max Finder -->
-                <rect x="0" y="0" width="135" height="270" rx="6" fill="#0f172a" stroke="#818cf8" />
-                <rect x="0" y="0" width="135" height="28" rx="6" fill="#3730a3" />
-                <text x="67" y="19" fill="#ffffff" font-size="11" font-weight="700" text-anchor="middle">1. Max-Search</text>
-                <text x="67" y="60" fill="#c7d2fe" font-size="10" text-anchor="middle">Find M = max(x_i)</text>
-                <text x="67" y="90" fill="#94a3b8" font-size="9" text-anchor="middle">Safe Softmax:</text>
-                <text x="67" y="110" fill="#94a3b8" font-size="9" text-anchor="middle">Prevents exp()</text>
-                <text x="67" y="130" fill="#94a3b8" font-size="9" text-anchor="middle">overflow</text>
+                <rect x="0" y="0" width="155" height="320" rx="6" fill="#0f172a" stroke="#818cf8" />
+                <rect x="0" y="0" width="155" height="30" rx="6" fill="#3730a3" />
+                <text x="77" y="20" fill="#ffffff" font-size="11" font-weight="700" text-anchor="middle">1. Max-Search Tree</text>
+                <text x="77" y="65" fill="#c7d2fe" font-size="11" text-anchor="middle">Find M = max(x_i)</text>
+                <rect x="15" y="85" width="125" height="210" rx="5" fill="#1e1b4b" />
+                <text x="77" y="125" fill="#a5b4fc" font-size="10" text-anchor="middle">Safe Softmax:</text>
+                <text x="77" y="155" fill="#94a3b8" font-size="10" text-anchor="middle">Subtracting M</text>
+                <text x="77" y="185" fill="#94a3b8" font-size="10" text-anchor="middle">prevents exp()</text>
+                <text x="77" y="215" fill="#94a3b8" font-size="10" text-anchor="middle">overflow in</text>
+                <text x="77" y="245" fill="#38bdf8" font-size="10" text-anchor="middle">registers!</text>
 
                 <!-- Stage 2: Subtraction -->
-                <rect x="150" y="0" width="135" height="270" rx="6" fill="#0f172a" stroke="#38bdf8" />
-                <rect x="150" y="0" width="135" height="28" rx="6" fill="#0369a1" />
-                <text x="217" y="19" fill="#ffffff" font-size="11" font-weight="700" text-anchor="middle">2. Delta Shift</text>
-                <text x="217" y="60" fill="#bae6fd" font-size="10" text-anchor="middle">Δ_i = x_i - M</text>
-                <text x="217" y="90" fill="#94a3b8" font-size="9" text-anchor="middle">All Δ_i &lt;= 0</text>
-                <text x="217" y="120" fill="#94a3b8" font-size="9" text-anchor="middle">Mapped to (0, 1]</text>
+                <rect x="180" y="0" width="155" height="320" rx="6" fill="#0f172a" stroke="#38bdf8" />
+                <rect x="180" y="0" width="155" height="30" rx="6" fill="#0369a1" />
+                <text x="257" y="20" fill="#ffffff" font-size="11" font-weight="700" text-anchor="middle">2. Delta Shift</text>
+                <text x="257" y="65" fill="#bae6fd" font-size="11" text-anchor="middle">Δ_i = x_i - M</text>
+                <rect x="195" y="85" width="125" height="210" rx="5" fill="#0c4a6e" />
+                <text x="257" y="125" fill="#e0f2fe" font-size="10" text-anchor="middle">All Δ_i &lt;= 0</text>
+                <text x="257" y="165" fill="#7dd3fc" font-size="10" text-anchor="middle">Mapped to</text>
+                <text x="257" y="195" fill="#38bdf8" font-size="11" font-weight="700" text-anchor="middle">(0.0, 1.0]</text>
+                <text x="257" y="235" fill="#bae6fd" font-size="10" text-anchor="middle">Zero overflow</text>
 
                 <!-- Stage 3: Exp LUT -->
-                <rect x="300" y="0" width="135" height="270" rx="6" fill="#0f172a" stroke="#ec4899" />
-                <rect x="300" y="0" width="135" height="28" rx="6" fill="#9d174d" />
-                <text x="367" y="19" fill="#ffffff" font-size="11" font-weight="700" text-anchor="middle">3. Exp LUT</text>
-                <text x="367" y="60" fill="#fbcfe8" font-size="10" text-anchor="middle">e^(Δ_i) in Q0.8</text>
-                <text x="367" y="90" fill="#94a3b8" font-size="9" text-anchor="middle">exp(0) = 255</text>
-                <text x="367" y="110" fill="#94a3b8" font-size="9" text-anchor="middle">exp(-1) = 94</text>
-                <text x="367" y="130" fill="#94a3b8" font-size="9" text-anchor="middle">exp(-2) = 35</text>
+                <rect x="360" y="0" width="155" height="320" rx="6" fill="#0f172a" stroke="#ec4899" />
+                <rect x="360" y="0" width="155" height="30" rx="6" fill="#9d174d" />
+                <text x="437" y="20" fill="#ffffff" font-size="11" font-weight="700" text-anchor="middle">3. Exp LUT (Q0.8)</text>
+                <text x="437" y="65" fill="#fbcfe8" font-size="11" text-anchor="middle">e^(Δ_i) in Q0.8</text>
+                <rect x="375" y="85" width="125" height="210" rx="5" fill="#831843" />
+                <text x="437" y="125" fill="#fdf2f8" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">exp(0) = 255</text>
+                <text x="437" y="155" fill="#fdf2f8" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">exp(-1) = 94</text>
+                <text x="437" y="185" fill="#fdf2f8" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">exp(-2) = 35</text>
+                <text x="437" y="215" fill="#fdf2f8" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">exp(-3) = 13</text>
+                <text x="437" y="245" fill="#fdf2f8" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">exp(-4) = 5</text>
 
                 <!-- Stage 4: Normalization -->
-                <rect x="450" y="0" width="135" height="270" rx="6" fill="#0f172a" stroke="#22c55e" />
-                <rect x="450" y="0" width="135" height="28" rx="6" fill="#15803d" />
-                <text x="517" y="19" fill="#ffffff" font-size="11" font-weight="700" text-anchor="middle">4. Normalizer</text>
-                <text x="517" y="60" fill="#bbf7d0" font-size="10" text-anchor="middle">Sum &amp; Divide</text>
-                <text x="517" y="90" fill="#94a3b8" font-size="9" text-anchor="middle">sum = Σ e^(Δ)</text>
-                <text x="517" y="120" fill="#94a3b8" font-size="9" text-anchor="middle">prob_i =</text>
-                <text x="517" y="140" fill="#94a3b8" font-size="9" text-anchor="middle">(e_i * 255) / sum</text>
+                <rect x="540" y="0" width="155" height="320" rx="6" fill="#0f172a" stroke="#22c55e" />
+                <rect x="540" y="0" width="155" height="30" rx="6" fill="#15803d" />
+                <text x="617" y="20" fill="#ffffff" font-size="11" font-weight="700" text-anchor="middle">4. Normalizer</text>
+                <text x="617" y="65" fill="#bbf7d0" font-size="11" text-anchor="middle">Sum Tree &amp; Div</text>
+                <rect x="555" y="85" width="125" height="210" rx="5" fill="#064e3b" />
+                <text x="617" y="125" fill="#d1fae5" font-size="10" text-anchor="middle">sum = Σ e^(Δ)</text>
+                <text x="617" y="165" fill="#6ee7b7" font-size="10" text-anchor="middle">prob_i =</text>
+                <text x="617" y="195" fill="#a7f3d0" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">(e_i * 255)/sum</text>
+                <text x="617" y="235" fill="#34d399" font-size="10" font-weight="700" text-anchor="middle">Σ probs ≈ 255</text>
             </g>
         </g>
     </g>
+
+    <!-- External Ports -->
+    <g class="port-group" transform="translate(30, 260)">
+        <rect x="0" y="0" width="120" height="36" rx="6" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5" />
+        <text x="60" y="23" fill="#38bdf8" font-size="12" font-weight="700" text-anchor="middle">logits_in [0..3]</text>
+        <path d="M 120 18 L 180 18" class="net-bus" marker-end="url(#bus-arrow)" />
+    </g>
+    
+    <g class="port-group" transform="translate(980, 260)">
+        <path d="M -40 18 L 0 18" class="net-bus" marker-end="url(#bus-arrow)" />
+        <rect x="0" y="0" width="130" height="36" rx="6" fill="#1e293b" stroke="#4ade80" stroke-width="1.5" />
+        <text x="65" y="23" fill="#4ade80" font-size="12" font-weight="700" text-anchor="middle">probs_out [0..3]</text>
+    </g>
     """)
+
+    svg.append(create_hud_dashboard(
+        x=40, y=590, total_width=1120,
+        dff_text="0 DFFs (Pure Combinational)",
+        gates_text="O(K · N) (~420 Gates: Max Tree + Exp LUT + Div)",
+        latency_text="0 Cycles (~5.1 ns Critical Path)",
+        extra_text="Safe Max-Subtraction (Exp bounded in (0, 1])",
+        extra_label="🎯 NUMERICAL STABILITY"
+    ))
+
+    svg.append(create_svg_footer())
+    save_and_validate_svg("\n".join(svg), out_path)
+
+# ==============================================================================
+# LAB 07: RSQRT SCHEMATIC GENERATOR
+# ==============================================================================
+def generate_rsqrt_svg(out_path):
+    width, height = 1180, 750
+    svg = [create_svg_header(width, height, "rsqrt - Fast Reciprocal Square Root Unit")]
+
+    svg.append("""
+    <g transform="translate(40, 75)">
+        <text x="0" y="0" fill="#f8fafc" font-size="22" font-weight="700">🔬 MODULE: rsqrt (Lab 07)</text>
+        <text x="0" y="24" fill="#94a3b8" font-size="13">Dedicated Special Function Unit (SFU) for RMSNorm &amp; LayerNorm Acceleration</text>
+    </g>
+
+    <!-- Main rsqrt Component Box -->
+    <g id="comp_rsqrt" class="collapsible-comp expanded" transform="translate(180, 130)">
+        <g class="component-box" onclick="toggleComponent('comp_rsqrt')">
+            <rect class="box-rect" x="0" y="0" width="760" height="390" rx="12" fill="#181329" stroke="#a855f7" stroke-width="2" />
+            <rect x="0" y="0" width="760" height="42" rx="12" fill="#581c87" />
+            <rect x="0" y="30" width="760" height="12" fill="#581c87" />
+            
+            <text x="24" y="27" fill="#f3e8ff" font-size="15" font-weight="700">⚙️ rsqrt Core (Seed ROM + Recurrence)</text>
+            <text x="360" y="26" fill="#d8b4fe" font-size="12" font-family="'JetBrains Mono', monospace">INPUT_WIDTH = 16, OUTPUT = Q8.8</text>
+            
+            <g class="toggle-badge" transform="translate(725, 21)">
+                <circle cx="0" cy="0" r="11" fill="#7e22ce" stroke="#e9d5ff" stroke-width="1.5" />
+                <text x="0" y="4" fill="#ffffff" font-size="13" font-weight="bold" text-anchor="middle">−</text>
+            </g>
+        </g>
+        
+        <g class="collapsible-content expanded-only">
+            <!-- 3 Functional Stages -->
+            <g transform="translate(30, 65)">
+                <!-- Stage 1: Zero Detection & Seed ROM -->
+                <rect x="0" y="0" width="210" height="290" rx="8" fill="#0f172a" stroke="#818cf8" />
+                <rect x="0" y="0" width="210" height="30" rx="8" fill="#3730a3" />
+                <text x="12" y="20" fill="#ffffff" font-size="11" font-weight="700">1. Seed ROM (x &lt; 16)</text>
+                <rect x="15" y="55" width="180" height="215" rx="6" fill="#1e1b4b" />
+                <text x="105" y="85" fill="#a5b4fc" font-size="11" text-anchor="middle">High Precision for Small x</text>
+                <text x="105" y="115" fill="#cbd5e1" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">1/sqrt(1) = 256 (1.0)</text>
+                <text x="105" y="145" fill="#cbd5e1" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">1/sqrt(2) = 181 (0.707)</text>
+                <text x="105" y="175" fill="#cbd5e1" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">1/sqrt(4) = 128 (0.500)</text>
+                <text x="105" y="205" fill="#cbd5e1" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">1/sqrt(9) = 85 (0.333)</text>
+                <text x="105" y="240" fill="#f43f5e" font-size="10" font-weight="600" text-anchor="middle">x=0 -&gt; valid_out = 0</text>
+                
+                <!-- Stage 2: Hardware isqrt Recurrence -->
+                <rect x="240" y="0" width="220" height="290" rx="8" fill="#0f172a" stroke="#38bdf8" />
+                <rect x="240" y="0" width="220" height="30" rx="8" fill="#0369a1" />
+                <text x="252" y="20" fill="#ffffff" font-size="11" font-weight="700">2. Root Engine (x &gt;= 16)</text>
+                <rect x="255" y="55" width="190" height="215" rx="6" fill="#0c4a6e" />
+                <text x="350" y="85" fill="#bae6fd" font-size="11" text-anchor="middle">Digit-by-Digit Root</text>
+                <text x="350" y="125" fill="#e0f2fe" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">root = isqrt(x_in)</text>
+                <text x="350" y="165" fill="#7dd3fc" font-size="10" text-anchor="middle">Consumes 2 bits/cycle</text>
+                <text x="350" y="205" fill="#a7f3d0" font-size="10" text-anchor="middle">Unrolled 8 bit-pairs</text>
+                
+                <!-- Stage 3: Q8.8 Reciprocal Scaler -->
+                <rect x="490" y="0" width="200" height="290" rx="8" fill="#0f172a" stroke="#34d399" />
+                <rect x="490" y="0" width="200" height="30" rx="8" fill="#047857" />
+                <text x="502" y="20" fill="#ffffff" font-size="11" font-weight="700">3. Q8.8 Output Scaler</text>
+                <rect x="505" y="55" width="170" height="215" rx="6" fill="#064e3b" />
+                <text x="590" y="85" fill="#a7f3d0" font-size="11" text-anchor="middle">Fixed-Point Scaling</text>
+                <text x="590" y="130" fill="#ffffff" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">y_out = 256 / root</text>
+                <text x="590" y="175" fill="#6ee7b7" font-size="11" font-weight="600" text-anchor="middle">Single-Cycle Result</text>
+                <text x="590" y="215" fill="#d1fae5" font-size="10" text-anchor="middle">Q8.8 Representation</text>
+            </g>
+        </g>
+    </g>
+
+    <!-- External Ports -->
+    <g class="port-group" transform="translate(30, 240)">
+        <rect x="0" y="0" width="120" height="36" rx="6" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5" />
+        <text x="60" y="23" fill="#38bdf8" font-size="12" font-weight="700" text-anchor="middle">x_in [15:0]</text>
+        <path d="M 120 18 L 180 18" class="net-bus" marker-end="url(#bus-arrow)" />
+    </g>
+    
+    <g class="port-group" transform="translate(980, 220)">
+        <path d="M -40 18 L 0 18" class="net-bus" marker-end="url(#bus-arrow)" />
+        <rect x="0" y="0" width="130" height="36" rx="6" fill="#1e293b" stroke="#4ade80" stroke-width="1.5" />
+        <text x="65" y="23" fill="#4ade80" font-size="12" font-weight="700" text-anchor="middle">y_out [15:0] Q8.8</text>
+    </g>
+    
+    <g class="port-group" transform="translate(980, 300)">
+        <path d="M -40 18 L 0 18" class="net-wire" />
+        <rect x="0" y="0" width="110" height="30" rx="4" fill="#1e293b" stroke="#38bdf8" />
+        <text x="55" y="19" fill="#38bdf8" font-size="11" font-weight="600" text-anchor="middle">valid_out</text>
+    </g>
+    """)
+
+    svg.append(create_hud_dashboard(
+        x=40, y=560, total_width=1100,
+        dff_text="0 DFFs (Pure Combinational)",
+        gates_text="O(N^2) (~210 Gates: Seed ROM + Root + Scaler)",
+        latency_text="0 Cycles (~4.6 ns Critical Path)",
+        extra_text="RMSNorm &amp; LayerNorm SFU (Q8.8 Fixed-Point)",
+        extra_label="🎯 NORMALIZATION SFU"
+    ))
+
+    svg.append(create_svg_footer())
+    save_and_validate_svg("\n".join(svg), out_path)
+
+# ==============================================================================
+# LAB 08: EXP2_SFU SCHEMATIC GENERATOR
+# ==============================================================================
+def generate_exp2_sfu_svg(out_path):
+    width, height = 1200, 780
+    svg = [create_svg_header(width, height, "exp2_sfu - Hardware Exponential Special Function Unit")]
+
+    svg.append("""
+    <g transform="translate(40, 75)">
+        <text x="0" y="0" fill="#f8fafc" font-size="22" font-weight="700">🔬 MODULE: exp2_sfu (Lab 08)</text>
+        <text x="0" y="24" fill="#94a3b8" font-size="13">Base-2 Mathematical Decomposition (2^x &amp; e^x) for Softmax, SwiGLU, and SiLU</text>
+    </g>
+
+    <!-- Main exp2_sfu Component Box -->
+    <g id="comp_exp2" class="collapsible-comp expanded" transform="translate(180, 130)">
+        <g class="component-box" onclick="toggleComponent('comp_exp2')">
+            <rect class="box-rect" x="0" y="0" width="760" height="420" rx="12" fill="#1e1329" stroke="#ec4899" stroke-width="2" />
+            <rect x="0" y="0" width="760" height="42" rx="12" fill="#831843" />
+            <rect x="0" y="30" width="760" height="12" fill="#831843" />
+            
+            <text x="24" y="27" fill="#fdf2f8" font-size="15" font-weight="700">⚙️ exp2_sfu Core (Base-2 Decomposition)</text>
+            <text x="360" y="26" fill="#fbcfe8" font-size="12" font-family="'JetBrains Mono', monospace">IN = Q4.4 (Signed), OUT = Q8.8 (Unsigned)</text>
+            
+            <g class="toggle-badge" transform="translate(725, 21)">
+                <circle cx="0" cy="0" r="11" fill="#9d174d" stroke="#fbcfe8" stroke-width="1.5" />
+                <text x="0" y="4" fill="#ffffff" font-size="13" font-weight="bold" text-anchor="middle">−</text>
+            </g>
+        </g>
+        
+        <g class="collapsible-content expanded-only">
+            <!-- 4 Stages of Base-2 Decomposition -->
+            <g transform="translate(30, 65)">
+                <!-- Stage 1: log2(e) Scaler -->
+                <rect x="0" y="0" width="155" height="320" rx="6" fill="#0f172a" stroke="#818cf8" />
+                <rect x="0" y="0" width="155" height="30" rx="6" fill="#3730a3" />
+                <text x="77" y="20" fill="#ffffff" font-size="11" font-weight="700" text-anchor="middle">1. Base-2 Scaler</text>
+                <text x="77" y="65" fill="#c7d2fe" font-size="10" text-anchor="middle">mode_e ? u=x*log2(e)</text>
+                <rect x="15" y="85" width="125" height="210" rx="5" fill="#1e1b4b" />
+                <text x="77" y="120" fill="#a5b4fc" font-size="10" text-anchor="middle">log2(e) ≈ 1.4427</text>
+                <text x="77" y="150" fill="#94a3b8" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">Q4.4 = 23/16</text>
+                <text x="77" y="190" fill="#cbd5e1" font-size="10" text-anchor="middle">Converts base-e</text>
+                <text x="77" y="220" fill="#38bdf8" font-size="10" font-weight="600" text-anchor="middle">to base-2</text>
+
+                <!-- Stage 2: Integer & Frac Split -->
+                <rect x="180" y="0" width="155" height="320" rx="6" fill="#0f172a" stroke="#38bdf8" />
+                <rect x="180" y="0" width="155" height="30" rx="6" fill="#0369a1" />
+                <text x="257" y="20" fill="#ffffff" font-size="11" font-weight="700" text-anchor="middle">2. I + F Split</text>
+                <text x="257" y="65" fill="#bae6fd" font-size="10" text-anchor="middle">u = I + F/16</text>
+                <rect x="195" y="85" width="125" height="210" rx="5" fill="#0c4a6e" />
+                <text x="257" y="120" fill="#e0f2fe" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">I = u[7:4] (Int)</text>
+                <text x="257" y="150" fill="#7dd3fc" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">F = u[3:0] (Frac)</text>
+                <text x="257" y="195" fill="#bae6fd" font-size="10" text-anchor="middle">2^u = 2^I * 2^F</text>
+                <text x="257" y="235" fill="#6ee7b7" font-size="10" font-weight="600" text-anchor="middle">Exact Split</text>
+
+                <!-- Stage 3: 16-Entry Frac LUT -->
+                <rect x="360" y="0" width="155" height="320" rx="6" fill="#0f172a" stroke="#ec4899" />
+                <rect x="360" y="0" width="155" height="30" rx="6" fill="#9d174d" />
+                <text x="437" y="20" fill="#ffffff" font-size="11" font-weight="700" text-anchor="middle">3. 2^F Seed ROM</text>
+                <text x="437" y="65" fill="#fbcfe8" font-size="10" text-anchor="middle">16-Entry Q0.8 Table</text>
+                <rect x="375" y="85" width="125" height="210" rx="5" fill="#831843" />
+                <text x="437" y="120" fill="#fdf2f8" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">2^(0/16) = 256</text>
+                <text x="437" y="150" fill="#fdf2f8" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">2^(4/16) = 304</text>
+                <text x="437" y="180" fill="#fdf2f8" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">2^(8/16) = 362</text>
+                <text x="437" y="210" fill="#fdf2f8" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">2^(12/16) = 431</text>
+                <text x="437" y="240" fill="#fdf2f8" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">2^(15/16) = 491</text>
+
+                <!-- Stage 4: Barrel Shifter & Clamp -->
+                <rect x="540" y="0" width="155" height="320" rx="6" fill="#0f172a" stroke="#22c55e" />
+                <rect x="540" y="0" width="155" height="30" rx="6" fill="#15803d" />
+                <text x="617" y="20" fill="#ffffff" font-size="11" font-weight="700" text-anchor="middle">4. Barrel Shifter</text>
+                <text x="617" y="65" fill="#bbf7d0" font-size="10" text-anchor="middle">2^F &lt;&lt; I (or &gt;&gt; -I)</text>
+                <rect x="555" y="85" width="125" height="210" rx="5" fill="#064e3b" />
+                <text x="617" y="120" fill="#d1fae5" font-size="10" text-anchor="middle">Dynamic Shift</text>
+                <text x="617" y="160" fill="#6ee7b7" font-size="10" text-anchor="middle">Outputs Q8.8</text>
+                <text x="617" y="200" fill="#a7f3d0" font-size="10" text-anchor="middle">Saturates at</text>
+                <text x="617" y="230" fill="#34d399" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">16'hFFFF (255.9)</text>
+            </g>
+        </g>
+    </g>
+
+    <!-- External Ports -->
+    <g class="port-group" transform="translate(30, 220)">
+        <rect x="0" y="0" width="120" height="36" rx="6" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5" />
+        <text x="60" y="23" fill="#38bdf8" font-size="12" font-weight="700" text-anchor="middle">x_in [7:0] Q4.4</text>
+        <path d="M 120 18 L 180 18" class="net-bus" marker-end="url(#bus-arrow)" />
+    </g>
+    
+    <g class="port-group" transform="translate(30, 300)">
+        <rect x="0" y="0" width="100" height="30" rx="4" fill="#1f1a10" stroke="#f59e0b" />
+        <text x="50" y="19" fill="#f59e0b" font-size="11" font-weight="600" text-anchor="middle">mode_e</text>
+        <path d="M 100 15 L 180 15" class="net-control" />
+    </g>
+    
+    <g class="port-group" transform="translate(980, 240)">
+        <path d="M -40 18 L 0 18" class="net-bus" marker-end="url(#bus-arrow)" />
+        <rect x="0" y="0" width="130" height="36" rx="6" fill="#1e293b" stroke="#4ade80" stroke-width="1.5" />
+        <text x="65" y="23" fill="#4ade80" font-size="12" font-weight="700" text-anchor="middle">y_out [15:0] Q8.8</text>
+    </g>
+    
+    <g class="port-group" transform="translate(980, 320)">
+        <path d="M -40 18 L 0 18" class="net-wire" />
+        <rect x="0" y="0" width="110" height="30" rx="4" fill="#1e293b" stroke="#f43f5e" />
+        <text x="55" y="19" fill="#f43f5e" font-size="11" font-weight="600" text-anchor="middle">overflow</text>
+    </g>
+    """)
+
+    svg.append(create_hud_dashboard(
+        x=40, y=590, total_width=1120,
+        dff_text="0 DFFs (Pure Combinational)",
+        gates_text="O(1) (~340 Gates: log2(e) + 16-LUT + Shifter)",
+        latency_text="0 Cycles (~3.2 ns Critical Path)",
+        extra_text="SwiGLU &amp; SiLU Activation SFU (Q8.8 Output)",
+        extra_label="🎯 ACTIVATION SFU"
+    ))
 
     svg.append(create_svg_footer())
     save_and_validate_svg("\n".join(svg), out_path)
@@ -1334,10 +1520,6 @@ def generate_softmax_svg(out_path):
 def generate_generic_svg(module_name, out_path):
     if module_name == "adder":
         generate_adder_svg(out_path)
-    elif module_name == "sqrt":
-        generate_sqrt_svg(out_path)
-    elif module_name == "softmax":
-        generate_softmax_svg(out_path)
     elif module_name == "multiplier_int8":
         generate_multiplier_svg(out_path)
     elif module_name == "mac_unit":
@@ -1346,6 +1528,14 @@ def generate_generic_svg(module_name, out_path):
         generate_pe_svg(out_path)
     elif module_name == "systolic_array":
         generate_systolic_array_svg(out_path)
+    elif module_name == "sqrt":
+        generate_sqrt_svg(out_path)
+    elif module_name == "softmax":
+        generate_softmax_svg(out_path)
+    elif module_name == "rsqrt":
+        generate_rsqrt_svg(out_path)
+    elif module_name == "exp2_sfu":
+        generate_exp2_sfu_svg(out_path)
 
 # ==============================================================================
 # MAIN ENTRYPOINT
@@ -1356,7 +1546,7 @@ def generate_all_schematics(out_dir="schematics"):
     target_dir.mkdir(parents=True, exist_ok=True)
 
     print("\n=======================================================")
-    print("🎨 GENERATING INTERACTIVE COLLAPSIBLE HARDWARE SCHEMATICS")
+    print("🎨 GENERATING INTERACTIVE HARDWARE SCHEMATICS WITH HUD")
     print("=======================================================\n")
 
     generate_adder_svg(target_dir / "adder.svg")
@@ -1366,10 +1556,11 @@ def generate_all_schematics(out_dir="schematics"):
     generate_systolic_array_svg(target_dir / "systolic_array.svg")
     generate_sqrt_svg(target_dir / "sqrt.svg")
     generate_softmax_svg(target_dir / "softmax.svg")
+    generate_rsqrt_svg(target_dir / "rsqrt.svg")
+    generate_exp2_sfu_svg(target_dir / "exp2_sfu.svg")
 
-    print("\n✨ All interactive collapsible SVGs successfully generated and XML-validated in:", target_dir)
+    print("\n✨ All 9 interactive SVGs successfully generated and XML-validated in:", target_dir)
 
 if __name__ == "__main__":
     out = sys.argv[1] if len(sys.argv) > 1 else "schematics"
     generate_all_schematics(out)
-

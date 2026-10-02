@@ -439,20 +439,21 @@
         <div class="header-actions">
             <select class="lab-picker" id="labPicker" onchange="jumpSlide(this.value)">
                 <option value="0">Curriculum Overview</option>
-                <option value="1">Lab 00: Parameterized Signed Adder & Saturation</option>
-                <option value="3">Lab 01: Parameterized INT8 Signed Multiplier</option>
-                <option value="4">Lab 02: Pipelined MAC Unit & Accumulator Sizing</option>
-                <option value="5">Lab 03: Weight-Stationary Processing Element (PE)</option>
-                <option value="6">Lab 04: 2D Systolic Matrix Multiplier (4x4 Mesh)</option>
-                <option value="7">Lab 05: Hardware Square Root (Attention Scaling)</option>
-                <option value="8">Lab 06: Hardware Safe Softmax (FlashAttention)</option>
-                <option value="9">Lab 07: Fast Reciprocal Square Root (rsqrt)</option>
-                <option value="10">Lab 08: Hardware Exponential SFU (SwiGLU)</option>
-                <option value="11">Synthesis & Verification Summary</option>
+                <option value="1">Lab 00-Prep: Hardware Thinking Primer (Software vs Silicon)</option>
+                <option value="2">Lab 00: Parameterized Signed Adder & Saturation</option>
+                <option value="4">Lab 01: Parameterized INT8 Signed Multiplier</option>
+                <option value="5">Lab 02: Pipelined MAC Unit & Accumulator Sizing</option>
+                <option value="6">Lab 03: Weight-Stationary Processing Element (PE)</option>
+                <option value="7">Lab 04: 2D Systolic Matrix Multiplier (4x4 Mesh)</option>
+                <option value="8">Lab 05: Hardware Square Root (Attention Scaling)</option>
+                <option value="9">Lab 06: Hardware Safe Softmax (FlashAttention)</option>
+                <option value="10">Lab 07: Fast Reciprocal Square Root (rsqrt)</option>
+                <option value="11">Lab 08: Hardware Exponential SFU (SwiGLU)</option>
+                <option value="12">Synthesis & Verification Summary</option>
             </select>
 
-            <a href="Hardware_AI_Acceleration_Master_Slides.pptx" download class="btn btn-primary">
-                📥 Download Master PPTX
+            <a href="../labs/slides/lab00_prep_hardware_thinking_primer.md" class="btn btn-primary">
+                📖 View Lab Guides
             </a>
         </div>
     </header>
@@ -500,16 +501,58 @@
                     </div>
 
                     <div class="bento-card" style="grid-column: span 4;">
-                        <div class="bento-title">📦 Downloadable Presentations</div>
-                        <p style="font-size:0.8rem; color:#94a3b8; margin-bottom:8px;">Ready-to-present widescreen PowerPoint decks:</p>
+                        <div class="bento-title">📖 Lab Markdown Guides</div>
+                        <p style="font-size:0.8rem; color:#94a3b8; margin-bottom:8px;">Camera-ready markdown notes in <code>labs/slides/</code>:</p>
                         <div style="display:flex; flex-direction:column; gap:6px;">
-                            <a href="Hardware_AI_Acceleration_Master_Slides.pptx" download class="btn btn-primary" style="justify-content:center;">📥 Master Deck (All 9 Labs)</a>
-                            <a href="Lab04_Systolic_Matrix_Multiplier.pptx" download class="btn" style="justify-content:center;">📥 Lab 04 Systolic Array Deck</a>
+                            <a href="../labs/slides/lab00_prep_hardware_thinking_primer.md" class="btn btn-primary" style="justify-content:center;">🚀 Lab 00-Prep Primer</a>
+                            <a href="../labs/slides/lab04_systolic_array_slides.md" class="btn" style="justify-content:center;">⚡ Lab 04 Systolic Array Guide</a>
                         </div>
                     </div>
                 `
             },
-            // Slide 1: Lab 00 Theory
+            // Slide 1: Lab 00-Prep Hardware Thinking Primer
+            {
+                pill: "Lab 00-Prep | Hardware Primer",
+                title: "Hardware Thinking Primer for Software & AI Engineers",
+                subtitle: "Bridging the mental gap: Sequential CPU instructions vs. Concurrent Silicon Gates",
+                bento: `
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-rose);">
+                        <div class="stat-val" style="color: var(--accent-rose);">Sequential</div>
+                        <div class="stat-lbl">CPU Program Counter</div>
+                    </div>
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-emerald);">
+                        <div class="stat-val" style="color: var(--accent-emerald);">Concurrent</div>
+                        <div class="stat-lbl">Silicon Gates (Live)</div>
+                    </div>
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-cyan);">
+                        <div class="stat-val" style="color: var(--accent-cyan);">D-Flip-Flop</div>
+                        <div class="stat-lbl">Sequential State Clock</div>
+                    </div>
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-amber);">
+                        <div class="stat-val" style="color: var(--accent-amber);">= vs &lt;=</div>
+                        <div class="stat-lbl">Blocking vs Non-Blocking</div>
+                    </div>
+
+                    <div class="bento-card" style="grid-column: span 6;">
+                        <div class="bento-title">🧠 1. The Core Mental Shift: Wires vs Variables</div>
+                        <ul class="bento-list">
+                            <li><strong>Continuous Voltage:</strong> Logic gates don't "wait to be called" — they evaluate continuously as input pins change.</li>
+                            <li><strong>Loops in Silicon:</strong> A loop in software takes \\(N\\) cycles; in hardware it unrolls into \\(N\\) physical parallel modules!</li>
+                            <li><strong>The D-Flip-Flop:</strong> Acts like a camera shutter — captures input \\(D\\) on \\(\\uparrow\\text{posedge clk}\\) and holds output \\(Q\\) stable for 1 cycle.</li>
+                        </ul>
+                    </div>
+
+                    <div class="bento-card" style="grid-column: span 6;">
+                        <div class="bento-title">📐 2. Two's Complement &amp; Fixed-Point Q-Format</div>
+                        <ul class="bento-list">
+                            <li><strong>INT8 Range \\([-128, +127]\\):</strong> Bit 7 has weight \\(-128\\). Notice \\(+128\\) does NOT exist in 8-bit signed!</li>
+                            <li><strong>Q4.4 Format:</strong> 4 integer bits + 4 fractional bits (1/2, 1/4, 1/8, 1/16). Integer \\(24_{10} = 1.5\\).</li>
+                            <li><strong>The Golden Rule:</strong> Use <code>=</code> only in <code>always_comb</code>, and <code>&lt;=</code> only in <code>always_ff</code>.</li>
+                        </ul>
+                    </div>
+                `
+            },
+            // Slide 2: Lab 00 Theory
             {
                 pill: "Lab 00 | Core Arithmetic",
                 title: "Parameterized Signed Adder & Saturation Arithmetic",

@@ -19,6 +19,8 @@ __pycache__/
 *.wlf
 *.dot
 
+media/
+
 # Cocotb Simulator Build Artifacts & Test Logs
 sim/sim_build_*/
 sim/results.xml

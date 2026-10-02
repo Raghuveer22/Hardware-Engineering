@@ -1,9 +1,6 @@
 # AI Hardware Tensor Engine & Pre-Silicon Emulation Platform
 
-**🪝 YouTube Hook:** *"Ever wondered how chips like Google's TPU or NVIDIA's GPUs actually process AI models? Today, we're building a complete AI hardware accelerator from scratch, taking you from software algorithms down to silicon gates!"*
-
-
-A 100% free, open-source hardware/software co-design & emulation environment for AI tensor compute engines and LLM Transformer acceleration.
+An open-source hardware/software co-design & emulation environment for AI tensor compute engines, systolic arrays, and LLM Transformer acceleration from mathematical algorithms down to synthesizable silicon gates.
 
 ---
 
@@ -46,19 +43,20 @@ For large context windows (e.g. **1 Million Tokens**):
 
 ---
 
-## 🔬 Hands-On AI Hardware Curriculum (Labs 00 - 08)
+## 🔬 Hands-On AI Hardware Curriculum (Labs 00-Prep - 08)
 
-| Lab | Module | SystemVerilog RTL | Cocotb Verification | Guide | Gate Complexity |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Lab 00** | Parameterized Signed Adder | [`rtl/adder.sv`](rtl/adder.sv) | [`labs/test_adder.py`](labs/test_adder.py) | [Lab 00 Guide](labs/slides/lab00_adder_slides.md) | **$O(N)$ Linear** (~42 gates) |
-| **Lab 01** | Signed Multiplier (INT8) | [`rtl/multiplier_int8.sv`](rtl/multiplier_int8.sv) | [`labs/test_multiplier.py`](labs/test_multiplier.py) | [Lab 01 Guide](labs/slides/lab01_multiplier_slides.md) | **$O(N^2)$ Quadratic** (~456 gates) |
-| **Lab 02** | Multiply-Accumulate (MAC) | [`rtl/mac_unit.sv`](rtl/mac_unit.sv) | [`labs/test_mac.py`](labs/test_mac.py) | [Lab 02 Guide](labs/slides/lab02_mac_unit_slides.md) | Sign-Extension (16b ➔ 32b) |
-| **Lab 03** | Processing Element (PE) | [`rtl/pe.sv`](rtl/pe.sv) | [`tests/test_pe.py`](tests/test_pe.py) | [Lab 03 Guide](labs/slides/lab03_processing_element_slides.md) | 48 D-Flip-Flop Registers |
-| **Lab 04** | 2D Systolic Matrix Array | [`rtl/systolic_array.sv`](rtl/systolic_array.sv) | [`tests/test_systolic_array.py`](tests/test_systolic_array.py) | [Lab 04 Guide](labs/slides/lab04_systolic_array_slides.md) | 4x4 Grid (816 Registers) |
-| **Lab 05** | Square Root Unit | [`rtl/sqrt.sv`](rtl/sqrt.sv) | [`labs/test_sqrt.py`](labs/test_sqrt.py) | [Lab 05 Guide](labs/slides/lab05_sqrt_slides.md) | Attention Scaling ($1/\sqrt{d_k}$) |
-| **Lab 06** | Safe Softmax Engine | [`rtl/softmax.sv`](rtl/softmax.sv) | [`labs/test_softmax.py`](labs/test_softmax.py) | [Lab 06 Guide](labs/slides/lab06_softmax_slides.md) | FlashAttention & LUT Exponentials |
-| **Lab 07** | Reciprocal Sqrt (`rsqrt`) | [`rtl/rsqrt.sv`](rtl/rsqrt.sv) | [`labs/test_rsqrt.py`](labs/test_rsqrt.py) | [Lab 07 Guide](labs/slides/lab07_rsqrt_slides.md) | RMSNorm & LayerNorm SFU |
-| **Lab 08** | Exponential SFU ($2^x / e^x$) | [`rtl/exp2_sfu.sv`](rtl/exp2_sfu.sv) | [`labs/test_exp2_sfu.py`](labs/test_exp2_sfu.py) | [Lab 08 Guide](labs/slides/lab08_exponential_sfu_slides.md) | Base-2 Scaler for SwiGLU / SiLU |
+| Lab | Module | SystemVerilog RTL | Cocotb Verification | Guide | Video Animation | Gate Complexity |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Lab 00-Prep** | Hardware Thinking Primer | *Conceptual & Q-Format* | *Cocotb Setup* | [Lab 00-Prep Guide](labs/slides/lab00_prep_hardware_thinking_primer.md) | [🎬 Video](media/videos/scene_lab00_prep/720p30/Lab00PrepPrimer.mp4) | Software vs. Silicon Mindset |
+| **Lab 00** | Parameterized Signed Adder | [`rtl/adder.sv`](rtl/adder.sv) | [`labs/test_adder.py`](labs/test_adder.py) | [Lab 00 Guide](labs/slides/lab00_adder_slides.md) | [🎬 Video](media/videos/scene_lab00_saturation/720p30/Lab00SaturationIntro.mp4) | **$O(N)$ Linear** (~42 gates) |
+| **Lab 01** | Signed Multiplier (INT8) | [`rtl/multiplier_int8.sv`](rtl/multiplier_int8.sv) | [`labs/test_multiplier.py`](labs/test_multiplier.py) | [Lab 01 Guide](labs/slides/lab01_multiplier_slides.md) | [🎬 Video](media/videos/scene_lab01_multiplier/720p30/Lab01Multiplier.mp4) | **$O(N^2)$ Quadratic** (~456 gates) |
+| **Lab 02** | Multiply-Accumulate (MAC) | [`rtl/mac_unit.sv`](rtl/mac_unit.sv) | [`labs/test_mac.py`](labs/test_mac.py) | [Lab 02 Guide](labs/slides/lab02_mac_unit_slides.md) | [🎬 Video](media/videos/scene_lab02_mac_unit/720p30/Lab02MACUnit.mp4) | Sign-Extension (16b ➔ 32b) |
+| **Lab 03** | Processing Element (PE) | [`rtl/pe.sv`](rtl/pe.sv) | [`tests/test_pe.py`](tests/test_pe.py) | [Lab 03 Guide](labs/slides/lab03_processing_element_slides.md) | [🎬 Video](media/videos/scene_lab03_pe/720p30/Lab03ProcessingElement.mp4) | 48 D-Flip-Flop Registers |
+| **Lab 04** | 2D Systolic Matrix Array | [`rtl/systolic_array.sv`](rtl/systolic_array.sv) | [`tests/test_systolic_array.py`](tests/test_systolic_array.py) | [Lab 04 Guide](labs/slides/lab04_systolic_array_slides.md) | [🎬 Video](media/videos/scene_lab04_systolic_array/720p30/Lab04SystolicArray.mp4) | 4x4 Grid (816 Registers) |
+| **Lab 05** | Square Root Unit | [`rtl/sqrt.sv`](rtl/sqrt.sv) | [`labs/test_sqrt.py`](labs/test_sqrt.py) | [Lab 05 Guide](labs/slides/lab05_sqrt_slides.md) | [🎬 Video](media/videos/scene_lab05_sqrt/720p30/Lab05SquareRoot.mp4) | Attention Scaling ($1/\sqrt{d_k}$) |
+| **Lab 06** | Safe Softmax Engine | [`rtl/softmax.sv`](rtl/softmax.sv) | [`labs/test_softmax.py`](labs/test_softmax.py) | [Lab 06 Guide](labs/slides/lab06_softmax_slides.md) | [🎬 Video](media/videos/scene_lab06_softmax/720p30/Lab06Softmax.mp4) | FlashAttention & LUT Exponentials |
+| **Lab 07** | Reciprocal Sqrt (`rsqrt`) | [`rtl/rsqrt.sv`](rtl/rsqrt.sv) | [`labs/test_rsqrt.py`](labs/test_rsqrt.py) | [Lab 07 Guide](labs/slides/lab07_rsqrt_slides.md) | [🎬 Video](media/videos/scene_lab07_rsqrt/720p30/Lab07RSQRT.mp4) | RMSNorm & LayerNorm SFU |
+| **Lab 08** | Exponential SFU ($2^x / e^x$) | [`rtl/exp2_sfu.sv`](rtl/exp2_sfu.sv) | [`labs/test_exp2_sfu.py`](labs/test_exp2_sfu.py) | [Lab 08 Guide](labs/slides/lab08_exponential_sfu_slides.md) | [🎬 Video](media/videos/scene_lab08_exp2_sfu/720p30/Lab08ExponentialSFU.mp4) | Base-2 Scaler for SwiGLU / SiLU |
 
 ---
 

@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1800 1500" width="100%" height="100%" class="schematic-canvas" id="schematic-svg" data-title="systolic_array - 4x4 Weight-Stationary Matrix Multiplier">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1800 1600" width="100%" height="100%" class="schematic-canvas" id="schematic-svg" data-title="systolic_array - 4x4 Weight-Stationary Matrix Multiplier">
 <defs>
     <style><![CDATA[
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap');
@@ -123,20 +123,15 @@
             fill: var(--highlight);
         }
         
-        /* Tooltip */
-        #svg-tooltip {
-            position: absolute;
-            display: none;
-            background: rgba(17, 24, 39, 0.95);
-            color: #fff;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-family: 'JetBrains Mono', monospace;
-            border: 1px solid #38bdf8;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            pointer-events: none;
-            z-index: 1000;
+        /* Dashboard Card Styling */
+        .hud-card {
+            filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.4));
+        }
+        .hud-card-rect {
+            transition: stroke 0.2s ease, fill 0.2s ease;
+        }
+        .hud-card:hover .hud-card-rect {
+            stroke: var(--accent);
         }
         
         /* Toolbar inside SVG */
@@ -161,6 +156,11 @@
         <stop offset="100%" stop-color="#04070c" />
     </linearGradient>
     
+    <linearGradient id="hudGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#141c2b" />
+        <stop offset="100%" stop-color="#0c1320" />
+    </linearGradient>
+
     <linearGradient id="peGrad" x1="0%" y1="0%" x2="0%" y2="100%">
         <stop offset="0%" stop-color="#1e293b" />
         <stop offset="100%" stop-color="#0f172a" />
@@ -211,7 +211,7 @@
 
 
     <g transform="translate(50, 75)">
-        <text x="0" y="0" fill="#f8fafc" font-size="24" font-weight="700">🔬 MODULE: systolic_array (4x4 2D Grid)</text>
+        <text x="0" y="0" fill="#f8fafc" font-size="24" font-weight="700">🔬 MODULE: systolic_array (4x4 2D Grid - Lab 04)</text>
         <text x="0" y="26" fill="#94a3b8" font-size="14">Parameterized 2D Systolic Tensor Core: 16 Processing Elements with Skew Pipelines</text>
         <text x="0" y="48" fill="#38bdf8" font-size="12">💡 Interactive: Click on ANY PE Cell to expand its internal architecture in-place!</text>
     </g>
@@ -382,21 +382,17 @@
                 
                 <!-- EXPANDED VIEW -->
                 <g class="expanded-only" transform="translate(8, 38)">
-                    <!-- Mini Weight Reg -->
                     <rect x="8" y="8" width="85" height="40" rx="4" fill="#365314" stroke="#84cc16" />
                     <text x="50" y="32" fill="#d9f99d" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">W_reg [7:0]</text>
                     
-                    <!-- Mini Activation Reg -->
                     <rect x="8" y="58" width="85" height="40" rx="4" fill="#0c4a6e" stroke="#38bdf8" />
                     <text x="50" y="82" fill="#bae6fd" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">A_reg [7:0]</text>
                     
-                    <!-- Mini MAC Arithmetic Unit -->
                     <rect x="105" y="8" width="110" height="90" rx="5" fill="#3b0764" stroke="#c084fc" />
                     <text x="160" y="32" fill="#fae8ff" font-size="11" font-weight="700" text-anchor="middle">u_mac</text>
                     <text x="160" y="52" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">Mult 8x8</text>
                     <text x="160" y="72" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">+ Acc 32b</text>
                     
-                    <!-- Mini Sum Reg -->
                     <rect x="105" y="108" width="110" height="40" rx="4" fill="#064e3b" stroke="#34d399" />
                     <text x="160" y="132" fill="#d1fae5" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">Sum_reg [31:0]</text>
                 </g>
@@ -447,21 +443,17 @@
                 
                 <!-- EXPANDED VIEW -->
                 <g class="expanded-only" transform="translate(8, 38)">
-                    <!-- Mini Weight Reg -->
                     <rect x="8" y="8" width="85" height="40" rx="4" fill="#365314" stroke="#84cc16" />
                     <text x="50" y="32" fill="#d9f99d" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">W_reg [7:0]</text>
                     
-                    <!-- Mini Activation Reg -->
                     <rect x="8" y="58" width="85" height="40" rx="4" fill="#0c4a6e" stroke="#38bdf8" />
                     <text x="50" y="82" fill="#bae6fd" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">A_reg [7:0]</text>
                     
-                    <!-- Mini MAC Arithmetic Unit -->
                     <rect x="105" y="8" width="110" height="90" rx="5" fill="#3b0764" stroke="#c084fc" />
                     <text x="160" y="32" fill="#fae8ff" font-size="11" font-weight="700" text-anchor="middle">u_mac</text>
                     <text x="160" y="52" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">Mult 8x8</text>
                     <text x="160" y="72" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">+ Acc 32b</text>
                     
-                    <!-- Mini Sum Reg -->
                     <rect x="105" y="108" width="110" height="40" rx="4" fill="#064e3b" stroke="#34d399" />
                     <text x="160" y="132" fill="#d1fae5" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">Sum_reg [31:0]</text>
                 </g>
@@ -512,21 +504,17 @@
                 
                 <!-- EXPANDED VIEW -->
                 <g class="expanded-only" transform="translate(8, 38)">
-                    <!-- Mini Weight Reg -->
                     <rect x="8" y="8" width="85" height="40" rx="4" fill="#365314" stroke="#84cc16" />
                     <text x="50" y="32" fill="#d9f99d" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">W_reg [7:0]</text>
                     
-                    <!-- Mini Activation Reg -->
                     <rect x="8" y="58" width="85" height="40" rx="4" fill="#0c4a6e" stroke="#38bdf8" />
                     <text x="50" y="82" fill="#bae6fd" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">A_reg [7:0]</text>
                     
-                    <!-- Mini MAC Arithmetic Unit -->
                     <rect x="105" y="8" width="110" height="90" rx="5" fill="#3b0764" stroke="#c084fc" />
                     <text x="160" y="32" fill="#fae8ff" font-size="11" font-weight="700" text-anchor="middle">u_mac</text>
                     <text x="160" y="52" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">Mult 8x8</text>
                     <text x="160" y="72" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">+ Acc 32b</text>
                     
-                    <!-- Mini Sum Reg -->
                     <rect x="105" y="108" width="110" height="40" rx="4" fill="#064e3b" stroke="#34d399" />
                     <text x="160" y="132" fill="#d1fae5" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">Sum_reg [31:0]</text>
                 </g>
@@ -577,21 +565,17 @@
                 
                 <!-- EXPANDED VIEW -->
                 <g class="expanded-only" transform="translate(8, 38)">
-                    <!-- Mini Weight Reg -->
                     <rect x="8" y="8" width="85" height="40" rx="4" fill="#365314" stroke="#84cc16" />
                     <text x="50" y="32" fill="#d9f99d" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">W_reg [7:0]</text>
                     
-                    <!-- Mini Activation Reg -->
                     <rect x="8" y="58" width="85" height="40" rx="4" fill="#0c4a6e" stroke="#38bdf8" />
                     <text x="50" y="82" fill="#bae6fd" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">A_reg [7:0]</text>
                     
-                    <!-- Mini MAC Arithmetic Unit -->
                     <rect x="105" y="8" width="110" height="90" rx="5" fill="#3b0764" stroke="#c084fc" />
                     <text x="160" y="32" fill="#fae8ff" font-size="11" font-weight="700" text-anchor="middle">u_mac</text>
                     <text x="160" y="52" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">Mult 8x8</text>
                     <text x="160" y="72" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">+ Acc 32b</text>
                     
-                    <!-- Mini Sum Reg -->
                     <rect x="105" y="108" width="110" height="40" rx="4" fill="#064e3b" stroke="#34d399" />
                     <text x="160" y="132" fill="#d1fae5" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">Sum_reg [31:0]</text>
                 </g>
@@ -644,21 +628,17 @@
                 
                 <!-- EXPANDED VIEW -->
                 <g class="expanded-only" transform="translate(8, 38)">
-                    <!-- Mini Weight Reg -->
                     <rect x="8" y="8" width="85" height="40" rx="4" fill="#365314" stroke="#84cc16" />
                     <text x="50" y="32" fill="#d9f99d" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">W_reg [7:0]</text>
                     
-                    <!-- Mini Activation Reg -->
                     <rect x="8" y="58" width="85" height="40" rx="4" fill="#0c4a6e" stroke="#38bdf8" />
                     <text x="50" y="82" fill="#bae6fd" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">A_reg [7:0]</text>
                     
-                    <!-- Mini MAC Arithmetic Unit -->
                     <rect x="105" y="8" width="110" height="90" rx="5" fill="#3b0764" stroke="#c084fc" />
                     <text x="160" y="32" fill="#fae8ff" font-size="11" font-weight="700" text-anchor="middle">u_mac</text>
                     <text x="160" y="52" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">Mult 8x8</text>
                     <text x="160" y="72" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">+ Acc 32b</text>
                     
-                    <!-- Mini Sum Reg -->
                     <rect x="105" y="108" width="110" height="40" rx="4" fill="#064e3b" stroke="#34d399" />
                     <text x="160" y="132" fill="#d1fae5" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">Sum_reg [31:0]</text>
                 </g>
@@ -700,21 +680,17 @@
                 
                 <!-- EXPANDED VIEW -->
                 <g class="expanded-only" transform="translate(8, 38)">
-                    <!-- Mini Weight Reg -->
                     <rect x="8" y="8" width="85" height="40" rx="4" fill="#365314" stroke="#84cc16" />
                     <text x="50" y="32" fill="#d9f99d" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">W_reg [7:0]</text>
                     
-                    <!-- Mini Activation Reg -->
                     <rect x="8" y="58" width="85" height="40" rx="4" fill="#0c4a6e" stroke="#38bdf8" />
                     <text x="50" y="82" fill="#bae6fd" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">A_reg [7:0]</text>
                     
-                    <!-- Mini MAC Arithmetic Unit -->
                     <rect x="105" y="8" width="110" height="90" rx="5" fill="#3b0764" stroke="#c084fc" />
                     <text x="160" y="32" fill="#fae8ff" font-size="11" font-weight="700" text-anchor="middle">u_mac</text>
                     <text x="160" y="52" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">Mult 8x8</text>
                     <text x="160" y="72" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">+ Acc 32b</text>
                     
-                    <!-- Mini Sum Reg -->
                     <rect x="105" y="108" width="110" height="40" rx="4" fill="#064e3b" stroke="#34d399" />
                     <text x="160" y="132" fill="#d1fae5" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">Sum_reg [31:0]</text>
                 </g>
@@ -756,21 +732,17 @@
                 
                 <!-- EXPANDED VIEW -->
                 <g class="expanded-only" transform="translate(8, 38)">
-                    <!-- Mini Weight Reg -->
                     <rect x="8" y="8" width="85" height="40" rx="4" fill="#365314" stroke="#84cc16" />
                     <text x="50" y="32" fill="#d9f99d" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">W_reg [7:0]</text>
                     
-                    <!-- Mini Activation Reg -->
                     <rect x="8" y="58" width="85" height="40" rx="4" fill="#0c4a6e" stroke="#38bdf8" />
                     <text x="50" y="82" fill="#bae6fd" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">A_reg [7:0]</text>
                     
-                    <!-- Mini MAC Arithmetic Unit -->
                     <rect x="105" y="8" width="110" height="90" rx="5" fill="#3b0764" stroke="#c084fc" />
                     <text x="160" y="32" fill="#fae8ff" font-size="11" font-weight="700" text-anchor="middle">u_mac</text>
                     <text x="160" y="52" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">Mult 8x8</text>
                     <text x="160" y="72" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">+ Acc 32b</text>
                     
-                    <!-- Mini Sum Reg -->
                     <rect x="105" y="108" width="110" height="40" rx="4" fill="#064e3b" stroke="#34d399" />
                     <text x="160" y="132" fill="#d1fae5" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">Sum_reg [31:0]</text>
                 </g>
@@ -812,21 +784,17 @@
                 
                 <!-- EXPANDED VIEW -->
                 <g class="expanded-only" transform="translate(8, 38)">
-                    <!-- Mini Weight Reg -->
                     <rect x="8" y="8" width="85" height="40" rx="4" fill="#365314" stroke="#84cc16" />
                     <text x="50" y="32" fill="#d9f99d" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">W_reg [7:0]</text>
                     
-                    <!-- Mini Activation Reg -->
                     <rect x="8" y="58" width="85" height="40" rx="4" fill="#0c4a6e" stroke="#38bdf8" />
                     <text x="50" y="82" fill="#bae6fd" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">A_reg [7:0]</text>
                     
-                    <!-- Mini MAC Arithmetic Unit -->
                     <rect x="105" y="8" width="110" height="90" rx="5" fill="#3b0764" stroke="#c084fc" />
                     <text x="160" y="32" fill="#fae8ff" font-size="11" font-weight="700" text-anchor="middle">u_mac</text>
                     <text x="160" y="52" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">Mult 8x8</text>
                     <text x="160" y="72" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">+ Acc 32b</text>
                     
-                    <!-- Mini Sum Reg -->
                     <rect x="105" y="108" width="110" height="40" rx="4" fill="#064e3b" stroke="#34d399" />
                     <text x="160" y="132" fill="#d1fae5" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">Sum_reg [31:0]</text>
                 </g>
@@ -870,21 +838,17 @@
                 
                 <!-- EXPANDED VIEW -->
                 <g class="expanded-only" transform="translate(8, 38)">
-                    <!-- Mini Weight Reg -->
                     <rect x="8" y="8" width="85" height="40" rx="4" fill="#365314" stroke="#84cc16" />
                     <text x="50" y="32" fill="#d9f99d" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">W_reg [7:0]</text>
                     
-                    <!-- Mini Activation Reg -->
                     <rect x="8" y="58" width="85" height="40" rx="4" fill="#0c4a6e" stroke="#38bdf8" />
                     <text x="50" y="82" fill="#bae6fd" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">A_reg [7:0]</text>
                     
-                    <!-- Mini MAC Arithmetic Unit -->
                     <rect x="105" y="8" width="110" height="90" rx="5" fill="#3b0764" stroke="#c084fc" />
                     <text x="160" y="32" fill="#fae8ff" font-size="11" font-weight="700" text-anchor="middle">u_mac</text>
                     <text x="160" y="52" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">Mult 8x8</text>
                     <text x="160" y="72" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">+ Acc 32b</text>
                     
-                    <!-- Mini Sum Reg -->
                     <rect x="105" y="108" width="110" height="40" rx="4" fill="#064e3b" stroke="#34d399" />
                     <text x="160" y="132" fill="#d1fae5" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">Sum_reg [31:0]</text>
                 </g>
@@ -926,21 +890,17 @@
                 
                 <!-- EXPANDED VIEW -->
                 <g class="expanded-only" transform="translate(8, 38)">
-                    <!-- Mini Weight Reg -->
                     <rect x="8" y="8" width="85" height="40" rx="4" fill="#365314" stroke="#84cc16" />
                     <text x="50" y="32" fill="#d9f99d" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">W_reg [7:0]</text>
                     
-                    <!-- Mini Activation Reg -->
                     <rect x="8" y="58" width="85" height="40" rx="4" fill="#0c4a6e" stroke="#38bdf8" />
                     <text x="50" y="82" fill="#bae6fd" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">A_reg [7:0]</text>
                     
-                    <!-- Mini MAC Arithmetic Unit -->
                     <rect x="105" y="8" width="110" height="90" rx="5" fill="#3b0764" stroke="#c084fc" />
                     <text x="160" y="32" fill="#fae8ff" font-size="11" font-weight="700" text-anchor="middle">u_mac</text>
                     <text x="160" y="52" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">Mult 8x8</text>
                     <text x="160" y="72" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">+ Acc 32b</text>
                     
-                    <!-- Mini Sum Reg -->
                     <rect x="105" y="108" width="110" height="40" rx="4" fill="#064e3b" stroke="#34d399" />
                     <text x="160" y="132" fill="#d1fae5" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">Sum_reg [31:0]</text>
                 </g>
@@ -982,21 +942,17 @@
                 
                 <!-- EXPANDED VIEW -->
                 <g class="expanded-only" transform="translate(8, 38)">
-                    <!-- Mini Weight Reg -->
                     <rect x="8" y="8" width="85" height="40" rx="4" fill="#365314" stroke="#84cc16" />
                     <text x="50" y="32" fill="#d9f99d" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">W_reg [7:0]</text>
                     
-                    <!-- Mini Activation Reg -->
                     <rect x="8" y="58" width="85" height="40" rx="4" fill="#0c4a6e" stroke="#38bdf8" />
                     <text x="50" y="82" fill="#bae6fd" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">A_reg [7:0]</text>
                     
-                    <!-- Mini MAC Arithmetic Unit -->
                     <rect x="105" y="8" width="110" height="90" rx="5" fill="#3b0764" stroke="#c084fc" />
                     <text x="160" y="32" fill="#fae8ff" font-size="11" font-weight="700" text-anchor="middle">u_mac</text>
                     <text x="160" y="52" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">Mult 8x8</text>
                     <text x="160" y="72" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">+ Acc 32b</text>
                     
-                    <!-- Mini Sum Reg -->
                     <rect x="105" y="108" width="110" height="40" rx="4" fill="#064e3b" stroke="#34d399" />
                     <text x="160" y="132" fill="#d1fae5" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">Sum_reg [31:0]</text>
                 </g>
@@ -1038,21 +994,17 @@
                 
                 <!-- EXPANDED VIEW -->
                 <g class="expanded-only" transform="translate(8, 38)">
-                    <!-- Mini Weight Reg -->
                     <rect x="8" y="8" width="85" height="40" rx="4" fill="#365314" stroke="#84cc16" />
                     <text x="50" y="32" fill="#d9f99d" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">W_reg [7:0]</text>
                     
-                    <!-- Mini Activation Reg -->
                     <rect x="8" y="58" width="85" height="40" rx="4" fill="#0c4a6e" stroke="#38bdf8" />
                     <text x="50" y="82" fill="#bae6fd" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">A_reg [7:0]</text>
                     
-                    <!-- Mini MAC Arithmetic Unit -->
                     <rect x="105" y="8" width="110" height="90" rx="5" fill="#3b0764" stroke="#c084fc" />
                     <text x="160" y="32" fill="#fae8ff" font-size="11" font-weight="700" text-anchor="middle">u_mac</text>
                     <text x="160" y="52" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">Mult 8x8</text>
                     <text x="160" y="72" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">+ Acc 32b</text>
                     
-                    <!-- Mini Sum Reg -->
                     <rect x="105" y="108" width="110" height="40" rx="4" fill="#064e3b" stroke="#34d399" />
                     <text x="160" y="132" fill="#d1fae5" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">Sum_reg [31:0]</text>
                 </g>
@@ -1096,21 +1048,17 @@
                 
                 <!-- EXPANDED VIEW -->
                 <g class="expanded-only" transform="translate(8, 38)">
-                    <!-- Mini Weight Reg -->
                     <rect x="8" y="8" width="85" height="40" rx="4" fill="#365314" stroke="#84cc16" />
                     <text x="50" y="32" fill="#d9f99d" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">W_reg [7:0]</text>
                     
-                    <!-- Mini Activation Reg -->
                     <rect x="8" y="58" width="85" height="40" rx="4" fill="#0c4a6e" stroke="#38bdf8" />
                     <text x="50" y="82" fill="#bae6fd" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">A_reg [7:0]</text>
                     
-                    <!-- Mini MAC Arithmetic Unit -->
                     <rect x="105" y="8" width="110" height="90" rx="5" fill="#3b0764" stroke="#c084fc" />
                     <text x="160" y="32" fill="#fae8ff" font-size="11" font-weight="700" text-anchor="middle">u_mac</text>
                     <text x="160" y="52" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">Mult 8x8</text>
                     <text x="160" y="72" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">+ Acc 32b</text>
                     
-                    <!-- Mini Sum Reg -->
                     <rect x="105" y="108" width="110" height="40" rx="4" fill="#064e3b" stroke="#34d399" />
                     <text x="160" y="132" fill="#d1fae5" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">Sum_reg [31:0]</text>
                 </g>
@@ -1151,21 +1099,17 @@
                 
                 <!-- EXPANDED VIEW -->
                 <g class="expanded-only" transform="translate(8, 38)">
-                    <!-- Mini Weight Reg -->
                     <rect x="8" y="8" width="85" height="40" rx="4" fill="#365314" stroke="#84cc16" />
                     <text x="50" y="32" fill="#d9f99d" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">W_reg [7:0]</text>
                     
-                    <!-- Mini Activation Reg -->
                     <rect x="8" y="58" width="85" height="40" rx="4" fill="#0c4a6e" stroke="#38bdf8" />
                     <text x="50" y="82" fill="#bae6fd" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">A_reg [7:0]</text>
                     
-                    <!-- Mini MAC Arithmetic Unit -->
                     <rect x="105" y="8" width="110" height="90" rx="5" fill="#3b0764" stroke="#c084fc" />
                     <text x="160" y="32" fill="#fae8ff" font-size="11" font-weight="700" text-anchor="middle">u_mac</text>
                     <text x="160" y="52" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">Mult 8x8</text>
                     <text x="160" y="72" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">+ Acc 32b</text>
                     
-                    <!-- Mini Sum Reg -->
                     <rect x="105" y="108" width="110" height="40" rx="4" fill="#064e3b" stroke="#34d399" />
                     <text x="160" y="132" fill="#d1fae5" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">Sum_reg [31:0]</text>
                 </g>
@@ -1206,21 +1150,17 @@
                 
                 <!-- EXPANDED VIEW -->
                 <g class="expanded-only" transform="translate(8, 38)">
-                    <!-- Mini Weight Reg -->
                     <rect x="8" y="8" width="85" height="40" rx="4" fill="#365314" stroke="#84cc16" />
                     <text x="50" y="32" fill="#d9f99d" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">W_reg [7:0]</text>
                     
-                    <!-- Mini Activation Reg -->
                     <rect x="8" y="58" width="85" height="40" rx="4" fill="#0c4a6e" stroke="#38bdf8" />
                     <text x="50" y="82" fill="#bae6fd" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">A_reg [7:0]</text>
                     
-                    <!-- Mini MAC Arithmetic Unit -->
                     <rect x="105" y="8" width="110" height="90" rx="5" fill="#3b0764" stroke="#c084fc" />
                     <text x="160" y="32" fill="#fae8ff" font-size="11" font-weight="700" text-anchor="middle">u_mac</text>
                     <text x="160" y="52" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">Mult 8x8</text>
                     <text x="160" y="72" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">+ Acc 32b</text>
                     
-                    <!-- Mini Sum Reg -->
                     <rect x="105" y="108" width="110" height="40" rx="4" fill="#064e3b" stroke="#34d399" />
                     <text x="160" y="132" fill="#d1fae5" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">Sum_reg [31:0]</text>
                 </g>
@@ -1261,21 +1201,17 @@
                 
                 <!-- EXPANDED VIEW -->
                 <g class="expanded-only" transform="translate(8, 38)">
-                    <!-- Mini Weight Reg -->
                     <rect x="8" y="8" width="85" height="40" rx="4" fill="#365314" stroke="#84cc16" />
                     <text x="50" y="32" fill="#d9f99d" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">W_reg [7:0]</text>
                     
-                    <!-- Mini Activation Reg -->
                     <rect x="8" y="58" width="85" height="40" rx="4" fill="#0c4a6e" stroke="#38bdf8" />
                     <text x="50" y="82" fill="#bae6fd" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">A_reg [7:0]</text>
                     
-                    <!-- Mini MAC Arithmetic Unit -->
                     <rect x="105" y="8" width="110" height="90" rx="5" fill="#3b0764" stroke="#c084fc" />
                     <text x="160" y="32" fill="#fae8ff" font-size="11" font-weight="700" text-anchor="middle">u_mac</text>
                     <text x="160" y="52" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">Mult 8x8</text>
                     <text x="160" y="72" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">+ Acc 32b</text>
                     
-                    <!-- Mini Sum Reg -->
                     <rect x="105" y="108" width="110" height="40" rx="4" fill="#064e3b" stroke="#34d399" />
                     <text x="160" y="132" fill="#d1fae5" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">Sum_reg [31:0]</text>
                 </g>
@@ -1292,6 +1228,53 @@
                 <text x="1500" y="1301" fill="#4ade80" font-size="11" font-weight="bold" text-anchor="middle">C_out[3] [31:0]</text>
                 
 </g>
+
+    <!-- ============================================================================== -->
+    <!-- 📊 HARDWARE SYNTHESIS & COMPLEXITY DASHBOARD (HUD)                           -->
+    <!-- ============================================================================== -->
+    <g id="synthesis_hud" transform="translate(50, 1420)">
+        <!-- Container Panel Background -->
+        <rect x="0" y="0" width="1700" height="122" rx="12" fill="url(#hudGrad)" stroke="#1e293b" stroke-width="1.5" />
+        
+        <!-- Header Banner -->
+        <g transform="translate(16, 18)">
+            <text x="0" y="0" fill="#38bdf8" font-size="11" font-weight="700" letter-spacing="1">📊 HARDWARE SYNTHESIS &amp; COMPLEXITY ANALYSIS</text>
+            <text x="1668" y="0" fill="#64748b" font-size="10" text-anchor="end" font-family="'JetBrains Mono', monospace">YOSYS &amp; GATE-LEVEL METRICS</text>
+        </g>
+        
+        <!-- Card 1: Sequential DFF Registers -->
+        <g class="hud-card" transform="translate(12, 26)">
+            <rect class="hud-card-rect" width="416" height="92" rx="8" fill="#111827" stroke="#10b981" stroke-width="1.5" />
+            <text x="14" y="22" fill="#34d399" font-size="10" font-weight="700">💾 REGISTERS (DFF)</text>
+            <text x="14" y="48" fill="#ffffff" font-size="16" font-weight="800" font-family="'JetBrains Mono', monospace">816 DFFs</text>
+            <text x="14" y="70" fill="#9ca3af" font-size="10">16 PEs x 48 + 48 Skew DFFs</text>
+        </g>
+        
+        <!-- Card 2: Silicon Complexity & Gate Count -->
+        <g class="hud-card" transform="translate(440, 26)">
+            <rect class="hud-card-rect" width="416" height="92" rx="8" fill="#111827" stroke="#f59e0b" stroke-width="1.5" />
+            <text x="14" y="22" fill="#fbbf24" font-size="10" font-weight="700">⚙️ SILICON COMPLEXITY</text>
+            <text x="14" y="48" fill="#ffffff" font-size="16" font-weight="800" font-family="'JetBrains Mono', monospace">O</text>
+            <text x="14" y="70" fill="#9ca3af" font-size="10">K^2 · N^2 </text>
+        </g>
+        
+        <!-- Card 3: Latency & Critical Path -->
+        <g class="hud-card" transform="translate(868, 26)">
+            <rect class="hud-card-rect" width="416" height="92" rx="8" fill="#111827" stroke="#6366f1" stroke-width="1.5" />
+            <text x="14" y="22" fill="#818cf8" font-size="10" font-weight="700">⏱️ LATENCY &amp; PATH</text>
+            <text x="14" y="48" fill="#ffffff" font-size="16" font-weight="800" font-family="'JetBrains Mono', monospace">3N - 2 = 10 Cycles</text>
+            <text x="14" y="70" fill="#9ca3af" font-size="10">Wavefront Pipeline II = 1</text>
+        </g>
+        
+        <!-- Card 4: Precision / Special Features -->
+        <g class="hud-card" transform="translate(1296, 26)">
+            <rect class="hud-card-rect" width="416" height="92" rx="8" fill="#111827" stroke="#ec4899" stroke-width="1.5" />
+            <text x="14" y="22" fill="#f472b6" font-size="10" font-weight="700">🚀 COMPUTE DENSITY</text>
+            <text x="14" y="48" fill="#ffffff" font-size="16" font-weight="800" font-family="'JetBrains Mono', monospace">16 MACs/cycle</text>
+            <text x="14" y="70" fill="#9ca3af" font-size="10">32 FLOPs/cycle @ 850 MHz</text>
+        </g>
+    </g>
+    
 </g>
 
 <!-- Integrated Interactive Controls Toolbar -->
@@ -1321,7 +1304,6 @@
 </g>
 
 <script><![CDATA[
-    // Interactive Collapsible Schematic Logic
     let showControlNets = true;
     let currentHighlightedNet = null;
 
@@ -1402,7 +1384,6 @@
         bg.setAttribute('x', bbox.x - 8);
         bg.setAttribute('y', bbox.y - 6);
         
-        // Position near mouse
         const pt = getSVGPoint(evt);
         tt.setAttribute('transform', `translate(${pt.x + 12}, ${pt.y - 20})`);
         tt.style.display = 'block';
