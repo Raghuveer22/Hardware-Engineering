@@ -1,45 +1,83 @@
 # AI Hardware Tensor Engine & Pre-Silicon Emulation Platform
 
-A 100% free, open-source hardware/software co-design & emulation environment for AI tensor compute engines.
+A 100% free, open-source hardware/software co-design & emulation environment for AI tensor compute engines and LLM Transformer acceleration.
+
+---
+
+## 🌟 Why This Project Matters (Industry Context)
+
+In modern AI chips (Google TPU, NVIDIA Tensor Core, AWS Inferentia, Meta MTIA), tape-outs cost **$50M–$100M+ per chip**. Companies cannot afford silicon bugs or slow software integration. 
+
+This repository demonstrates the complete **Pre-Silicon HW/SW Co-Design Pipeline**: verifying custom AI hardware architectures against real machine learning models (PyTorch/NumPy) and running high-speed cycle-accurate C++ emulators before fabrication.
+
+```
+ [ PyTorch / LLM Layer ] ──► [ Python Cocotb Golden Verification ]
+                                            │
+                                            ▼
+ [ Virtual C++ Platform ] ──► [ Synthesizable SystemVerilog RTL ]
+ (High-Speed Emulation)       (Weight-Stationary Systolic Array)
+                                            │
+                                            ▼
+                               [ Interactive Browser Visualizer ]
+                               (Live 2D Wavefront & Output Pins)
+```
+
+---
+
+## 🧠 Deep-Dive: Accelerating LLM Transformers & The 1M Context Problem
+
+### 1. The $O(N^2)$ Memory Bottleneck in Self-Attention
+In modern LLMs (LLaMA, GPT-4, Gemini), 95% of inference time is spent computing Self-Attention:
+$$\text{Attention}(Q, K, V) = \text{Softmax}\left(\frac{Q K^T}{\sqrt{d_k}}\right) V$$
+
+For large context windows (e.g. **1 Million Tokens**):
+* The attention matrix $Q K^T$ reaches **$10^{12}$ elements (1 Trillion numbers)**.
+* Storing this intermediate matrix in off-chip DRAM takes **1 to 2 Terabytes of memory** for a single attention head.
+* **Why CPUs Fail:** A standard sequential CPU spends 90% of its energy simply moving numbers back and forth between slow DRAM and CPU caches.
+
+### 2. How Custom Hardware Solves This (Tiling & FlashAttention)
+* **Weight-Stationary Dataflow:** Model weights ($W_Q, W_K, W_V$) remain locked in local Processing Element (PE) registers inside fast on-chip SRAM. Tokens stream through with zero redundant memory re-fetches.
+* **Hardware Matrix Tiling:** Physical chips don't build 1-million-wide systolic arrays. Instead, a parameterized array (e.g., $4 \times 4$, $16 \times 16$, or $128 \times 128$) processes matrices chunk-by-chunk (**tiles**), accumulating results in local SRAM buffers.
+* **FlashAttention (Online Softmax):** Fuses softmax scaling directly into the hardware accumulation loop, computing attention without ever materializing the massive intermediate matrix to DRAM.
 
 ---
 
 ## 📂 Source Code vs. Auto-Generated Files
 
-To navigate the repository clearly, here is the breakdown between **Source Files (to read and edit)** and **Auto-Generated Files (produced by compilers/simulators)**:
+To navigate the repository cleanly, here is the breakdown between **Source Code** and **Auto-Generated Files**:
 
-### 🟢 Source Code Files (Read These!)
+### 🟢 Source Code Files (Read and Edit These)
 
 | Path | Language | Purpose |
 | :--- | :--- | :--- |
-| [`rtl/mac_unit.sv`](rtl/mac_unit.sv) | SystemVerilog | Combinational Multiply-Accumulate block (`sum_out = sum_in + a*b`) |
+| [`rtl/mac_unit.sv`](rtl/mac_unit.sv) | SystemVerilog | Combinational Multiply-Accumulate unit (`sum_out = sum_in + a*b`) |
 | [`rtl/pe.sv`](rtl/pe.sv) | SystemVerilog | Single Weight-Stationary Processing Element cell with registers |
 | [`rtl/systolic_array.sv`](rtl/systolic_array.sv) | SystemVerilog | Full 2D Grid of PEs with built-in activation skewing registers |
-| [`tests/test_pe.py`](tests/test_pe.py) | Python (Cocotb) | Unit tests for PE verifying signed numbers and edge cases |
-| [`tests/test_systolic_array.py`](tests/test_systolic_array.py) | Python (Cocotb) | Full matrix multiplication ($C = A \cdot W$) verified vs NumPy |
-| [`cpp_emulation/main.cpp`](cpp_emulation/main.cpp) | C++ | Cycle-accurate hardware emulator driving the Verilated RTL model |
+| [`tests/test_pe.py`](tests/test_pe.py) | Python (Cocotb) | Unit verification of PE covering reset, signed numbers, and edge cases |
+| [`tests/test_systolic_array.py`](tests/test_systolic_array.py) | Python (Cocotb) | Full matrix multiplication ($C = A \cdot W$) verified vs. NumPy |
+| [`cpp_emulation/main.cpp`](cpp_emulation/main.cpp) | C++ | Cycle-accurate pre-silicon emulator driving the Verilated hardware model |
 | [`sim/run.py`](sim/run.py) | Python | Test runner compiling RTL and executing Cocotb testbenches |
-| [`build_and_run.sh`](build_and_run.sh) | Bash | Master one-click script running Python and C++ test suites |
+| [`visualizer/index.html`](visualizer/index.html) | HTML/JS | Interactive 2D hardware visualizer with live matrix inputs & output pins |
+| [`visualizer/serve.py`](visualizer/serve.py) | Python | Web server launcher for the browser visualizer |
+| [`build_and_run.sh`](build_and_run.sh) | Bash | Master one-click verification and emulation script |
 
 ---
 
-### ⚙️ Auto-Generated Files (Do NOT Edit Directly!)
-
-These files and folders are automatically generated during build and simulation runs:
+### ⚙️ Auto-Generated Files (Do NOT Edit Directly)
 
 * **`.venv/`**: Python virtual environment containing packages (`cocotb`, `numpy`, `pytest`).
 * **`sim/sim_build_*/`**: Intermediate compilation folders generated by Icarus Verilog / Cocotb.
-  * `sim/sim_build_*/*.fst` or `*.vcd`: Digital waveform traces generated by the simulation.
-* **`cpp_emulation/verilated/`**: C++ source files translated automatically from SystemVerilog by Verilator (`Vsystolic_array.h`, `Vsystolic_array.cpp`, etc.).
-* **`cpp_emulation/emulator`**: The compiled C++ binary executable.
-* **`systolic_emulation.vcd`**: Waveform trace file dumped by the C++ emulator for signal debugging.
+  * `*.fst` / `*.vcd`: Digital waveform traces generated by simulation.
+* **`cpp_emulation/verilated/`**: C++ classes automatically generated from SystemVerilog by Verilator.
+* **`cpp_emulation/emulator`**: Compiled native C++ cycle simulator binary executable.
+* **`systolic_emulation.vcd`**: Waveform trace dump file for GTKWave / Surfer.
 
 ---
 
 ## 📖 Recommended Reading Sequence
 
 1. **[`tests/test_systolic_array.py`](tests/test_systolic_array.py)**: Start here to understand the problem in Python (NumPy golden reference, feeding matrices, checking outputs).
-2. **[`rtl/mac_unit.sv`](rtl/mac_unit.sv)**: The fundamental math formula.
+2. **[`rtl/mac_unit.sv`](rtl/mac_unit.sv)**: The fundamental math equation.
 3. **[`rtl/pe.sv`](rtl/pe.sv)**: How a single compute cell holds weights and registers data.
 4. **[`rtl/systolic_array.sv`](rtl/systolic_array.sv)**: How PEs are connected into a 2D mesh with activation skewing.
 5. **[`cpp_emulation/main.cpp`](cpp_emulation/main.cpp)**: How pre-silicon emulators use C++ to step hardware cycles.
@@ -53,39 +91,28 @@ Watch matrix dataflow and compute cycles step-by-step in your browser:
 ```bash
 python3 visualizer/serve.py
 ```
+* Open [http://localhost:8080](http://localhost:8080)
+* Click on any matrix cell to edit numbers in real-time, change grid dimensions (2x2, 3x3, 4x4), or click **Play** to watch the systolic wavefront.
 
-### 2. Run All Tests & C++ Emulation with One Command
+### 2. Run All Tests & C++ Emulation
 ```bash
 ./build_and_run.sh
 ```
 
-### Run Python Verification Only
+### 3. Run Python Cocotb Tests Only
 ```bash
 source .venv/bin/activate
-# Run PE unit test
+# Test individual PE
 python sim/run.py --dut pe
 
-# Run Systolic Array test
+# Test full 2D Systolic Array
 python sim/run.py --dut systolic_array
 ```
 
-### Run C++ Verilator Emulation
-```bash
-# 1. Translate Verilog to C++
-verilator --top-module systolic_array --cc --trace -Irtl rtl/mac_unit.sv rtl/pe.sv rtl/systolic_array.sv -Mdir cpp_emulation/verilated
+---
 
-# 2. Compile C++ Emulator
-clang++ -std=c++17 \
-    -I/opt/homebrew/share/verilator/include \
-    -I/opt/homebrew/share/verilator/include/vltstd \
-    -Icpp_emulation/verilated \
-    /opt/homebrew/share/verilator/include/verilated.cpp \
-    /opt/homebrew/share/verilator/include/verilated_vcd_c.cpp \
-    /opt/homebrew/share/verilator/include/verilated_threads.cpp \
-    cpp_emulation/verilated/Vsystolic_array*.cpp \
-    cpp_emulation/main.cpp \
-    -o cpp_emulation/emulator
+## 🎯 Key Interview Talking Points
 
-# 3. Execute
-./cpp_emulation/emulator
-```
+* **Hardware/Software Co-Design:** *"We used Python/Cocotb with NumPy to verify mathematical correctness at the functional level, and Verilator/C++ to create a high-speed pre-silicon cycle emulator for running software drivers."*
+* **Weight-Stationary Data Reuse:** *"Weights remain stationary in local registers inside each PE, reducing DRAM memory traffic from $O(N^3)$ to $O(N)$."*
+* **Handling Large/1M Contexts via Tiling:** *"Physical systolic arrays are parameterizable tiles. Large matrices and long-context attention sequences are sliced into hardware tiles and streamed through the array with zero memory blowup."*

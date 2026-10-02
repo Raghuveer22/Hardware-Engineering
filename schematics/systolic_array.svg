@@ -1,0 +1,1461 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1800 1500" width="100%" height="100%" class="schematic-canvas" id="schematic-svg" data-title="systolic_array - 4x4 Weight-Stationary Matrix Multiplier">
+<defs>
+    <style><![CDATA[
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap');
+        
+        :root {
+            --bg: #090d13;
+            --panel: #111827;
+            --card: #1f2937;
+            --card-header: #374151;
+            --border: #374151;
+            --text: #f3f4f6;
+            --text-muted: #9ca3af;
+            --accent: #38bdf8;
+            --accent-glow: rgba(56, 189, 248, 0.4);
+            --bus-color: #60a5fa;
+            --bus-width: 3.5px;
+            --wire-color: #94a3b8;
+            --control-color: #f59e0b;
+            --highlight: #22d3ee;
+            --pe-bg: #131d2e;
+            --pe-border: #2563eb;
+            --mac-bg: #1e1b4b;
+            --mac-border: #6366f1;
+            --reg-bg: #142e2b;
+            --reg-border: #10b981;
+            --mult-bg: #31132b;
+            --mult-border: #ec4899;
+        }
+        
+        text {
+            font-family: 'Inter', -apple-system, sans-serif;
+            user-select: none;
+        }
+        
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        
+        /* Interactive Component Styling */
+        .component-box {
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+        
+        .component-box:hover .box-rect {
+            stroke: var(--highlight);
+            stroke-width: 2.5px;
+            filter: drop-shadow(0 0 10px var(--accent-glow));
+        }
+        
+        .toggle-btn {
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        .toggle-btn:hover circle {
+            fill: var(--highlight);
+        }
+        
+        /* Collapsible Elements */
+        .collapsible-content {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        .collapsed .collapsible-content {
+            display: none;
+            opacity: 0;
+        }
+        .collapsed .expanded-only {
+            display: none;
+        }
+        .expanded .collapsed-only {
+            display: none;
+        }
+        
+        /* Wire and Bus Styling */
+        .net-bus {
+            fill: none;
+            stroke: var(--bus-color);
+            stroke-width: 3.5px;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            transition: stroke 0.2s, stroke-width 0.2s, filter 0.2s;
+        }
+        
+        .net-control {
+            fill: none;
+            stroke: var(--control-color);
+            stroke-width: 1.5px;
+            stroke-dasharray: 4 3;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            transition: stroke 0.2s, stroke-width 0.2s;
+        }
+        
+        .net-wire {
+            fill: none;
+            stroke: var(--wire-color);
+            stroke-width: 2px;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            transition: stroke 0.2s, stroke-width 0.2s;
+        }
+        
+        .net-active {
+            stroke: #f43f5e !important;
+            stroke-width: 4.5px !important;
+            filter: drop-shadow(0 0 8px #f43f5e) !important;
+        }
+        
+        .net-highlight {
+            stroke: #38bdf8 !important;
+            stroke-width: 4.5px !important;
+            filter: drop-shadow(0 0 10px #38bdf8) !important;
+        }
+        
+        /* Ports and Pins */
+        .pin-node {
+            cursor: pointer;
+            transition: r 0.2s, fill 0.2s;
+        }
+        .pin-node:hover {
+            r: 6px;
+            fill: var(--highlight);
+        }
+        
+        /* Tooltip */
+        #svg-tooltip {
+            position: absolute;
+            display: none;
+            background: rgba(17, 24, 39, 0.95);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-family: 'JetBrains Mono', monospace;
+            border: 1px solid #38bdf8;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            pointer-events: none;
+            z-index: 1000;
+        }
+        
+        /* Toolbar inside SVG */
+        .svg-toolbar {
+            fill: #111827;
+            stroke: #374151;
+            stroke-width: 1px;
+            rx: 6px;
+        }
+        .svg-tool-btn {
+            cursor: pointer;
+        }
+        .svg-tool-btn:hover rect {
+            fill: #1f2937;
+            stroke: #38bdf8;
+        }
+    ]]></style>
+    
+    <!-- Gradients and Markers -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#0a0f18" />
+        <stop offset="100%" stop-color="#04070c" />
+    </linearGradient>
+    
+    <linearGradient id="peGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#1e293b" />
+        <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+    
+    <linearGradient id="macGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#2d1b4e" />
+        <stop offset="100%" stop-color="#19102c" />
+    </linearGradient>
+    
+    <linearGradient id="regGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#064e3b" />
+        <stop offset="100%" stop-color="#022c22" />
+    </linearGradient>
+    
+    <linearGradient id="multGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#701a75" />
+        <stop offset="100%" stop-color="#4a044e" />
+    </linearGradient>
+    
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur stdDeviation="4" result="blur" />
+        <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+    
+    <marker id="bus-arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1 L 9 5 L 0 9 z" fill="#60a5fa" />
+    </marker>
+    <marker id="wire-arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#94a3b8" />
+    </marker>
+    <marker id="ctrl-arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#f59e0b" />
+    </marker>
+</defs>
+
+<!-- Background -->
+<rect width="100%" height="100%" fill="url(#bgGrad)" />
+
+<!-- Grid Pattern -->
+<pattern id="dotGrid" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
+    <circle cx="2" cy="2" r="1" fill="#1e293b" opacity="0.6" />
+</pattern>
+<rect width="100%" height="100%" fill="url(#dotGrid)" />
+
+<!-- Canvas Viewport for Pan/Zoom -->
+<g id="viewport" transform="translate(0, 0) scale(1)">
+
+
+    <g transform="translate(50, 75)">
+        <text x="0" y="0" fill="#f8fafc" font-size="24" font-weight="700">🔬 MODULE: systolic_array (4x4 2D Grid)</text>
+        <text x="0" y="26" fill="#94a3b8" font-size="14">Parameterized 2D Systolic Tensor Core: 16 Processing Elements with Skew Pipelines</text>
+        <text x="0" y="48" fill="#38bdf8" font-size="12">💡 Interactive: Click on ANY PE Cell to expand its internal architecture in-place!</text>
+    </g>
+    
+<g id="skew_pipelines" transform="translate(80, 180)">
+
+        <!-- Row 0 Skew Unit -->
+        <g id="skew_row_0" class="collapsible-comp expanded" transform="translate(0, 40)">
+            <rect x="0" y="0" width="220" height="110" rx="8" fill="#132433" stroke="#0284c7" stroke-width="1.5" />
+            <rect x="0" y="0" width="220" height="28" rx="8" fill="#0369a1" />
+            <text x="12" y="19" fill="#e0f2fe" font-size="11" font-weight="700">Row 0 Skew Delay</text>
+            <text x="200" y="19" fill="#bae6fd" font-size="10" font-family="'JetBrains Mono', monospace">+0T</text>
+            
+            <g class="collapsed-only" transform="translate(10, 40)">
+                <text x="100" y="35" fill="#7dd3fc" font-size="12" text-anchor="middle">0 Cycle Pipeline</text>
+            </g>
+            <g class="expanded-only" transform="translate(10, 38)">
+        
+
+                <text x="100" y="30" fill="#38bdf8" font-size="12" font-weight="600" text-anchor="middle">Direct Feed (0 Delay)</text>
+                <text x="100" y="48" fill="#94a3b8" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">act_skewed[0] = in[0]</text>
+            
+
+            </g>
+        </g>
+        
+        <!-- Input Port Box -->
+        <g class="port-group" onmouseover="highlightNet('act_in_0')" onmouseout="clearHighlight()">
+            <rect x="-60" y="75" width="50" height="30" rx="4" fill="#1e293b" stroke="#38bdf8" />
+            <text x="-35" y="95" fill="#38bdf8" font-size="11" font-weight="bold" text-anchor="middle">A0</text>
+            <path d="M -10 90 L 0 90" class="net-bus" data-net="act_in_0" marker-end="url(#bus-arrow)" />
+        </g>
+        
+        <!-- Wire from Skew Pipeline to First PE in Row -->
+        <path d="M 220 95 L 300 95" class="net-bus" data-net="act_skewed_0" marker-end="url(#bus-arrow)" />
+        
+
+        <!-- Row 1 Skew Unit -->
+        <g id="skew_row_1" class="collapsible-comp expanded" transform="translate(0, 320)">
+            <rect x="0" y="0" width="220" height="110" rx="8" fill="#132433" stroke="#0284c7" stroke-width="1.5" />
+            <rect x="0" y="0" width="220" height="28" rx="8" fill="#0369a1" />
+            <text x="12" y="19" fill="#e0f2fe" font-size="11" font-weight="700">Row 1 Skew Delay</text>
+            <text x="200" y="19" fill="#bae6fd" font-size="10" font-family="'JetBrains Mono', monospace">+1T</text>
+            
+            <g class="collapsed-only" transform="translate(10, 40)">
+                <text x="100" y="35" fill="#7dd3fc" font-size="12" text-anchor="middle">1 Cycle Pipeline</text>
+            </g>
+            <g class="expanded-only" transform="translate(10, 38)">
+        
+
+                <rect x="10" y="10" width="160" height="45" rx="4" fill="#0c4a6e" stroke="#38bdf8" />
+                <text x="90" y="36" fill="#ffffff" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">DFF 0</text>
+                
+
+            </g>
+        </g>
+        
+        <!-- Input Port Box -->
+        <g class="port-group" onmouseover="highlightNet('act_in_1')" onmouseout="clearHighlight()">
+            <rect x="-60" y="355" width="50" height="30" rx="4" fill="#1e293b" stroke="#38bdf8" />
+            <text x="-35" y="375" fill="#38bdf8" font-size="11" font-weight="bold" text-anchor="middle">A1</text>
+            <path d="M -10 370 L 0 370" class="net-bus" data-net="act_in_1" marker-end="url(#bus-arrow)" />
+        </g>
+        
+        <!-- Wire from Skew Pipeline to First PE in Row -->
+        <path d="M 220 375 L 300 375" class="net-bus" data-net="act_skewed_1" marker-end="url(#bus-arrow)" />
+        
+
+        <!-- Row 2 Skew Unit -->
+        <g id="skew_row_2" class="collapsible-comp expanded" transform="translate(0, 600)">
+            <rect x="0" y="0" width="220" height="110" rx="8" fill="#132433" stroke="#0284c7" stroke-width="1.5" />
+            <rect x="0" y="0" width="220" height="28" rx="8" fill="#0369a1" />
+            <text x="12" y="19" fill="#e0f2fe" font-size="11" font-weight="700">Row 2 Skew Delay</text>
+            <text x="200" y="19" fill="#bae6fd" font-size="10" font-family="'JetBrains Mono', monospace">+2T</text>
+            
+            <g class="collapsed-only" transform="translate(10, 40)">
+                <text x="100" y="35" fill="#7dd3fc" font-size="12" text-anchor="middle">2 Cycle Pipeline</text>
+            </g>
+            <g class="expanded-only" transform="translate(10, 38)">
+        
+
+                <rect x="10" y="10" width="80" height="45" rx="4" fill="#0c4a6e" stroke="#38bdf8" />
+                <text x="50" y="36" fill="#ffffff" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">DFF 0</text>
+                
+
+                <rect x="100" y="10" width="80" height="45" rx="4" fill="#0c4a6e" stroke="#38bdf8" />
+                <text x="140" y="36" fill="#ffffff" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">DFF 1</text>
+                
+
+            </g>
+        </g>
+        
+        <!-- Input Port Box -->
+        <g class="port-group" onmouseover="highlightNet('act_in_2')" onmouseout="clearHighlight()">
+            <rect x="-60" y="635" width="50" height="30" rx="4" fill="#1e293b" stroke="#38bdf8" />
+            <text x="-35" y="655" fill="#38bdf8" font-size="11" font-weight="bold" text-anchor="middle">A2</text>
+            <path d="M -10 650 L 0 650" class="net-bus" data-net="act_in_2" marker-end="url(#bus-arrow)" />
+        </g>
+        
+        <!-- Wire from Skew Pipeline to First PE in Row -->
+        <path d="M 220 655 L 300 655" class="net-bus" data-net="act_skewed_2" marker-end="url(#bus-arrow)" />
+        
+
+        <!-- Row 3 Skew Unit -->
+        <g id="skew_row_3" class="collapsible-comp expanded" transform="translate(0, 880)">
+            <rect x="0" y="0" width="220" height="110" rx="8" fill="#132433" stroke="#0284c7" stroke-width="1.5" />
+            <rect x="0" y="0" width="220" height="28" rx="8" fill="#0369a1" />
+            <text x="12" y="19" fill="#e0f2fe" font-size="11" font-weight="700">Row 3 Skew Delay</text>
+            <text x="200" y="19" fill="#bae6fd" font-size="10" font-family="'JetBrains Mono', monospace">+3T</text>
+            
+            <g class="collapsed-only" transform="translate(10, 40)">
+                <text x="100" y="35" fill="#7dd3fc" font-size="12" text-anchor="middle">3 Cycle Pipeline</text>
+            </g>
+            <g class="expanded-only" transform="translate(10, 38)">
+        
+
+                <rect x="10" y="10" width="53" height="45" rx="4" fill="#0c4a6e" stroke="#38bdf8" />
+                <text x="36" y="36" fill="#ffffff" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">DFF 0</text>
+                
+
+                <rect x="70" y="10" width="53" height="45" rx="4" fill="#0c4a6e" stroke="#38bdf8" />
+                <text x="96" y="36" fill="#ffffff" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">DFF 1</text>
+                
+
+                <rect x="130" y="10" width="53" height="45" rx="4" fill="#0c4a6e" stroke="#38bdf8" />
+                <text x="156" y="36" fill="#ffffff" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">DFF 2</text>
+                
+
+            </g>
+        </g>
+        
+        <!-- Input Port Box -->
+        <g class="port-group" onmouseover="highlightNet('act_in_3')" onmouseout="clearHighlight()">
+            <rect x="-60" y="915" width="50" height="30" rx="4" fill="#1e293b" stroke="#38bdf8" />
+            <text x="-35" y="935" fill="#38bdf8" font-size="11" font-weight="bold" text-anchor="middle">A3</text>
+            <path d="M -10 930 L 0 930" class="net-bus" data-net="act_in_3" marker-end="url(#bus-arrow)" />
+        </g>
+        
+        <!-- Wire from Skew Pipeline to First PE in Row -->
+        <path d="M 220 935 L 300 935" class="net-bus" data-net="act_skewed_3" marker-end="url(#bus-arrow)" />
+        
+</g>
+<g id="pe_grid">
+
+            <!-- PE (0, 0) -->
+            <g id="pe_0_0" class="collapsible-comp collapsed" transform="translate(380, 180)">
+                <g class="component-box" onclick="toggleComponent('pe_0_0')">
+                    <rect class="box-rect" x="0" y="0" width="240" height="200" rx="10" fill="#111c30" stroke="#2563eb" stroke-width="2" />
+                    <rect x="0" y="0" width="240" height="32" rx="10" fill="#1d4ed8" />
+                    <rect x="0" y="20" width="240" height="12" fill="#1d4ed8" />
+                    
+                    <text x="12" y="21" fill="#eff6ff" font-size="12" font-weight="700">PE (0,0)</text>
+                    <text x="90" y="20" fill="#bfdbfe" font-size="10" font-family="'JetBrains Mono', monospace">u_pe[0][0]</text>
+                    
+                    <g class="toggle-badge" transform="translate(220, 16)">
+                        <circle cx="0" cy="0" r="9" fill="#1e40af" stroke="#dbeafe" />
+                        <text x="0" y="3" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">+</text>
+                    </g>
+                </g>
+                
+                <!-- COLLAPSED VIEW -->
+                <g class="collapsed-only" transform="translate(10, 40)">
+                    <rect x="10" y="10" width="200" height="140" rx="6" fill="#1e293b" stroke="#3b82f6" />
+                    <text x="110" y="50" fill="#60a5fa" font-size="15" font-weight="bold" text-anchor="middle">MAC CELL</text>
+                    <text x="110" y="75" fill="#93c5fd" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">C += A * W</text>
+                    <text x="110" y="105" fill="#64748b" font-size="10" text-anchor="middle">Click to expand</text>
+                </g>
+                
+                <!-- EXPANDED VIEW -->
+                <g class="expanded-only" transform="translate(8, 38)">
+                    <!-- Mini Weight Reg -->
+                    <rect x="8" y="8" width="85" height="40" rx="4" fill="#365314" stroke="#84cc16" />
+                    <text x="50" y="32" fill="#d9f99d" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">W_reg [7:0]</text>
+                    
+                    <!-- Mini Activation Reg -->
+                    <rect x="8" y="58" width="85" height="40" rx="4" fill="#0c4a6e" stroke="#38bdf8" />
+                    <text x="50" y="82" fill="#bae6fd" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">A_reg [7:0]</text>
+                    
+                    <!-- Mini MAC Arithmetic Unit -->
+                    <rect x="105" y="8" width="110" height="90" rx="5" fill="#3b0764" stroke="#c084fc" />
+                    <text x="160" y="32" fill="#fae8ff" font-size="11" font-weight="700" text-anchor="middle">u_mac</text>
+                    <text x="160" y="52" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">Mult 8x8</text>
+                    <text x="160" y="72" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">+ Acc 32b</text>
+                    
+                    <!-- Mini Sum Reg -->
+                    <rect x="105" y="108" width="110" height="40" rx="4" fill="#064e3b" stroke="#34d399" />
+                    <text x="160" y="132" fill="#d1fae5" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">Sum_reg [31:0]</text>
+                </g>
+            </g>
+            
+
+                <path d="M 620 300 L 700 300" class="net-bus" data-net="h_act_0_0" marker-end="url(#bus-arrow)" />
+                
+
+                <path d="M 540 380 L 540 460" class="net-bus" data-net="v_sum_0_0" marker-end="url(#bus-arrow)" />
+                
+
+                <rect x="395" y="105" width="95" height="30" rx="4" fill="#1e293b" stroke="#84cc16" />
+                <text x="442" y="125" fill="#84cc16" font-size="11" font-weight="bold" text-anchor="middle">W_in[0] [7:0]</text>
+                <path d="M 442 135 L 442 180" class="net-bus" data-net="weight_in_0" marker-end="url(#bus-arrow)" />
+                
+                <rect x="495" y="105" width="90" height="30" rx="4" fill="#1e293b" stroke="#4ade80" />
+                <text x="540" y="125" fill="#4ade80" font-size="11" font-weight="bold" text-anchor="middle">Sum=0 [0]</text>
+                <path d="M 540 135 L 540 180" class="net-bus" data-net="sum_in_top_0" marker-end="url(#bus-arrow)" />
+                
+
+                <path d="M 440 380 L 440 460" class="net-bus" data-net="v_weight_0_0" marker-end="url(#bus-arrow)" />
+                
+
+            <!-- PE (0, 1) -->
+            <g id="pe_0_1" class="collapsible-comp collapsed" transform="translate(700, 180)">
+                <g class="component-box" onclick="toggleComponent('pe_0_1')">
+                    <rect class="box-rect" x="0" y="0" width="240" height="200" rx="10" fill="#111c30" stroke="#2563eb" stroke-width="2" />
+                    <rect x="0" y="0" width="240" height="32" rx="10" fill="#1d4ed8" />
+                    <rect x="0" y="20" width="240" height="12" fill="#1d4ed8" />
+                    
+                    <text x="12" y="21" fill="#eff6ff" font-size="12" font-weight="700">PE (0,1)</text>
+                    <text x="90" y="20" fill="#bfdbfe" font-size="10" font-family="'JetBrains Mono', monospace">u_pe[0][1]</text>
+                    
+                    <g class="toggle-badge" transform="translate(220, 16)">
+                        <circle cx="0" cy="0" r="9" fill="#1e40af" stroke="#dbeafe" />
+                        <text x="0" y="3" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">+</text>
+                    </g>
+                </g>
+                
+                <!-- COLLAPSED VIEW -->
+                <g class="collapsed-only" transform="translate(10, 40)">
+                    <rect x="10" y="10" width="200" height="140" rx="6" fill="#1e293b" stroke="#3b82f6" />
+                    <text x="110" y="50" fill="#60a5fa" font-size="15" font-weight="bold" text-anchor="middle">MAC CELL</text>
+                    <text x="110" y="75" fill="#93c5fd" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">C += A * W</text>
+                    <text x="110" y="105" fill="#64748b" font-size="10" text-anchor="middle">Click to expand</text>
+                </g>
+                
+                <!-- EXPANDED VIEW -->
+                <g class="expanded-only" transform="translate(8, 38)">
+                    <!-- Mini Weight Reg -->
+                    <rect x="8" y="8" width="85" height="40" rx="4" fill="#365314" stroke="#84cc16" />
+                    <text x="50" y="32" fill="#d9f99d" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">W_reg [7:0]</text>
+                    
+                    <!-- Mini Activation Reg -->
+                    <rect x="8" y="58" width="85" height="40" rx="4" fill="#0c4a6e" stroke="#38bdf8" />
+                    <text x="50" y="82" fill="#bae6fd" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">A_reg [7:0]</text>
+                    
+                    <!-- Mini MAC Arithmetic Unit -->
+                    <rect x="105" y="8" width="110" height="90" rx="5" fill="#3b0764" stroke="#c084fc" />
+                    <text x="160" y="32" fill="#fae8ff" font-size="11" font-weight="700" text-anchor="middle">u_mac</text>
+                    <text x="160" y="52" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">Mult 8x8</text>
+                    <text x="160" y="72" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">+ Acc 32b</text>
+                    
+                    <!-- Mini Sum Reg -->
+                    <rect x="105" y="108" width="110" height="40" rx="4" fill="#064e3b" stroke="#34d399" />
+                    <text x="160" y="132" fill="#d1fae5" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">Sum_reg [31:0]</text>
+                </g>
+            </g>
+            
+
+                <path d="M 940 300 L 1020 300" class="net-bus" data-net="h_act_0_1" marker-end="url(#bus-arrow)" />
+                
+
+                <path d="M 860 380 L 860 460" class="net-bus" data-net="v_sum_0_1" marker-end="url(#bus-arrow)" />
+                
+
+                <rect x="715" y="105" width="95" height="30" rx="4" fill="#1e293b" stroke="#84cc16" />
+                <text x="762" y="125" fill="#84cc16" font-size="11" font-weight="bold" text-anchor="middle">W_in[1] [7:0]</text>
+                <path d="M 762 135 L 762 180" class="net-bus" data-net="weight_in_1" marker-end="url(#bus-arrow)" />
+                
+                <rect x="815" y="105" width="90" height="30" rx="4" fill="#1e293b" stroke="#4ade80" />
+                <text x="860" y="125" fill="#4ade80" font-size="11" font-weight="bold" text-anchor="middle">Sum=0 [1]</text>
+                <path d="M 860 135 L 860 180" class="net-bus" data-net="sum_in_top_1" marker-end="url(#bus-arrow)" />
+                
+
+                <path d="M 760 380 L 760 460" class="net-bus" data-net="v_weight_0_1" marker-end="url(#bus-arrow)" />
+                
+
+            <!-- PE (0, 2) -->
+            <g id="pe_0_2" class="collapsible-comp collapsed" transform="translate(1020, 180)">
+                <g class="component-box" onclick="toggleComponent('pe_0_2')">
+                    <rect class="box-rect" x="0" y="0" width="240" height="200" rx="10" fill="#111c30" stroke="#2563eb" stroke-width="2" />
+                    <rect x="0" y="0" width="240" height="32" rx="10" fill="#1d4ed8" />
+                    <rect x="0" y="20" width="240" height="12" fill="#1d4ed8" />
+                    
+                    <text x="12" y="21" fill="#eff6ff" font-size="12" font-weight="700">PE (0,2)</text>
+                    <text x="90" y="20" fill="#bfdbfe" font-size="10" font-family="'JetBrains Mono', monospace">u_pe[0][2]</text>
+                    
+                    <g class="toggle-badge" transform="translate(220, 16)">
+                        <circle cx="0" cy="0" r="9" fill="#1e40af" stroke="#dbeafe" />
+                        <text x="0" y="3" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">+</text>
+                    </g>
+                </g>
+                
+                <!-- COLLAPSED VIEW -->
+                <g class="collapsed-only" transform="translate(10, 40)">
+                    <rect x="10" y="10" width="200" height="140" rx="6" fill="#1e293b" stroke="#3b82f6" />
+                    <text x="110" y="50" fill="#60a5fa" font-size="15" font-weight="bold" text-anchor="middle">MAC CELL</text>
+                    <text x="110" y="75" fill="#93c5fd" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">C += A * W</text>
+                    <text x="110" y="105" fill="#64748b" font-size="10" text-anchor="middle">Click to expand</text>
+                </g>
+                
+                <!-- EXPANDED VIEW -->
+                <g class="expanded-only" transform="translate(8, 38)">
+                    <!-- Mini Weight Reg -->
+                    <rect x="8" y="8" width="85" height="40" rx="4" fill="#365314" stroke="#84cc16" />
+                    <text x="50" y="32" fill="#d9f99d" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">W_reg [7:0]</text>
+                    
+                    <!-- Mini Activation Reg -->
+                    <rect x="8" y="58" width="85" height="40" rx="4" fill="#0c4a6e" stroke="#38bdf8" />
+                    <text x="50" y="82" fill="#bae6fd" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">A_reg [7:0]</text>
+                    
+                    <!-- Mini MAC Arithmetic Unit -->
+                    <rect x="105" y="8" width="110" height="90" rx="5" fill="#3b0764" stroke="#c084fc" />
+                    <text x="160" y="32" fill="#fae8ff" font-size="11" font-weight="700" text-anchor="middle">u_mac</text>
+                    <text x="160" y="52" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">Mult 8x8</text>
+                    <text x="160" y="72" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">+ Acc 32b</text>
+                    
+                    <!-- Mini Sum Reg -->
+                    <rect x="105" y="108" width="110" height="40" rx="4" fill="#064e3b" stroke="#34d399" />
+                    <text x="160" y="132" fill="#d1fae5" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">Sum_reg [31:0]</text>
+                </g>
+            </g>
+            
+
+                <path d="M 1260 300 L 1340 300" class="net-bus" data-net="h_act_0_2" marker-end="url(#bus-arrow)" />
+                
+
+                <path d="M 1180 380 L 1180 460" class="net-bus" data-net="v_sum_0_2" marker-end="url(#bus-arrow)" />
+                
+
+                <rect x="1035" y="105" width="95" height="30" rx="4" fill="#1e293b" stroke="#84cc16" />
+                <text x="1082" y="125" fill="#84cc16" font-size="11" font-weight="bold" text-anchor="middle">W_in[2] [7:0]</text>
+                <path d="M 1082 135 L 1082 180" class="net-bus" data-net="weight_in_2" marker-end="url(#bus-arrow)" />
+                
+                <rect x="1135" y="105" width="90" height="30" rx="4" fill="#1e293b" stroke="#4ade80" />
+                <text x="1180" y="125" fill="#4ade80" font-size="11" font-weight="bold" text-anchor="middle">Sum=0 [2]</text>
+                <path d="M 1180 135 L 1180 180" class="net-bus" data-net="sum_in_top_2" marker-end="url(#bus-arrow)" />
+                
+
+                <path d="M 1080 380 L 1080 460" class="net-bus" data-net="v_weight_0_2" marker-end="url(#bus-arrow)" />
+                
+
+            <!-- PE (0, 3) -->
+            <g id="pe_0_3" class="collapsible-comp collapsed" transform="translate(1340, 180)">
+                <g class="component-box" onclick="toggleComponent('pe_0_3')">
+                    <rect class="box-rect" x="0" y="0" width="240" height="200" rx="10" fill="#111c30" stroke="#2563eb" stroke-width="2" />
+                    <rect x="0" y="0" width="240" height="32" rx="10" fill="#1d4ed8" />
+                    <rect x="0" y="20" width="240" height="12" fill="#1d4ed8" />
+                    
+                    <text x="12" y="21" fill="#eff6ff" font-size="12" font-weight="700">PE (0,3)</text>
+                    <text x="90" y="20" fill="#bfdbfe" font-size="10" font-family="'JetBrains Mono', monospace">u_pe[0][3]</text>
+                    
+                    <g class="toggle-badge" transform="translate(220, 16)">
+                        <circle cx="0" cy="0" r="9" fill="#1e40af" stroke="#dbeafe" />
+                        <text x="0" y="3" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">+</text>
+                    </g>
+                </g>
+                
+                <!-- COLLAPSED VIEW -->
+                <g class="collapsed-only" transform="translate(10, 40)">
+                    <rect x="10" y="10" width="200" height="140" rx="6" fill="#1e293b" stroke="#3b82f6" />
+                    <text x="110" y="50" fill="#60a5fa" font-size="15" font-weight="bold" text-anchor="middle">MAC CELL</text>
+                    <text x="110" y="75" fill="#93c5fd" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">C += A * W</text>
+                    <text x="110" y="105" fill="#64748b" font-size="10" text-anchor="middle">Click to expand</text>
+                </g>
+                
+                <!-- EXPANDED VIEW -->
+                <g class="expanded-only" transform="translate(8, 38)">
+                    <!-- Mini Weight Reg -->
+                    <rect x="8" y="8" width="85" height="40" rx="4" fill="#365314" stroke="#84cc16" />
+                    <text x="50" y="32" fill="#d9f99d" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">W_reg [7:0]</text>
+                    
+                    <!-- Mini Activation Reg -->
+                    <rect x="8" y="58" width="85" height="40" rx="4" fill="#0c4a6e" stroke="#38bdf8" />
+                    <text x="50" y="82" fill="#bae6fd" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">A_reg [7:0]</text>
+                    
+                    <!-- Mini MAC Arithmetic Unit -->
+                    <rect x="105" y="8" width="110" height="90" rx="5" fill="#3b0764" stroke="#c084fc" />
+                    <text x="160" y="32" fill="#fae8ff" font-size="11" font-weight="700" text-anchor="middle">u_mac</text>
+                    <text x="160" y="52" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">Mult 8x8</text>
+                    <text x="160" y="72" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">+ Acc 32b</text>
+                    
+                    <!-- Mini Sum Reg -->
+                    <rect x="105" y="108" width="110" height="40" rx="4" fill="#064e3b" stroke="#34d399" />
+                    <text x="160" y="132" fill="#d1fae5" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">Sum_reg [31:0]</text>
+                </g>
+            </g>
+            
+
+                <path d="M 1580 300 L 1630 300" class="net-bus" data-net="act_out_0" marker-end="url(#bus-arrow)" />
+                <rect x="1630" y="285" width="70" height="30" rx="4" fill="#1e293b" stroke="#38bdf8" />
+                <text x="1665" y="305" fill="#38bdf8" font-size="11" font-weight="bold" text-anchor="middle">A_out[0]</text>
+                
+
+                <path d="M 1500 380 L 1500 460" class="net-bus" data-net="v_sum_0_3" marker-end="url(#bus-arrow)" />
+                
+
+                <rect x="1355" y="105" width="95" height="30" rx="4" fill="#1e293b" stroke="#84cc16" />
+                <text x="1402" y="125" fill="#84cc16" font-size="11" font-weight="bold" text-anchor="middle">W_in[3] [7:0]</text>
+                <path d="M 1402 135 L 1402 180" class="net-bus" data-net="weight_in_3" marker-end="url(#bus-arrow)" />
+                
+                <rect x="1455" y="105" width="90" height="30" rx="4" fill="#1e293b" stroke="#4ade80" />
+                <text x="1500" y="125" fill="#4ade80" font-size="11" font-weight="bold" text-anchor="middle">Sum=0 [3]</text>
+                <path d="M 1500 135 L 1500 180" class="net-bus" data-net="sum_in_top_3" marker-end="url(#bus-arrow)" />
+                
+
+                <path d="M 1400 380 L 1400 460" class="net-bus" data-net="v_weight_0_3" marker-end="url(#bus-arrow)" />
+                
+
+            <!-- PE (1, 0) -->
+            <g id="pe_1_0" class="collapsible-comp collapsed" transform="translate(380, 460)">
+                <g class="component-box" onclick="toggleComponent('pe_1_0')">
+                    <rect class="box-rect" x="0" y="0" width="240" height="200" rx="10" fill="#111c30" stroke="#2563eb" stroke-width="2" />
+                    <rect x="0" y="0" width="240" height="32" rx="10" fill="#1d4ed8" />
+                    <rect x="0" y="20" width="240" height="12" fill="#1d4ed8" />
+                    
+                    <text x="12" y="21" fill="#eff6ff" font-size="12" font-weight="700">PE (1,0)</text>
+                    <text x="90" y="20" fill="#bfdbfe" font-size="10" font-family="'JetBrains Mono', monospace">u_pe[1][0]</text>
+                    
+                    <g class="toggle-badge" transform="translate(220, 16)">
+                        <circle cx="0" cy="0" r="9" fill="#1e40af" stroke="#dbeafe" />
+                        <text x="0" y="3" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">+</text>
+                    </g>
+                </g>
+                
+                <!-- COLLAPSED VIEW -->
+                <g class="collapsed-only" transform="translate(10, 40)">
+                    <rect x="10" y="10" width="200" height="140" rx="6" fill="#1e293b" stroke="#3b82f6" />
+                    <text x="110" y="50" fill="#60a5fa" font-size="15" font-weight="bold" text-anchor="middle">MAC CELL</text>
+                    <text x="110" y="75" fill="#93c5fd" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">C += A * W</text>
+                    <text x="110" y="105" fill="#64748b" font-size="10" text-anchor="middle">Click to expand</text>
+                </g>
+                
+                <!-- EXPANDED VIEW -->
+                <g class="expanded-only" transform="translate(8, 38)">
+                    <!-- Mini Weight Reg -->
+                    <rect x="8" y="8" width="85" height="40" rx="4" fill="#365314" stroke="#84cc16" />
+                    <text x="50" y="32" fill="#d9f99d" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">W_reg [7:0]</text>
+                    
+                    <!-- Mini Activation Reg -->
+                    <rect x="8" y="58" width="85" height="40" rx="4" fill="#0c4a6e" stroke="#38bdf8" />
+                    <text x="50" y="82" fill="#bae6fd" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">A_reg [7:0]</text>
+                    
+                    <!-- Mini MAC Arithmetic Unit -->
+                    <rect x="105" y="8" width="110" height="90" rx="5" fill="#3b0764" stroke="#c084fc" />
+                    <text x="160" y="32" fill="#fae8ff" font-size="11" font-weight="700" text-anchor="middle">u_mac</text>
+                    <text x="160" y="52" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">Mult 8x8</text>
+                    <text x="160" y="72" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">+ Acc 32b</text>
+                    
+                    <!-- Mini Sum Reg -->
+                    <rect x="105" y="108" width="110" height="40" rx="4" fill="#064e3b" stroke="#34d399" />
+                    <text x="160" y="132" fill="#d1fae5" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">Sum_reg [31:0]</text>
+                </g>
+            </g>
+            
+
+                <path d="M 620 580 L 700 580" class="net-bus" data-net="h_act_1_0" marker-end="url(#bus-arrow)" />
+                
+
+                <path d="M 540 660 L 540 740" class="net-bus" data-net="v_sum_1_0" marker-end="url(#bus-arrow)" />
+                
+
+                <path d="M 440 660 L 440 740" class="net-bus" data-net="v_weight_1_0" marker-end="url(#bus-arrow)" />
+                
+
+            <!-- PE (1, 1) -->
+            <g id="pe_1_1" class="collapsible-comp collapsed" transform="translate(700, 460)">
+                <g class="component-box" onclick="toggleComponent('pe_1_1')">
+                    <rect class="box-rect" x="0" y="0" width="240" height="200" rx="10" fill="#111c30" stroke="#2563eb" stroke-width="2" />
+                    <rect x="0" y="0" width="240" height="32" rx="10" fill="#1d4ed8" />
+                    <rect x="0" y="20" width="240" height="12" fill="#1d4ed8" />
+                    
+                    <text x="12" y="21" fill="#eff6ff" font-size="12" font-weight="700">PE (1,1)</text>
+                    <text x="90" y="20" fill="#bfdbfe" font-size="10" font-family="'JetBrains Mono', monospace">u_pe[1][1]</text>
+                    
+                    <g class="toggle-badge" transform="translate(220, 16)">
+                        <circle cx="0" cy="0" r="9" fill="#1e40af" stroke="#dbeafe" />
+                        <text x="0" y="3" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">+</text>
+                    </g>
+                </g>
+                
+                <!-- COLLAPSED VIEW -->
+                <g class="collapsed-only" transform="translate(10, 40)">
+                    <rect x="10" y="10" width="200" height="140" rx="6" fill="#1e293b" stroke="#3b82f6" />
+                    <text x="110" y="50" fill="#60a5fa" font-size="15" font-weight="bold" text-anchor="middle">MAC CELL</text>
+                    <text x="110" y="75" fill="#93c5fd" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">C += A * W</text>
+                    <text x="110" y="105" fill="#64748b" font-size="10" text-anchor="middle">Click to expand</text>
+                </g>
+                
+                <!-- EXPANDED VIEW -->
+                <g class="expanded-only" transform="translate(8, 38)">
+                    <!-- Mini Weight Reg -->
+                    <rect x="8" y="8" width="85" height="40" rx="4" fill="#365314" stroke="#84cc16" />
+                    <text x="50" y="32" fill="#d9f99d" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">W_reg [7:0]</text>
+                    
+                    <!-- Mini Activation Reg -->
+                    <rect x="8" y="58" width="85" height="40" rx="4" fill="#0c4a6e" stroke="#38bdf8" />
+                    <text x="50" y="82" fill="#bae6fd" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">A_reg [7:0]</text>
+                    
+                    <!-- Mini MAC Arithmetic Unit -->
+                    <rect x="105" y="8" width="110" height="90" rx="5" fill="#3b0764" stroke="#c084fc" />
+                    <text x="160" y="32" fill="#fae8ff" font-size="11" font-weight="700" text-anchor="middle">u_mac</text>
+                    <text x="160" y="52" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">Mult 8x8</text>
+                    <text x="160" y="72" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">+ Acc 32b</text>
+                    
+                    <!-- Mini Sum Reg -->
+                    <rect x="105" y="108" width="110" height="40" rx="4" fill="#064e3b" stroke="#34d399" />
+                    <text x="160" y="132" fill="#d1fae5" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">Sum_reg [31:0]</text>
+                </g>
+            </g>
+            
+
+                <path d="M 940 580 L 1020 580" class="net-bus" data-net="h_act_1_1" marker-end="url(#bus-arrow)" />
+                
+
+                <path d="M 860 660 L 860 740" class="net-bus" data-net="v_sum_1_1" marker-end="url(#bus-arrow)" />
+                
+
+                <path d="M 760 660 L 760 740" class="net-bus" data-net="v_weight_1_1" marker-end="url(#bus-arrow)" />
+                
+
+            <!-- PE (1, 2) -->
+            <g id="pe_1_2" class="collapsible-comp collapsed" transform="translate(1020, 460)">
+                <g class="component-box" onclick="toggleComponent('pe_1_2')">
+                    <rect class="box-rect" x="0" y="0" width="240" height="200" rx="10" fill="#111c30" stroke="#2563eb" stroke-width="2" />
+                    <rect x="0" y="0" width="240" height="32" rx="10" fill="#1d4ed8" />
+                    <rect x="0" y="20" width="240" height="12" fill="#1d4ed8" />
+                    
+                    <text x="12" y="21" fill="#eff6ff" font-size="12" font-weight="700">PE (1,2)</text>
+                    <text x="90" y="20" fill="#bfdbfe" font-size="10" font-family="'JetBrains Mono', monospace">u_pe[1][2]</text>
+                    
+                    <g class="toggle-badge" transform="translate(220, 16)">
+                        <circle cx="0" cy="0" r="9" fill="#1e40af" stroke="#dbeafe" />
+                        <text x="0" y="3" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">+</text>
+                    </g>
+                </g>
+                
+                <!-- COLLAPSED VIEW -->
+                <g class="collapsed-only" transform="translate(10, 40)">
+                    <rect x="10" y="10" width="200" height="140" rx="6" fill="#1e293b" stroke="#3b82f6" />
+                    <text x="110" y="50" fill="#60a5fa" font-size="15" font-weight="bold" text-anchor="middle">MAC CELL</text>
+                    <text x="110" y="75" fill="#93c5fd" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">C += A * W</text>
+                    <text x="110" y="105" fill="#64748b" font-size="10" text-anchor="middle">Click to expand</text>
+                </g>
+                
+                <!-- EXPANDED VIEW -->
+                <g class="expanded-only" transform="translate(8, 38)">
+                    <!-- Mini Weight Reg -->
+                    <rect x="8" y="8" width="85" height="40" rx="4" fill="#365314" stroke="#84cc16" />
+                    <text x="50" y="32" fill="#d9f99d" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">W_reg [7:0]</text>
+                    
+                    <!-- Mini Activation Reg -->
+                    <rect x="8" y="58" width="85" height="40" rx="4" fill="#0c4a6e" stroke="#38bdf8" />
+                    <text x="50" y="82" fill="#bae6fd" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">A_reg [7:0]</text>
+                    
+                    <!-- Mini MAC Arithmetic Unit -->
+                    <rect x="105" y="8" width="110" height="90" rx="5" fill="#3b0764" stroke="#c084fc" />
+                    <text x="160" y="32" fill="#fae8ff" font-size="11" font-weight="700" text-anchor="middle">u_mac</text>
+                    <text x="160" y="52" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">Mult 8x8</text>
+                    <text x="160" y="72" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">+ Acc 32b</text>
+                    
+                    <!-- Mini Sum Reg -->
+                    <rect x="105" y="108" width="110" height="40" rx="4" fill="#064e3b" stroke="#34d399" />
+                    <text x="160" y="132" fill="#d1fae5" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">Sum_reg [31:0]</text>
+                </g>
+            </g>
+            
+
+                <path d="M 1260 580 L 1340 580" class="net-bus" data-net="h_act_1_2" marker-end="url(#bus-arrow)" />
+                
+
+                <path d="M 1180 660 L 1180 740" class="net-bus" data-net="v_sum_1_2" marker-end="url(#bus-arrow)" />
+                
+
+                <path d="M 1080 660 L 1080 740" class="net-bus" data-net="v_weight_1_2" marker-end="url(#bus-arrow)" />
+                
+
+            <!-- PE (1, 3) -->
+            <g id="pe_1_3" class="collapsible-comp collapsed" transform="translate(1340, 460)">
+                <g class="component-box" onclick="toggleComponent('pe_1_3')">
+                    <rect class="box-rect" x="0" y="0" width="240" height="200" rx="10" fill="#111c30" stroke="#2563eb" stroke-width="2" />
+                    <rect x="0" y="0" width="240" height="32" rx="10" fill="#1d4ed8" />
+                    <rect x="0" y="20" width="240" height="12" fill="#1d4ed8" />
+                    
+                    <text x="12" y="21" fill="#eff6ff" font-size="12" font-weight="700">PE (1,3)</text>
+                    <text x="90" y="20" fill="#bfdbfe" font-size="10" font-family="'JetBrains Mono', monospace">u_pe[1][3]</text>
+                    
+                    <g class="toggle-badge" transform="translate(220, 16)">
+                        <circle cx="0" cy="0" r="9" fill="#1e40af" stroke="#dbeafe" />
+                        <text x="0" y="3" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">+</text>
+                    </g>
+                </g>
+                
+                <!-- COLLAPSED VIEW -->
+                <g class="collapsed-only" transform="translate(10, 40)">
+                    <rect x="10" y="10" width="200" height="140" rx="6" fill="#1e293b" stroke="#3b82f6" />
+                    <text x="110" y="50" fill="#60a5fa" font-size="15" font-weight="bold" text-anchor="middle">MAC CELL</text>
+                    <text x="110" y="75" fill="#93c5fd" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">C += A * W</text>
+                    <text x="110" y="105" fill="#64748b" font-size="10" text-anchor="middle">Click to expand</text>
+                </g>
+                
+                <!-- EXPANDED VIEW -->
+                <g class="expanded-only" transform="translate(8, 38)">
+                    <!-- Mini Weight Reg -->
+                    <rect x="8" y="8" width="85" height="40" rx="4" fill="#365314" stroke="#84cc16" />
+                    <text x="50" y="32" fill="#d9f99d" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">W_reg [7:0]</text>
+                    
+                    <!-- Mini Activation Reg -->
+                    <rect x="8" y="58" width="85" height="40" rx="4" fill="#0c4a6e" stroke="#38bdf8" />
+                    <text x="50" y="82" fill="#bae6fd" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">A_reg [7:0]</text>
+                    
+                    <!-- Mini MAC Arithmetic Unit -->
+                    <rect x="105" y="8" width="110" height="90" rx="5" fill="#3b0764" stroke="#c084fc" />
+                    <text x="160" y="32" fill="#fae8ff" font-size="11" font-weight="700" text-anchor="middle">u_mac</text>
+                    <text x="160" y="52" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">Mult 8x8</text>
+                    <text x="160" y="72" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">+ Acc 32b</text>
+                    
+                    <!-- Mini Sum Reg -->
+                    <rect x="105" y="108" width="110" height="40" rx="4" fill="#064e3b" stroke="#34d399" />
+                    <text x="160" y="132" fill="#d1fae5" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">Sum_reg [31:0]</text>
+                </g>
+            </g>
+            
+
+                <path d="M 1580 580 L 1630 580" class="net-bus" data-net="act_out_1" marker-end="url(#bus-arrow)" />
+                <rect x="1630" y="565" width="70" height="30" rx="4" fill="#1e293b" stroke="#38bdf8" />
+                <text x="1665" y="585" fill="#38bdf8" font-size="11" font-weight="bold" text-anchor="middle">A_out[1]</text>
+                
+
+                <path d="M 1500 660 L 1500 740" class="net-bus" data-net="v_sum_1_3" marker-end="url(#bus-arrow)" />
+                
+
+                <path d="M 1400 660 L 1400 740" class="net-bus" data-net="v_weight_1_3" marker-end="url(#bus-arrow)" />
+                
+
+            <!-- PE (2, 0) -->
+            <g id="pe_2_0" class="collapsible-comp collapsed" transform="translate(380, 740)">
+                <g class="component-box" onclick="toggleComponent('pe_2_0')">
+                    <rect class="box-rect" x="0" y="0" width="240" height="200" rx="10" fill="#111c30" stroke="#2563eb" stroke-width="2" />
+                    <rect x="0" y="0" width="240" height="32" rx="10" fill="#1d4ed8" />
+                    <rect x="0" y="20" width="240" height="12" fill="#1d4ed8" />
+                    
+                    <text x="12" y="21" fill="#eff6ff" font-size="12" font-weight="700">PE (2,0)</text>
+                    <text x="90" y="20" fill="#bfdbfe" font-size="10" font-family="'JetBrains Mono', monospace">u_pe[2][0]</text>
+                    
+                    <g class="toggle-badge" transform="translate(220, 16)">
+                        <circle cx="0" cy="0" r="9" fill="#1e40af" stroke="#dbeafe" />
+                        <text x="0" y="3" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">+</text>
+                    </g>
+                </g>
+                
+                <!-- COLLAPSED VIEW -->
+                <g class="collapsed-only" transform="translate(10, 40)">
+                    <rect x="10" y="10" width="200" height="140" rx="6" fill="#1e293b" stroke="#3b82f6" />
+                    <text x="110" y="50" fill="#60a5fa" font-size="15" font-weight="bold" text-anchor="middle">MAC CELL</text>
+                    <text x="110" y="75" fill="#93c5fd" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">C += A * W</text>
+                    <text x="110" y="105" fill="#64748b" font-size="10" text-anchor="middle">Click to expand</text>
+                </g>
+                
+                <!-- EXPANDED VIEW -->
+                <g class="expanded-only" transform="translate(8, 38)">
+                    <!-- Mini Weight Reg -->
+                    <rect x="8" y="8" width="85" height="40" rx="4" fill="#365314" stroke="#84cc16" />
+                    <text x="50" y="32" fill="#d9f99d" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">W_reg [7:0]</text>
+                    
+                    <!-- Mini Activation Reg -->
+                    <rect x="8" y="58" width="85" height="40" rx="4" fill="#0c4a6e" stroke="#38bdf8" />
+                    <text x="50" y="82" fill="#bae6fd" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">A_reg [7:0]</text>
+                    
+                    <!-- Mini MAC Arithmetic Unit -->
+                    <rect x="105" y="8" width="110" height="90" rx="5" fill="#3b0764" stroke="#c084fc" />
+                    <text x="160" y="32" fill="#fae8ff" font-size="11" font-weight="700" text-anchor="middle">u_mac</text>
+                    <text x="160" y="52" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">Mult 8x8</text>
+                    <text x="160" y="72" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">+ Acc 32b</text>
+                    
+                    <!-- Mini Sum Reg -->
+                    <rect x="105" y="108" width="110" height="40" rx="4" fill="#064e3b" stroke="#34d399" />
+                    <text x="160" y="132" fill="#d1fae5" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">Sum_reg [31:0]</text>
+                </g>
+            </g>
+            
+
+                <path d="M 620 860 L 700 860" class="net-bus" data-net="h_act_2_0" marker-end="url(#bus-arrow)" />
+                
+
+                <path d="M 540 940 L 540 1020" class="net-bus" data-net="v_sum_2_0" marker-end="url(#bus-arrow)" />
+                
+
+                <path d="M 440 940 L 440 1020" class="net-bus" data-net="v_weight_2_0" marker-end="url(#bus-arrow)" />
+                
+
+            <!-- PE (2, 1) -->
+            <g id="pe_2_1" class="collapsible-comp collapsed" transform="translate(700, 740)">
+                <g class="component-box" onclick="toggleComponent('pe_2_1')">
+                    <rect class="box-rect" x="0" y="0" width="240" height="200" rx="10" fill="#111c30" stroke="#2563eb" stroke-width="2" />
+                    <rect x="0" y="0" width="240" height="32" rx="10" fill="#1d4ed8" />
+                    <rect x="0" y="20" width="240" height="12" fill="#1d4ed8" />
+                    
+                    <text x="12" y="21" fill="#eff6ff" font-size="12" font-weight="700">PE (2,1)</text>
+                    <text x="90" y="20" fill="#bfdbfe" font-size="10" font-family="'JetBrains Mono', monospace">u_pe[2][1]</text>
+                    
+                    <g class="toggle-badge" transform="translate(220, 16)">
+                        <circle cx="0" cy="0" r="9" fill="#1e40af" stroke="#dbeafe" />
+                        <text x="0" y="3" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">+</text>
+                    </g>
+                </g>
+                
+                <!-- COLLAPSED VIEW -->
+                <g class="collapsed-only" transform="translate(10, 40)">
+                    <rect x="10" y="10" width="200" height="140" rx="6" fill="#1e293b" stroke="#3b82f6" />
+                    <text x="110" y="50" fill="#60a5fa" font-size="15" font-weight="bold" text-anchor="middle">MAC CELL</text>
+                    <text x="110" y="75" fill="#93c5fd" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">C += A * W</text>
+                    <text x="110" y="105" fill="#64748b" font-size="10" text-anchor="middle">Click to expand</text>
+                </g>
+                
+                <!-- EXPANDED VIEW -->
+                <g class="expanded-only" transform="translate(8, 38)">
+                    <!-- Mini Weight Reg -->
+                    <rect x="8" y="8" width="85" height="40" rx="4" fill="#365314" stroke="#84cc16" />
+                    <text x="50" y="32" fill="#d9f99d" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">W_reg [7:0]</text>
+                    
+                    <!-- Mini Activation Reg -->
+                    <rect x="8" y="58" width="85" height="40" rx="4" fill="#0c4a6e" stroke="#38bdf8" />
+                    <text x="50" y="82" fill="#bae6fd" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">A_reg [7:0]</text>
+                    
+                    <!-- Mini MAC Arithmetic Unit -->
+                    <rect x="105" y="8" width="110" height="90" rx="5" fill="#3b0764" stroke="#c084fc" />
+                    <text x="160" y="32" fill="#fae8ff" font-size="11" font-weight="700" text-anchor="middle">u_mac</text>
+                    <text x="160" y="52" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">Mult 8x8</text>
+                    <text x="160" y="72" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">+ Acc 32b</text>
+                    
+                    <!-- Mini Sum Reg -->
+                    <rect x="105" y="108" width="110" height="40" rx="4" fill="#064e3b" stroke="#34d399" />
+                    <text x="160" y="132" fill="#d1fae5" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">Sum_reg [31:0]</text>
+                </g>
+            </g>
+            
+
+                <path d="M 940 860 L 1020 860" class="net-bus" data-net="h_act_2_1" marker-end="url(#bus-arrow)" />
+                
+
+                <path d="M 860 940 L 860 1020" class="net-bus" data-net="v_sum_2_1" marker-end="url(#bus-arrow)" />
+                
+
+                <path d="M 760 940 L 760 1020" class="net-bus" data-net="v_weight_2_1" marker-end="url(#bus-arrow)" />
+                
+
+            <!-- PE (2, 2) -->
+            <g id="pe_2_2" class="collapsible-comp collapsed" transform="translate(1020, 740)">
+                <g class="component-box" onclick="toggleComponent('pe_2_2')">
+                    <rect class="box-rect" x="0" y="0" width="240" height="200" rx="10" fill="#111c30" stroke="#2563eb" stroke-width="2" />
+                    <rect x="0" y="0" width="240" height="32" rx="10" fill="#1d4ed8" />
+                    <rect x="0" y="20" width="240" height="12" fill="#1d4ed8" />
+                    
+                    <text x="12" y="21" fill="#eff6ff" font-size="12" font-weight="700">PE (2,2)</text>
+                    <text x="90" y="20" fill="#bfdbfe" font-size="10" font-family="'JetBrains Mono', monospace">u_pe[2][2]</text>
+                    
+                    <g class="toggle-badge" transform="translate(220, 16)">
+                        <circle cx="0" cy="0" r="9" fill="#1e40af" stroke="#dbeafe" />
+                        <text x="0" y="3" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">+</text>
+                    </g>
+                </g>
+                
+                <!-- COLLAPSED VIEW -->
+                <g class="collapsed-only" transform="translate(10, 40)">
+                    <rect x="10" y="10" width="200" height="140" rx="6" fill="#1e293b" stroke="#3b82f6" />
+                    <text x="110" y="50" fill="#60a5fa" font-size="15" font-weight="bold" text-anchor="middle">MAC CELL</text>
+                    <text x="110" y="75" fill="#93c5fd" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">C += A * W</text>
+                    <text x="110" y="105" fill="#64748b" font-size="10" text-anchor="middle">Click to expand</text>
+                </g>
+                
+                <!-- EXPANDED VIEW -->
+                <g class="expanded-only" transform="translate(8, 38)">
+                    <!-- Mini Weight Reg -->
+                    <rect x="8" y="8" width="85" height="40" rx="4" fill="#365314" stroke="#84cc16" />
+                    <text x="50" y="32" fill="#d9f99d" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">W_reg [7:0]</text>
+                    
+                    <!-- Mini Activation Reg -->
+                    <rect x="8" y="58" width="85" height="40" rx="4" fill="#0c4a6e" stroke="#38bdf8" />
+                    <text x="50" y="82" fill="#bae6fd" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">A_reg [7:0]</text>
+                    
+                    <!-- Mini MAC Arithmetic Unit -->
+                    <rect x="105" y="8" width="110" height="90" rx="5" fill="#3b0764" stroke="#c084fc" />
+                    <text x="160" y="32" fill="#fae8ff" font-size="11" font-weight="700" text-anchor="middle">u_mac</text>
+                    <text x="160" y="52" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">Mult 8x8</text>
+                    <text x="160" y="72" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">+ Acc 32b</text>
+                    
+                    <!-- Mini Sum Reg -->
+                    <rect x="105" y="108" width="110" height="40" rx="4" fill="#064e3b" stroke="#34d399" />
+                    <text x="160" y="132" fill="#d1fae5" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">Sum_reg [31:0]</text>
+                </g>
+            </g>
+            
+
+                <path d="M 1260 860 L 1340 860" class="net-bus" data-net="h_act_2_2" marker-end="url(#bus-arrow)" />
+                
+
+                <path d="M 1180 940 L 1180 1020" class="net-bus" data-net="v_sum_2_2" marker-end="url(#bus-arrow)" />
+                
+
+                <path d="M 1080 940 L 1080 1020" class="net-bus" data-net="v_weight_2_2" marker-end="url(#bus-arrow)" />
+                
+
+            <!-- PE (2, 3) -->
+            <g id="pe_2_3" class="collapsible-comp collapsed" transform="translate(1340, 740)">
+                <g class="component-box" onclick="toggleComponent('pe_2_3')">
+                    <rect class="box-rect" x="0" y="0" width="240" height="200" rx="10" fill="#111c30" stroke="#2563eb" stroke-width="2" />
+                    <rect x="0" y="0" width="240" height="32" rx="10" fill="#1d4ed8" />
+                    <rect x="0" y="20" width="240" height="12" fill="#1d4ed8" />
+                    
+                    <text x="12" y="21" fill="#eff6ff" font-size="12" font-weight="700">PE (2,3)</text>
+                    <text x="90" y="20" fill="#bfdbfe" font-size="10" font-family="'JetBrains Mono', monospace">u_pe[2][3]</text>
+                    
+                    <g class="toggle-badge" transform="translate(220, 16)">
+                        <circle cx="0" cy="0" r="9" fill="#1e40af" stroke="#dbeafe" />
+                        <text x="0" y="3" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">+</text>
+                    </g>
+                </g>
+                
+                <!-- COLLAPSED VIEW -->
+                <g class="collapsed-only" transform="translate(10, 40)">
+                    <rect x="10" y="10" width="200" height="140" rx="6" fill="#1e293b" stroke="#3b82f6" />
+                    <text x="110" y="50" fill="#60a5fa" font-size="15" font-weight="bold" text-anchor="middle">MAC CELL</text>
+                    <text x="110" y="75" fill="#93c5fd" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">C += A * W</text>
+                    <text x="110" y="105" fill="#64748b" font-size="10" text-anchor="middle">Click to expand</text>
+                </g>
+                
+                <!-- EXPANDED VIEW -->
+                <g class="expanded-only" transform="translate(8, 38)">
+                    <!-- Mini Weight Reg -->
+                    <rect x="8" y="8" width="85" height="40" rx="4" fill="#365314" stroke="#84cc16" />
+                    <text x="50" y="32" fill="#d9f99d" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">W_reg [7:0]</text>
+                    
+                    <!-- Mini Activation Reg -->
+                    <rect x="8" y="58" width="85" height="40" rx="4" fill="#0c4a6e" stroke="#38bdf8" />
+                    <text x="50" y="82" fill="#bae6fd" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">A_reg [7:0]</text>
+                    
+                    <!-- Mini MAC Arithmetic Unit -->
+                    <rect x="105" y="8" width="110" height="90" rx="5" fill="#3b0764" stroke="#c084fc" />
+                    <text x="160" y="32" fill="#fae8ff" font-size="11" font-weight="700" text-anchor="middle">u_mac</text>
+                    <text x="160" y="52" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">Mult 8x8</text>
+                    <text x="160" y="72" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">+ Acc 32b</text>
+                    
+                    <!-- Mini Sum Reg -->
+                    <rect x="105" y="108" width="110" height="40" rx="4" fill="#064e3b" stroke="#34d399" />
+                    <text x="160" y="132" fill="#d1fae5" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">Sum_reg [31:0]</text>
+                </g>
+            </g>
+            
+
+                <path d="M 1580 860 L 1630 860" class="net-bus" data-net="act_out_2" marker-end="url(#bus-arrow)" />
+                <rect x="1630" y="845" width="70" height="30" rx="4" fill="#1e293b" stroke="#38bdf8" />
+                <text x="1665" y="865" fill="#38bdf8" font-size="11" font-weight="bold" text-anchor="middle">A_out[2]</text>
+                
+
+                <path d="M 1500 940 L 1500 1020" class="net-bus" data-net="v_sum_2_3" marker-end="url(#bus-arrow)" />
+                
+
+                <path d="M 1400 940 L 1400 1020" class="net-bus" data-net="v_weight_2_3" marker-end="url(#bus-arrow)" />
+                
+
+            <!-- PE (3, 0) -->
+            <g id="pe_3_0" class="collapsible-comp collapsed" transform="translate(380, 1020)">
+                <g class="component-box" onclick="toggleComponent('pe_3_0')">
+                    <rect class="box-rect" x="0" y="0" width="240" height="200" rx="10" fill="#111c30" stroke="#2563eb" stroke-width="2" />
+                    <rect x="0" y="0" width="240" height="32" rx="10" fill="#1d4ed8" />
+                    <rect x="0" y="20" width="240" height="12" fill="#1d4ed8" />
+                    
+                    <text x="12" y="21" fill="#eff6ff" font-size="12" font-weight="700">PE (3,0)</text>
+                    <text x="90" y="20" fill="#bfdbfe" font-size="10" font-family="'JetBrains Mono', monospace">u_pe[3][0]</text>
+                    
+                    <g class="toggle-badge" transform="translate(220, 16)">
+                        <circle cx="0" cy="0" r="9" fill="#1e40af" stroke="#dbeafe" />
+                        <text x="0" y="3" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">+</text>
+                    </g>
+                </g>
+                
+                <!-- COLLAPSED VIEW -->
+                <g class="collapsed-only" transform="translate(10, 40)">
+                    <rect x="10" y="10" width="200" height="140" rx="6" fill="#1e293b" stroke="#3b82f6" />
+                    <text x="110" y="50" fill="#60a5fa" font-size="15" font-weight="bold" text-anchor="middle">MAC CELL</text>
+                    <text x="110" y="75" fill="#93c5fd" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">C += A * W</text>
+                    <text x="110" y="105" fill="#64748b" font-size="10" text-anchor="middle">Click to expand</text>
+                </g>
+                
+                <!-- EXPANDED VIEW -->
+                <g class="expanded-only" transform="translate(8, 38)">
+                    <!-- Mini Weight Reg -->
+                    <rect x="8" y="8" width="85" height="40" rx="4" fill="#365314" stroke="#84cc16" />
+                    <text x="50" y="32" fill="#d9f99d" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">W_reg [7:0]</text>
+                    
+                    <!-- Mini Activation Reg -->
+                    <rect x="8" y="58" width="85" height="40" rx="4" fill="#0c4a6e" stroke="#38bdf8" />
+                    <text x="50" y="82" fill="#bae6fd" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">A_reg [7:0]</text>
+                    
+                    <!-- Mini MAC Arithmetic Unit -->
+                    <rect x="105" y="8" width="110" height="90" rx="5" fill="#3b0764" stroke="#c084fc" />
+                    <text x="160" y="32" fill="#fae8ff" font-size="11" font-weight="700" text-anchor="middle">u_mac</text>
+                    <text x="160" y="52" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">Mult 8x8</text>
+                    <text x="160" y="72" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">+ Acc 32b</text>
+                    
+                    <!-- Mini Sum Reg -->
+                    <rect x="105" y="108" width="110" height="40" rx="4" fill="#064e3b" stroke="#34d399" />
+                    <text x="160" y="132" fill="#d1fae5" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">Sum_reg [31:0]</text>
+                </g>
+            </g>
+            
+
+                <path d="M 620 1140 L 700 1140" class="net-bus" data-net="h_act_3_0" marker-end="url(#bus-arrow)" />
+                
+
+                <path d="M 540 1220 L 540 1280" class="net-bus" data-net="sum_out_0" marker-end="url(#bus-arrow)" />
+                <rect x="485" y="1280" width="110" height="32" rx="4" fill="#1e293b" stroke="#4ade80" />
+                <text x="540" y="1301" fill="#4ade80" font-size="11" font-weight="bold" text-anchor="middle">C_out[0] [31:0]</text>
+                
+
+            <!-- PE (3, 1) -->
+            <g id="pe_3_1" class="collapsible-comp collapsed" transform="translate(700, 1020)">
+                <g class="component-box" onclick="toggleComponent('pe_3_1')">
+                    <rect class="box-rect" x="0" y="0" width="240" height="200" rx="10" fill="#111c30" stroke="#2563eb" stroke-width="2" />
+                    <rect x="0" y="0" width="240" height="32" rx="10" fill="#1d4ed8" />
+                    <rect x="0" y="20" width="240" height="12" fill="#1d4ed8" />
+                    
+                    <text x="12" y="21" fill="#eff6ff" font-size="12" font-weight="700">PE (3,1)</text>
+                    <text x="90" y="20" fill="#bfdbfe" font-size="10" font-family="'JetBrains Mono', monospace">u_pe[3][1]</text>
+                    
+                    <g class="toggle-badge" transform="translate(220, 16)">
+                        <circle cx="0" cy="0" r="9" fill="#1e40af" stroke="#dbeafe" />
+                        <text x="0" y="3" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">+</text>
+                    </g>
+                </g>
+                
+                <!-- COLLAPSED VIEW -->
+                <g class="collapsed-only" transform="translate(10, 40)">
+                    <rect x="10" y="10" width="200" height="140" rx="6" fill="#1e293b" stroke="#3b82f6" />
+                    <text x="110" y="50" fill="#60a5fa" font-size="15" font-weight="bold" text-anchor="middle">MAC CELL</text>
+                    <text x="110" y="75" fill="#93c5fd" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">C += A * W</text>
+                    <text x="110" y="105" fill="#64748b" font-size="10" text-anchor="middle">Click to expand</text>
+                </g>
+                
+                <!-- EXPANDED VIEW -->
+                <g class="expanded-only" transform="translate(8, 38)">
+                    <!-- Mini Weight Reg -->
+                    <rect x="8" y="8" width="85" height="40" rx="4" fill="#365314" stroke="#84cc16" />
+                    <text x="50" y="32" fill="#d9f99d" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">W_reg [7:0]</text>
+                    
+                    <!-- Mini Activation Reg -->
+                    <rect x="8" y="58" width="85" height="40" rx="4" fill="#0c4a6e" stroke="#38bdf8" />
+                    <text x="50" y="82" fill="#bae6fd" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">A_reg [7:0]</text>
+                    
+                    <!-- Mini MAC Arithmetic Unit -->
+                    <rect x="105" y="8" width="110" height="90" rx="5" fill="#3b0764" stroke="#c084fc" />
+                    <text x="160" y="32" fill="#fae8ff" font-size="11" font-weight="700" text-anchor="middle">u_mac</text>
+                    <text x="160" y="52" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">Mult 8x8</text>
+                    <text x="160" y="72" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">+ Acc 32b</text>
+                    
+                    <!-- Mini Sum Reg -->
+                    <rect x="105" y="108" width="110" height="40" rx="4" fill="#064e3b" stroke="#34d399" />
+                    <text x="160" y="132" fill="#d1fae5" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">Sum_reg [31:0]</text>
+                </g>
+            </g>
+            
+
+                <path d="M 940 1140 L 1020 1140" class="net-bus" data-net="h_act_3_1" marker-end="url(#bus-arrow)" />
+                
+
+                <path d="M 860 1220 L 860 1280" class="net-bus" data-net="sum_out_1" marker-end="url(#bus-arrow)" />
+                <rect x="805" y="1280" width="110" height="32" rx="4" fill="#1e293b" stroke="#4ade80" />
+                <text x="860" y="1301" fill="#4ade80" font-size="11" font-weight="bold" text-anchor="middle">C_out[1] [31:0]</text>
+                
+
+            <!-- PE (3, 2) -->
+            <g id="pe_3_2" class="collapsible-comp collapsed" transform="translate(1020, 1020)">
+                <g class="component-box" onclick="toggleComponent('pe_3_2')">
+                    <rect class="box-rect" x="0" y="0" width="240" height="200" rx="10" fill="#111c30" stroke="#2563eb" stroke-width="2" />
+                    <rect x="0" y="0" width="240" height="32" rx="10" fill="#1d4ed8" />
+                    <rect x="0" y="20" width="240" height="12" fill="#1d4ed8" />
+                    
+                    <text x="12" y="21" fill="#eff6ff" font-size="12" font-weight="700">PE (3,2)</text>
+                    <text x="90" y="20" fill="#bfdbfe" font-size="10" font-family="'JetBrains Mono', monospace">u_pe[3][2]</text>
+                    
+                    <g class="toggle-badge" transform="translate(220, 16)">
+                        <circle cx="0" cy="0" r="9" fill="#1e40af" stroke="#dbeafe" />
+                        <text x="0" y="3" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">+</text>
+                    </g>
+                </g>
+                
+                <!-- COLLAPSED VIEW -->
+                <g class="collapsed-only" transform="translate(10, 40)">
+                    <rect x="10" y="10" width="200" height="140" rx="6" fill="#1e293b" stroke="#3b82f6" />
+                    <text x="110" y="50" fill="#60a5fa" font-size="15" font-weight="bold" text-anchor="middle">MAC CELL</text>
+                    <text x="110" y="75" fill="#93c5fd" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">C += A * W</text>
+                    <text x="110" y="105" fill="#64748b" font-size="10" text-anchor="middle">Click to expand</text>
+                </g>
+                
+                <!-- EXPANDED VIEW -->
+                <g class="expanded-only" transform="translate(8, 38)">
+                    <!-- Mini Weight Reg -->
+                    <rect x="8" y="8" width="85" height="40" rx="4" fill="#365314" stroke="#84cc16" />
+                    <text x="50" y="32" fill="#d9f99d" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">W_reg [7:0]</text>
+                    
+                    <!-- Mini Activation Reg -->
+                    <rect x="8" y="58" width="85" height="40" rx="4" fill="#0c4a6e" stroke="#38bdf8" />
+                    <text x="50" y="82" fill="#bae6fd" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">A_reg [7:0]</text>
+                    
+                    <!-- Mini MAC Arithmetic Unit -->
+                    <rect x="105" y="8" width="110" height="90" rx="5" fill="#3b0764" stroke="#c084fc" />
+                    <text x="160" y="32" fill="#fae8ff" font-size="11" font-weight="700" text-anchor="middle">u_mac</text>
+                    <text x="160" y="52" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">Mult 8x8</text>
+                    <text x="160" y="72" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">+ Acc 32b</text>
+                    
+                    <!-- Mini Sum Reg -->
+                    <rect x="105" y="108" width="110" height="40" rx="4" fill="#064e3b" stroke="#34d399" />
+                    <text x="160" y="132" fill="#d1fae5" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">Sum_reg [31:0]</text>
+                </g>
+            </g>
+            
+
+                <path d="M 1260 1140 L 1340 1140" class="net-bus" data-net="h_act_3_2" marker-end="url(#bus-arrow)" />
+                
+
+                <path d="M 1180 1220 L 1180 1280" class="net-bus" data-net="sum_out_2" marker-end="url(#bus-arrow)" />
+                <rect x="1125" y="1280" width="110" height="32" rx="4" fill="#1e293b" stroke="#4ade80" />
+                <text x="1180" y="1301" fill="#4ade80" font-size="11" font-weight="bold" text-anchor="middle">C_out[2] [31:0]</text>
+                
+
+            <!-- PE (3, 3) -->
+            <g id="pe_3_3" class="collapsible-comp collapsed" transform="translate(1340, 1020)">
+                <g class="component-box" onclick="toggleComponent('pe_3_3')">
+                    <rect class="box-rect" x="0" y="0" width="240" height="200" rx="10" fill="#111c30" stroke="#2563eb" stroke-width="2" />
+                    <rect x="0" y="0" width="240" height="32" rx="10" fill="#1d4ed8" />
+                    <rect x="0" y="20" width="240" height="12" fill="#1d4ed8" />
+                    
+                    <text x="12" y="21" fill="#eff6ff" font-size="12" font-weight="700">PE (3,3)</text>
+                    <text x="90" y="20" fill="#bfdbfe" font-size="10" font-family="'JetBrains Mono', monospace">u_pe[3][3]</text>
+                    
+                    <g class="toggle-badge" transform="translate(220, 16)">
+                        <circle cx="0" cy="0" r="9" fill="#1e40af" stroke="#dbeafe" />
+                        <text x="0" y="3" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">+</text>
+                    </g>
+                </g>
+                
+                <!-- COLLAPSED VIEW -->
+                <g class="collapsed-only" transform="translate(10, 40)">
+                    <rect x="10" y="10" width="200" height="140" rx="6" fill="#1e293b" stroke="#3b82f6" />
+                    <text x="110" y="50" fill="#60a5fa" font-size="15" font-weight="bold" text-anchor="middle">MAC CELL</text>
+                    <text x="110" y="75" fill="#93c5fd" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">C += A * W</text>
+                    <text x="110" y="105" fill="#64748b" font-size="10" text-anchor="middle">Click to expand</text>
+                </g>
+                
+                <!-- EXPANDED VIEW -->
+                <g class="expanded-only" transform="translate(8, 38)">
+                    <!-- Mini Weight Reg -->
+                    <rect x="8" y="8" width="85" height="40" rx="4" fill="#365314" stroke="#84cc16" />
+                    <text x="50" y="32" fill="#d9f99d" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">W_reg [7:0]</text>
+                    
+                    <!-- Mini Activation Reg -->
+                    <rect x="8" y="58" width="85" height="40" rx="4" fill="#0c4a6e" stroke="#38bdf8" />
+                    <text x="50" y="82" fill="#bae6fd" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">A_reg [7:0]</text>
+                    
+                    <!-- Mini MAC Arithmetic Unit -->
+                    <rect x="105" y="8" width="110" height="90" rx="5" fill="#3b0764" stroke="#c084fc" />
+                    <text x="160" y="32" fill="#fae8ff" font-size="11" font-weight="700" text-anchor="middle">u_mac</text>
+                    <text x="160" y="52" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">Mult 8x8</text>
+                    <text x="160" y="72" fill="#d8b4fe" font-size="9" font-family="'JetBrains Mono', monospace" text-anchor="middle">+ Acc 32b</text>
+                    
+                    <!-- Mini Sum Reg -->
+                    <rect x="105" y="108" width="110" height="40" rx="4" fill="#064e3b" stroke="#34d399" />
+                    <text x="160" y="132" fill="#d1fae5" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">Sum_reg [31:0]</text>
+                </g>
+            </g>
+            
+
+                <path d="M 1580 1140 L 1630 1140" class="net-bus" data-net="act_out_3" marker-end="url(#bus-arrow)" />
+                <rect x="1630" y="1125" width="70" height="30" rx="4" fill="#1e293b" stroke="#38bdf8" />
+                <text x="1665" y="1145" fill="#38bdf8" font-size="11" font-weight="bold" text-anchor="middle">A_out[3]</text>
+                
+
+                <path d="M 1500 1220 L 1500 1280" class="net-bus" data-net="sum_out_3" marker-end="url(#bus-arrow)" />
+                <rect x="1445" y="1280" width="110" height="32" rx="4" fill="#1e293b" stroke="#4ade80" />
+                <text x="1500" y="1301" fill="#4ade80" font-size="11" font-weight="bold" text-anchor="middle">C_out[3] [31:0]</text>
+                
+</g>
+</g>
+
+<!-- Integrated Interactive Controls Toolbar -->
+<g id="ui-toolbar" transform="translate(20, 20)">
+    <rect width="360" height="42" class="svg-toolbar" rx="8" />
+    
+    <g class="svg-tool-btn" onclick="toggleAllComponents(true)" transform="translate(10, 7)">
+        <rect width="100" height="28" rx="5" fill="#1f2937" stroke="#4b5563" />
+        <text x="50" y="18" fill="#e2e8f0" font-size="11" font-weight="600" text-anchor="middle">➕ Expand All</text>
+    </g>
+    
+    <g class="svg-tool-btn" onclick="toggleAllComponents(false)" transform="translate(118, 7)">
+        <rect width="105" height="28" rx="5" fill="#1f2937" stroke="#4b5563" />
+        <text x="52" y="18" fill="#e2e8f0" font-size="11" font-weight="600" text-anchor="middle">➖ Collapse All</text>
+    </g>
+    
+    <g class="svg-tool-btn" onclick="toggleControls()" transform="translate(230, 7)">
+        <rect width="120" height="28" rx="5" fill="#1f2937" stroke="#4b5563" />
+        <text x="60" y="18" fill="#f59e0b" font-size="11" font-weight="600" text-anchor="middle">⚡ Toggle Control</text>
+    </g>
+</g>
+
+<!-- Tooltip Container -->
+<g id="tooltip-group" style="display: none; pointer-events: none;">
+    <rect id="tooltip-bg" fill="#111827" stroke="#38bdf8" stroke-width="1.5" rx="6" opacity="0.95" />
+    <text id="tooltip-text" fill="#f3f4f6" font-size="12" font-family="'JetBrains Mono', monospace" y="0"></text>
+</g>
+
+<script><![CDATA[
+    // Interactive Collapsible Schematic Logic
+    let showControlNets = true;
+    let currentHighlightedNet = null;
+
+    function toggleComponent(id) {
+        const comp = document.getElementById(id);
+        if (!comp) return;
+        const isCollapsed = comp.classList.contains('collapsed');
+        if (isCollapsed) {
+            comp.classList.remove('collapsed');
+            comp.classList.add('expanded');
+        } else {
+            comp.classList.remove('expanded');
+            comp.classList.add('collapsed');
+        }
+        updateBadge(comp);
+    }
+
+    function updateBadge(comp) {
+        const badge = comp.querySelector('.toggle-badge text');
+        if (badge) {
+            badge.textContent = comp.classList.contains('collapsed') ? '+' : '−';
+        }
+    }
+
+    function toggleAllComponents(expand) {
+        const comps = document.querySelectorAll('.collapsible-comp');
+        comps.forEach(c => {
+            if (expand) {
+                c.classList.remove('collapsed');
+                c.classList.add('expanded');
+            } else {
+                c.classList.remove('expanded');
+                c.classList.add('collapsed');
+            }
+            updateBadge(c);
+        });
+    }
+
+    function toggleControls() {
+        showControlNets = !showControlNets;
+        const ctrls = document.querySelectorAll('.net-control, .control-port');
+        ctrls.forEach(el => {
+            el.style.display = showControlNets ? '' : 'none';
+        });
+    }
+
+    function highlightNet(netName) {
+        if (currentHighlightedNet === netName) {
+            clearHighlight();
+            return;
+        }
+        clearHighlight();
+        currentHighlightedNet = netName;
+        const wires = document.querySelectorAll(`[data-net="${netName}"]`);
+        wires.forEach(w => {
+            w.classList.add('net-highlight');
+        });
+    }
+
+    function clearHighlight() {
+        if (currentHighlightedNet) {
+            const wires = document.querySelectorAll(`[data-net="${currentHighlightedNet}"]`);
+            wires.forEach(w => w.classList.remove('net-highlight'));
+            currentHighlightedNet = null;
+        }
+    }
+
+    function showTooltip(evt, text) {
+        const tt = document.getElementById('tooltip-group');
+        const bg = document.getElementById('tooltip-bg');
+        const txt = document.getElementById('tooltip-text');
+        if (!tt || !txt || !bg) return;
+        
+        txt.textContent = text;
+        const bbox = txt.getBBox();
+        bg.setAttribute('width', bbox.width + 16);
+        bg.setAttribute('height', bbox.height + 12);
+        bg.setAttribute('x', bbox.x - 8);
+        bg.setAttribute('y', bbox.y - 6);
+        
+        // Position near mouse
+        const pt = getSVGPoint(evt);
+        tt.setAttribute('transform', `translate(${pt.x + 12}, ${pt.y - 20})`);
+        tt.style.display = 'block';
+    }
+
+    function hideTooltip() {
+        const tt = document.getElementById('tooltip-group');
+        if (tt) tt.style.display = 'none';
+    }
+
+    function getSVGPoint(evt) {
+        const svg = document.getElementById('schematic-svg');
+        const pt = svg.createSVGPoint();
+        pt.x = evt.clientX;
+        pt.y = evt.clientY;
+        return pt.matrixTransform(svg.getScreenCTM().inverse());
+    }
+
+    // Pan and Zoom support
+    let isPanning = false;
+    let startX = 0, startY = 0;
+    let translateX = 0, translateY = 0, scale = 1;
+    const viewport = document.getElementById('viewport');
+
+    window.addEventListener('load', () => {
+        const svg = document.getElementById('schematic-svg');
+        if (!svg) return;
+
+        svg.addEventListener('mousedown', (e) => {
+            if (e.target.closest('.component-box') || e.target.closest('.svg-tool-btn')) return;
+            isPanning = true;
+            startX = e.clientX - translateX;
+            startY = e.clientY - translateY;
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isPanning) return;
+            translateX = e.clientX - startX;
+            translateY = e.clientY - startY;
+            viewport.setAttribute('transform', `translate(${translateX}, ${translateY}) scale(${scale})`);
+        });
+
+        window.addEventListener('mouseup', () => {
+            isPanning = false;
+        });
+
+        svg.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+            const newScale = Math.min(Math.max(scale * zoomFactor, 0.3), 5.0);
+            scale = newScale;
+            viewport.setAttribute('transform', `translate(${translateX}, ${translateY}) scale(${scale})`);
+        });
+    });
+]]></script>
+</svg>

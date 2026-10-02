@@ -35,6 +35,18 @@ module systolic_array #(
     // Global Weight Load Enable signal
     input  logic                                  weight_load_en,
 
+`ifdef SYNTHESIS
+    // Weight inputs: packed vector for Yosys synthesis
+    input  logic signed [COLS*DATA_WIDTH-1:0]     weights_in,
+    // Activation inputs: packed vector for Yosys synthesis
+    input  logic signed [ROWS*DATA_WIDTH-1:0]     activations_in,
+    // Partial sum inputs at top boundary: packed vector for Yosys synthesis
+    input  logic signed [COLS*ACC_WIDTH-1:0]      sum_in_top,
+    // Final accumulated output results: packed vector for Yosys synthesis
+    output logic signed [COLS*ACC_WIDTH-1:0]      sum_out_bot,
+    // Activation passthrough: packed vector for Yosys synthesis
+    output logic signed [ROWS*DATA_WIDTH-1:0]     activations_out
+`else
     // Weight inputs: 1 input port per column (weights shift down from top row to bottom row)
     input  logic signed [DATA_WIDTH-1:0]          weights_in   [COLS],
 
@@ -49,6 +61,7 @@ module systolic_array #(
 
     // Activation passthrough at right boundary (for monitoring / cascading chips)
     output logic signed [DATA_WIDTH-1:0]          activations_out [ROWS]
+`endif
 );
 
     // --------------------------------------------------------------------------
@@ -58,6 +71,22 @@ module systolic_array #(
     // Row 1 needs 1 cycle delay
     // Row r needs r cycles delay
     // --------------------------------------------------------------------------
+    // Array of wires holding unpacked activations input
+    logic signed [DATA_WIDTH-1:0] act_in_arr [ROWS];
+`ifdef SYNTHESIS
+    generate
+        for (genvar r = 0; r < ROWS; r++) begin : gen_unpack_act_in
+            assign act_in_arr[r] = activations_in[(r+1)*DATA_WIDTH-1 : r*DATA_WIDTH];
+        end
+    endgenerate
+`else
+    generate
+        for (genvar r = 0; r < ROWS; r++) begin : gen_unpack_act_in
+            assign act_in_arr[r] = activations_in[r];
+        end
+    endgenerate
+`endif
+
     // Array of wires holding the skewed activation signals for each row
     logic signed [DATA_WIDTH-1:0] act_skewed [ROWS];
 
@@ -66,7 +95,7 @@ module systolic_array #(
         for (genvar r = 0; r < ROWS; r++) begin : gen_act_skew
             // Row 0 has 0 delay stages: pass through directly
             if (r == 0) begin : gen_row0_direct
-                assign act_skewed[0] = activations_in[0];
+                assign act_skewed[0] = act_in_arr[0];
             end else begin : gen_row_delay_pipeline
                 // Create a shift register of depth 'r' for row 'r'
                 logic signed [DATA_WIDTH-1:0] delay_pipe [r];
@@ -80,7 +109,7 @@ module systolic_array #(
                         end
                     end else if (en) begin
                         // Load newest input into stage 0
-                        delay_pipe[0] <= activations_in[r];
+                        delay_pipe[0] <= act_in_arr[r];
                         // Shift previous values forward
                         for (int d = 1; d < r; d++) begin
                             delay_pipe[d] <= delay_pipe[d-1];
@@ -113,6 +142,20 @@ module systolic_array #(
     // Connect external module pins to the boundary of the internal wire grid
     // --------------------------------------------------------------------------
     generate
+`ifdef SYNTHESIS
+        // Left & Right boundaries for activations
+        for (genvar r = 0; r < ROWS; r++) begin : gen_boundary_act
+            assign h_act[r][0] = act_skewed[r];
+            assign activations_out[(r+1)*DATA_WIDTH-1 : r*DATA_WIDTH] = h_act[r][COLS];
+        end
+
+        // Top & Bottom boundaries for partial sums and weight shifting
+        for (genvar c = 0; c < COLS; c++) begin : gen_boundary_sum_weight
+            assign v_sum[0][c]    = sum_in_top[(c+1)*ACC_WIDTH-1 : c*ACC_WIDTH];
+            assign sum_out_bot[(c+1)*ACC_WIDTH-1 : c*ACC_WIDTH] = v_sum[ROWS][c];
+            assign v_weight[0][c] = weights_in[(c+1)*DATA_WIDTH-1 : c*DATA_WIDTH];
+        end
+`else
         // Left & Right boundaries for activations
         for (genvar r = 0; r < ROWS; r++) begin : gen_boundary_act
             // Connect skewed inputs to leftmost column (column 0)
@@ -130,6 +173,7 @@ module systolic_array #(
             // Connect external weight inputs to row 0 for shifting
             assign v_weight[0][c]       = weights_in[c];
         end
+`endif
     endgenerate
 
     // --------------------------------------------------------------------------

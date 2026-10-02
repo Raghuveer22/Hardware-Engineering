@@ -17,6 +17,7 @@ __pycache__/
 *.fsdb
 *.vpd
 *.wlf
+*.dot
 
 # Cocotb Simulator Build Artifacts & Test Logs
 sim/sim_build_*/

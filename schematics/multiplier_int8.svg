@@ -1,0 +1,508 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 700" width="100%" height="100%" class="schematic-canvas" id="schematic-svg" data-title="multiplier_int8 - 8-Bit Signed Multiplier">
+<defs>
+    <style><![CDATA[
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap');
+        
+        :root {
+            --bg: #090d13;
+            --panel: #111827;
+            --card: #1f2937;
+            --card-header: #374151;
+            --border: #374151;
+            --text: #f3f4f6;
+            --text-muted: #9ca3af;
+            --accent: #38bdf8;
+            --accent-glow: rgba(56, 189, 248, 0.4);
+            --bus-color: #60a5fa;
+            --bus-width: 3.5px;
+            --wire-color: #94a3b8;
+            --control-color: #f59e0b;
+            --highlight: #22d3ee;
+            --pe-bg: #131d2e;
+            --pe-border: #2563eb;
+            --mac-bg: #1e1b4b;
+            --mac-border: #6366f1;
+            --reg-bg: #142e2b;
+            --reg-border: #10b981;
+            --mult-bg: #31132b;
+            --mult-border: #ec4899;
+        }
+        
+        text {
+            font-family: 'Inter', -apple-system, sans-serif;
+            user-select: none;
+        }
+        
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        
+        /* Interactive Component Styling */
+        .component-box {
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+        
+        .component-box:hover .box-rect {
+            stroke: var(--highlight);
+            stroke-width: 2.5px;
+            filter: drop-shadow(0 0 10px var(--accent-glow));
+        }
+        
+        .toggle-btn {
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        .toggle-btn:hover circle {
+            fill: var(--highlight);
+        }
+        
+        /* Collapsible Elements */
+        .collapsible-content {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        .collapsed .collapsible-content {
+            display: none;
+            opacity: 0;
+        }
+        .collapsed .expanded-only {
+            display: none;
+        }
+        .expanded .collapsed-only {
+            display: none;
+        }
+        
+        /* Wire and Bus Styling */
+        .net-bus {
+            fill: none;
+            stroke: var(--bus-color);
+            stroke-width: 3.5px;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            transition: stroke 0.2s, stroke-width 0.2s, filter 0.2s;
+        }
+        
+        .net-control {
+            fill: none;
+            stroke: var(--control-color);
+            stroke-width: 1.5px;
+            stroke-dasharray: 4 3;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            transition: stroke 0.2s, stroke-width 0.2s;
+        }
+        
+        .net-wire {
+            fill: none;
+            stroke: var(--wire-color);
+            stroke-width: 2px;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            transition: stroke 0.2s, stroke-width 0.2s;
+        }
+        
+        .net-active {
+            stroke: #f43f5e !important;
+            stroke-width: 4.5px !important;
+            filter: drop-shadow(0 0 8px #f43f5e) !important;
+        }
+        
+        .net-highlight {
+            stroke: #38bdf8 !important;
+            stroke-width: 4.5px !important;
+            filter: drop-shadow(0 0 10px #38bdf8) !important;
+        }
+        
+        /* Ports and Pins */
+        .pin-node {
+            cursor: pointer;
+            transition: r 0.2s, fill 0.2s;
+        }
+        .pin-node:hover {
+            r: 6px;
+            fill: var(--highlight);
+        }
+        
+        /* Tooltip */
+        #svg-tooltip {
+            position: absolute;
+            display: none;
+            background: rgba(17, 24, 39, 0.95);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-family: 'JetBrains Mono', monospace;
+            border: 1px solid #38bdf8;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            pointer-events: none;
+            z-index: 1000;
+        }
+        
+        /* Toolbar inside SVG */
+        .svg-toolbar {
+            fill: #111827;
+            stroke: #374151;
+            stroke-width: 1px;
+            rx: 6px;
+        }
+        .svg-tool-btn {
+            cursor: pointer;
+        }
+        .svg-tool-btn:hover rect {
+            fill: #1f2937;
+            stroke: #38bdf8;
+        }
+    ]]></style>
+    
+    <!-- Gradients and Markers -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#0a0f18" />
+        <stop offset="100%" stop-color="#04070c" />
+    </linearGradient>
+    
+    <linearGradient id="peGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#1e293b" />
+        <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+    
+    <linearGradient id="macGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#2d1b4e" />
+        <stop offset="100%" stop-color="#19102c" />
+    </linearGradient>
+    
+    <linearGradient id="regGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#064e3b" />
+        <stop offset="100%" stop-color="#022c22" />
+    </linearGradient>
+    
+    <linearGradient id="multGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#701a75" />
+        <stop offset="100%" stop-color="#4a044e" />
+    </linearGradient>
+    
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur stdDeviation="4" result="blur" />
+        <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+    
+    <marker id="bus-arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1 L 9 5 L 0 9 z" fill="#60a5fa" />
+    </marker>
+    <marker id="wire-arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#94a3b8" />
+    </marker>
+    <marker id="ctrl-arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#f59e0b" />
+    </marker>
+</defs>
+
+<!-- Background -->
+<rect width="100%" height="100%" fill="url(#bgGrad)" />
+
+<!-- Grid Pattern -->
+<pattern id="dotGrid" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
+    <circle cx="2" cy="2" r="1" fill="#1e293b" opacity="0.6" />
+</pattern>
+<rect width="100%" height="100%" fill="url(#dotGrid)" />
+
+<!-- Canvas Viewport for Pan/Zoom -->
+<g id="viewport" transform="translate(0, 0) scale(1)">
+
+
+    <g transform="translate(40, 80)">
+        <text x="0" y="0" fill="#f8fafc" font-size="22" font-weight="700">🔬 MODULE: multiplier_int8</text>
+        <text x="0" y="24" fill="#94a3b8" font-size="13">High-Radix Signed Booth Multiplier (8-bit x 8-bit = 16-bit Product)</text>
+    </g>
+    
+
+    <g id="comp_multiplier" class="collapsible-comp expanded" transform="translate(180, 140)">
+        <!-- Container Box -->
+        <g class="component-box" onclick="toggleComponent('comp_multiplier')">
+            <rect class="box-rect" x="0" y="0" width="740" height="480" rx="12" fill="#1e1329" stroke="#c084fc" stroke-width="2" />
+            <rect x="0" y="0" width="740" height="42" rx="12" fill="#3b0764" />
+            <rect x="0" y="30" width="740" height="12" fill="#3b0764" />
+            
+            <text x="24" y="27" fill="#f3e8ff" font-size="15" font-weight="700">⚙️ multiplier_int8 Core</text>
+            <text x="220" y="26" fill="#d8b4fe" font-size="12" font-family="'JetBrains Mono', monospace">DATA_WIDTH = 8, PROD_WIDTH = 16</text>
+            
+            <!-- Toggle Badge -->
+            <g class="toggle-badge" transform="translate(705, 21)">
+                <circle cx="0" cy="0" r="12" fill="#6b21a8" stroke="#d8b4fe" stroke-width="1.5" />
+                <text x="0" y="4" fill="#ffffff" font-size="14" font-weight="bold" text-anchor="middle">−</text>
+            </g>
+        </g>
+        
+        <!-- COLLAPSED ONLY VIEW: Clean High-Level Multiplier Function -->
+        <g class="collapsed-only" transform="translate(220, 150)">
+            <rect x="0" y="0" width="300" height="180" rx="10" fill="#2e1065" stroke="#a855f7" stroke-width="2" />
+            <text x="150" y="70" fill="#f3e8ff" font-size="28" font-weight="bold" text-anchor="middle">✖️ MULTIPLIER</text>
+            <text x="150" y="105" fill="#c084fc" font-size="14" font-family="'JetBrains Mono', monospace" text-anchor="middle">product = a * b (Signed)</text>
+            <text x="150" y="140" fill="#9333ea" font-size="12" text-anchor="middle">Click anywhere to expand internal logic</text>
+            
+            <!-- Internal Flow Bus in collapsed view -->
+            <path d="M -160 50 L 0 50" class="net-bus" data-net="a" />
+            <path d="M -160 130 L 0 130" class="net-bus" data-net="b" />
+            <path d="M 300 90 L 460 90" class="net-bus" data-net="product" />
+        </g>
+        
+        <!-- EXPANDED ONLY VIEW: 4 Internal Functional Stages -->
+        <g class="collapsible-content expanded-only">
+            <!-- Stage 1: Booth Radix-4 Encoder -->
+            <g id="sub_booth" class="collapsible-comp expanded" transform="translate(40, 80)">
+                <rect class="box-rect" x="0" y="0" width="180" height="340" rx="8" fill="#1e1b4b" stroke="#818cf8" stroke-width="1.5" />
+                <rect x="0" y="0" width="180" height="32" rx="8" fill="#312e81" />
+                <text x="12" y="21" fill="#e0e7ff" font-size="12" font-weight="700">1. Radix-4 Booth Enc</text>
+                <text x="90" y="70" fill="#c7d2fe" font-size="11" text-anchor="middle">Recodes Operand B</text>
+                <text x="90" y="90" fill="#94a3b8" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">b[7:0] + b[-1]=0</text>
+                <rect x="20" y="120" width="140" height="180" rx="6" fill="#0f172a" stroke="#4338ca" />
+                <text x="90" y="150" fill="#a5b4fc" font-size="11" text-anchor="middle">4 Partial Multipliers:</text>
+                <text x="90" y="180" fill="#cbd5e1" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">PP0: {0, ±1a, ±2a}</text>
+                <text x="90" y="210" fill="#cbd5e1" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">PP1: {0, ±1a, ±2a}</text>
+                <text x="90" y="240" fill="#cbd5e1" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">PP2: {0, ±1a, ±2a}</text>
+                <text x="90" y="270" fill="#cbd5e1" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">PP3: {0, ±1a, ±2a}</text>
+            </g>
+            
+            <!-- Stage 2: Partial Product Generator -->
+            <g id="sub_ppgen" transform="translate(260, 80)">
+                <rect x="0" y="0" width="190" height="340" rx="8" fill="#14253d" stroke="#38bdf8" stroke-width="1.5" />
+                <rect x="0" y="0" width="190" height="32" rx="8" fill="#0369a1" />
+                <text x="12" y="21" fill="#e0f2fe" font-size="12" font-weight="700">2. PP Generator</text>
+                <text x="95" y="65" fill="#bae6fd" font-size="11" text-anchor="middle">Sign Extension &amp; Shift</text>
+                
+                <rect x="15" y="90" width="160" height="45" rx="5" fill="#0c4a6e" />
+                <text x="95" y="118" fill="#ffffff" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">PP0 (16-bit) &lt;&lt; 0</text>
+                
+                <rect x="15" y="150" width="160" height="45" rx="5" fill="#0c4a6e" />
+                <text x="95" y="178" fill="#ffffff" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">PP1 (16-bit) &lt;&lt; 2</text>
+                
+                <rect x="15" y="210" width="160" height="45" rx="5" fill="#0c4a6e" />
+                <text x="95" y="238" fill="#ffffff" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">PP2 (16-bit) &lt;&lt; 4</text>
+                
+                <rect x="15" y="270" width="160" height="45" rx="5" fill="#0c4a6e" />
+                <text x="95" y="298" fill="#ffffff" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">PP3 (16-bit) &lt;&lt; 6</text>
+            </g>
+            
+            <!-- Stage 3: Wallace / CSA Tree Reduction -->
+            <g id="sub_csatree" transform="translate(490, 80)">
+                <rect x="0" y="0" width="210" height="180" rx="8" fill="#064e3b" stroke="#34d399" stroke-width="1.5" />
+                <rect x="0" y="0" width="210" height="32" rx="8" fill="#047857" />
+                <text x="12" y="21" fill="#ecfdf5" font-size="12" font-weight="700">3. CSA Reduction Tree</text>
+                <text x="105" y="65" fill="#a7f3d0" font-size="11" text-anchor="middle">4:2 Compressor Tree</text>
+                
+                <rect x="20" y="90" width="170" height="30" rx="4" fill="#065f46" />
+                <text x="105" y="110" fill="#d1fae5" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">Carry Vector [15:0]</text>
+                
+                <rect x="20" y="130" width="170" height="30" rx="4" fill="#065f46" />
+                <text x="105" y="150" fill="#d1fae5" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">Sum Vector [15:0]</text>
+            </g>
+            
+            <!-- Stage 4: Final CPA Adder -->
+            <g id="sub_cpa" transform="translate(490, 290)">
+                <rect x="0" y="0" width="210" height="130" rx="8" fill="#713f12" stroke="#facc15" stroke-width="1.5" />
+                <rect x="0" y="0" width="210" height="32" rx="8" fill="#a16207" />
+                <text x="12" y="21" fill="#fefce8" font-size="12" font-weight="700">4. Final CPA (Adder)</text>
+                <text x="105" y="65" fill="#fde047" font-size="11" text-anchor="middle">Carry Lookahead 16-bit</text>
+                <text x="105" y="100" fill="#ffffff" font-size="13" font-family="'JetBrains Mono', monospace" text-anchor="middle">Product = Sum + Carry</text>
+            </g>
+            
+            <!-- Internal Interconnect Buses -->
+            <path d="M 220 200 L 260 200" class="net-bus" data-net="booth_ctrl" />
+            <path d="M 450 140 L 490 140" class="net-bus" data-net="pp_vectors" />
+            <path d="M 595 260 L 595 290" class="net-bus" data-net="csa_vectors" />
+        </g>
+    </g>
+    
+
+    <!-- External Ports and Buses -->
+    <!-- Input A -->
+    <g class="port-group" onmouseover="highlightNet('a')" onmouseout="clearHighlight()">
+        <rect x="30" y="240" width="100" height="36" rx="6" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5" />
+        <text x="80" y="263" fill="#38bdf8" font-size="13" font-weight="700" text-anchor="middle">a [7:0]</text>
+        <path d="M 130 258 L 180 258" class="net-bus" data-net="a" marker-end="url(#bus-arrow)" />
+        <circle cx="180" cy="258" r="4" fill="#38bdf8" class="pin-node" onmouseover="showTooltip(event, 'Port: a [7:0] (Signed INT8 operand)')" onmouseout="hideTooltip()" />
+    </g>
+    
+    <!-- Input B -->
+    <g class="port-group" onmouseover="highlightNet('b')" onmouseout="clearHighlight()">
+        <rect x="30" y="380" width="100" height="36" rx="6" fill="#1e293b" stroke="#fb923c" stroke-width="1.5" />
+        <text x="80" y="403" fill="#fb923c" font-size="13" font-weight="700" text-anchor="middle">b [7:0]</text>
+        <path d="M 130 398 L 180 398" class="net-bus" data-net="b" marker-end="url(#bus-arrow)" />
+        <circle cx="180" cy="398" r="4" fill="#fb923c" class="pin-node" onmouseover="showTooltip(event, 'Port: b [7:0] (Signed INT8 operand)')" onmouseout="hideTooltip()" />
+    </g>
+    
+    <!-- Output Product -->
+    <g class="port-group" onmouseover="highlightNet('product')" onmouseout="clearHighlight()">
+        <path d="M 920 375 L 970 375" class="net-bus" data-net="product" marker-end="url(#bus-arrow)" />
+        <rect x="970" y="357" width="110" height="36" rx="6" fill="#1e293b" stroke="#4ade80" stroke-width="1.5" />
+        <text x="1025" y="380" fill="#4ade80" font-size="13" font-weight="700" text-anchor="middle">product [15:0]</text>
+        <circle cx="920" cy="375" r="4" fill="#4ade80" class="pin-node" onmouseover="showTooltip(event, 'Port: product [15:0] (Signed INT16 output)')" onmouseout="hideTooltip()" />
+    </g>
+    
+</g>
+
+<!-- Integrated Interactive Controls Toolbar -->
+<g id="ui-toolbar" transform="translate(20, 20)">
+    <rect width="360" height="42" class="svg-toolbar" rx="8" />
+    
+    <g class="svg-tool-btn" onclick="toggleAllComponents(true)" transform="translate(10, 7)">
+        <rect width="100" height="28" rx="5" fill="#1f2937" stroke="#4b5563" />
+        <text x="50" y="18" fill="#e2e8f0" font-size="11" font-weight="600" text-anchor="middle">➕ Expand All</text>
+    </g>
+    
+    <g class="svg-tool-btn" onclick="toggleAllComponents(false)" transform="translate(118, 7)">
+        <rect width="105" height="28" rx="5" fill="#1f2937" stroke="#4b5563" />
+        <text x="52" y="18" fill="#e2e8f0" font-size="11" font-weight="600" text-anchor="middle">➖ Collapse All</text>
+    </g>
+    
+    <g class="svg-tool-btn" onclick="toggleControls()" transform="translate(230, 7)">
+        <rect width="120" height="28" rx="5" fill="#1f2937" stroke="#4b5563" />
+        <text x="60" y="18" fill="#f59e0b" font-size="11" font-weight="600" text-anchor="middle">⚡ Toggle Control</text>
+    </g>
+</g>
+
+<!-- Tooltip Container -->
+<g id="tooltip-group" style="display: none; pointer-events: none;">
+    <rect id="tooltip-bg" fill="#111827" stroke="#38bdf8" stroke-width="1.5" rx="6" opacity="0.95" />
+    <text id="tooltip-text" fill="#f3f4f6" font-size="12" font-family="'JetBrains Mono', monospace" y="0"></text>
+</g>
+
+<script><![CDATA[
+    // Interactive Collapsible Schematic Logic
+    let showControlNets = true;
+    let currentHighlightedNet = null;
+
+    function toggleComponent(id) {
+        const comp = document.getElementById(id);
+        if (!comp) return;
+        const isCollapsed = comp.classList.contains('collapsed');
+        if (isCollapsed) {
+            comp.classList.remove('collapsed');
+            comp.classList.add('expanded');
+        } else {
+            comp.classList.remove('expanded');
+            comp.classList.add('collapsed');
+        }
+        updateBadge(comp);
+    }
+
+    function updateBadge(comp) {
+        const badge = comp.querySelector('.toggle-badge text');
+        if (badge) {
+            badge.textContent = comp.classList.contains('collapsed') ? '+' : '−';
+        }
+    }
+
+    function toggleAllComponents(expand) {
+        const comps = document.querySelectorAll('.collapsible-comp');
+        comps.forEach(c => {
+            if (expand) {
+                c.classList.remove('collapsed');
+                c.classList.add('expanded');
+            } else {
+                c.classList.remove('expanded');
+                c.classList.add('collapsed');
+            }
+            updateBadge(c);
+        });
+    }
+
+    function toggleControls() {
+        showControlNets = !showControlNets;
+        const ctrls = document.querySelectorAll('.net-control, .control-port');
+        ctrls.forEach(el => {
+            el.style.display = showControlNets ? '' : 'none';
+        });
+    }
+
+    function highlightNet(netName) {
+        if (currentHighlightedNet === netName) {
+            clearHighlight();
+            return;
+        }
+        clearHighlight();
+        currentHighlightedNet = netName;
+        const wires = document.querySelectorAll(`[data-net="${netName}"]`);
+        wires.forEach(w => {
+            w.classList.add('net-highlight');
+        });
+    }
+
+    function clearHighlight() {
+        if (currentHighlightedNet) {
+            const wires = document.querySelectorAll(`[data-net="${currentHighlightedNet}"]`);
+            wires.forEach(w => w.classList.remove('net-highlight'));
+            currentHighlightedNet = null;
+        }
+    }
+
+    function showTooltip(evt, text) {
+        const tt = document.getElementById('tooltip-group');
+        const bg = document.getElementById('tooltip-bg');
+        const txt = document.getElementById('tooltip-text');
+        if (!tt || !txt || !bg) return;
+        
+        txt.textContent = text;
+        const bbox = txt.getBBox();
+        bg.setAttribute('width', bbox.width + 16);
+        bg.setAttribute('height', bbox.height + 12);
+        bg.setAttribute('x', bbox.x - 8);
+        bg.setAttribute('y', bbox.y - 6);
+        
+        // Position near mouse
+        const pt = getSVGPoint(evt);
+        tt.setAttribute('transform', `translate(${pt.x + 12}, ${pt.y - 20})`);
+        tt.style.display = 'block';
+    }
+
+    function hideTooltip() {
+        const tt = document.getElementById('tooltip-group');
+        if (tt) tt.style.display = 'none';
+    }
+
+    function getSVGPoint(evt) {
+        const svg = document.getElementById('schematic-svg');
+        const pt = svg.createSVGPoint();
+        pt.x = evt.clientX;
+        pt.y = evt.clientY;
+        return pt.matrixTransform(svg.getScreenCTM().inverse());
+    }
+
+    // Pan and Zoom support
+    let isPanning = false;
+    let startX = 0, startY = 0;
+    let translateX = 0, translateY = 0, scale = 1;
+    const viewport = document.getElementById('viewport');
+
+    window.addEventListener('load', () => {
+        const svg = document.getElementById('schematic-svg');
+        if (!svg) return;
+
+        svg.addEventListener('mousedown', (e) => {
+            if (e.target.closest('.component-box') || e.target.closest('.svg-tool-btn')) return;
+            isPanning = true;
+            startX = e.clientX - translateX;
+            startY = e.clientY - translateY;
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isPanning) return;
+            translateX = e.clientX - startX;
+            translateY = e.clientY - startY;
+            viewport.setAttribute('transform', `translate(${translateX}, ${translateY}) scale(${scale})`);
+        });
+
+        window.addEventListener('mouseup', () => {
+            isPanning = false;
+        });
+
+        svg.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+            const newScale = Math.min(Math.max(scale * zoomFactor, 0.3), 5.0);
+            scale = newScale;
+            viewport.setAttribute('transform', `translate(${translateX}, ${translateY}) scale(${scale})`);
+        });
+    });
+]]></script>
+</svg>
