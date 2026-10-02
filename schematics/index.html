@@ -303,21 +303,41 @@
             <div class="sidebar-section">
                 <div class="sidebar-heading">Select Hardware Module</div>
                 <div class="module-list">
+                    <button class="module-btn" onclick="loadModule('adder', this)">
+                        <span>➕ adder (Lab 00)</span>
+                        <span class="badge">ADD</span>
+                    </button>
+                    <button class="module-btn" onclick="loadModule('multiplier_int8', this)">
+                        <span>✖️ multiplier_int8 (Lab 01)</span>
+                        <span class="badge">MULT</span>
+                    </button>
+                    <button class="module-btn" onclick="loadModule('mac_unit', this)">
+                        <span>⚙️ mac_unit (Lab 02)</span>
+                        <span class="badge">MAC</span>
+                    </button>
                     <button class="module-btn active" onclick="loadModule('pe', this)">
-                        <span>⚡ pe (Processing Element)</span>
+                        <span>⚡ pe (Lab 03)</span>
                         <span class="badge">CELL</span>
                     </button>
                     <button class="module-btn" onclick="loadModule('systolic_array', this)">
-                        <span>🧩 systolic_array (4x4 Grid)</span>
+                        <span>🧩 systolic_array (Lab 04)</span>
                         <span class="badge">TOP</span>
                     </button>
-                    <button class="module-btn" onclick="loadModule('mac_unit', this)">
-                        <span>⚙️ mac_unit (MAC Core)</span>
-                        <span class="badge">ARITH</span>
+                    <button class="module-btn" onclick="loadModule('sqrt', this)">
+                        <span>📐 sqrt (Lab 05)</span>
+                        <span class="badge">ATTN</span>
                     </button>
-                    <button class="module-btn" onclick="loadModule('multiplier_int8', this)">
-                        <span>✖️ multiplier_int8</span>
-                        <span class="badge">MULT</span>
+                    <button class="module-btn" onclick="loadModule('softmax', this)">
+                        <span>🌊 softmax (Lab 06)</span>
+                        <span class="badge">ATTN</span>
+                    </button>
+                    <button class="module-btn" onclick="loadModule('rsqrt', this)">
+                        <span>⚡ rsqrt (Lab 07)</span>
+                        <span class="badge">NORM</span>
+                    </button>
+                    <button class="module-btn" onclick="loadModule('exp2_sfu', this)">
+                        <span>🔥 exp2_sfu (Lab 08)</span>
+                        <span class="badge">SFU</span>
                     </button>
                 </div>
             </div>
@@ -379,6 +399,23 @@
         let currentModule = 'pe';
 
         const MODULE_DATA = {
+            'adder': {
+                file: 'adder.svg',
+                name: 'adder',
+                src: 'rtl/adder.sv',
+                dff: '0 (Pure Combinational)',
+                mult: '0',
+                add: '1 (8-bit Signed Ripple-Carry)',
+                gates: '~42 Gates',
+                tree: `
+                    <div class="tree-item">📦 adder</div>
+                    <div class="tree-node">
+                        <div class="tree-item">1. Full Adder Array (8x FA)</div>
+                        <div class="tree-item">2. Overflow Detector ((a7==b7) &amp;&amp; (s7!=a7))</div>
+                        <div class="tree-item">3. Saturation Clamping MUX (+127 / -128)</div>
+                    </div>
+                `
+            },
             'pe': {
                 file: 'pe.svg',
                 name: 'pe',
@@ -447,14 +484,87 @@
                 dff: '0 (Pure Combinational)',
                 mult: '1 (Booth Radix-4 Core)',
                 add: '1 (16-bit CPA)',
-                gates: '~220 Gates',
+                gates: '~456 Gates',
                 tree: `
                     <div class="tree-item">📦 multiplier_int8</div>
                     <div class="tree-node">
                         <div class="tree-item">1. Radix-4 Booth Encoder</div>
-                        <div class="tree-item">2. Partial Product Generator</div>
-                        <div class="tree-item">3. CSA Reduction Tree (4:2)</div>
+                        <div class="tree-item">2. Partial Product Generator (64 ANDs)</div>
+                        <div class="tree-item">3. CSA Reduction Tree (Wallace/Dadda)</div>
                         <div class="tree-item">4. Final 16-Bit CPA Adder</div>
+                    </div>
+                `
+            },
+            'sqrt': {
+                file: 'sqrt.svg',
+                name: 'sqrt',
+                src: 'rtl/sqrt.sv',
+                dff: '0 (Combinational Recurrence)',
+                mult: '0 (Zero Multipliers)',
+                add: '8 (8 Subtract Stages)',
+                gates: '~180 Gates',
+                tree: `
+                    <div class="tree-item">📦 sqrt (Attention Scaling)</div>
+                    <div class="tree-node">
+                        <div class="tree-item">1. Bit-Pair Shift Stage (16b ➔ 8 Pairs)</div>
+                        <div class="tree-item">2. Trial Candidate Evaluator ({root, 2'b01})</div>
+                        <div class="tree-item">3. Digit-Recurrence Subtractors (8 Stages)</div>
+                        <div class="tree-item">4. Output Root [7:0] &amp; Remainder [15:0]</div>
+                    </div>
+                `
+            },
+            'softmax': {
+                file: 'softmax.svg',
+                name: 'softmax',
+                src: 'rtl/softmax.sv',
+                dff: '0 (Pipelined/Combinational)',
+                mult: '4 (4x Normalization Multipliers)',
+                add: '8 (Max, Shift, &amp; Sum Tree)',
+                gates: '~420 Gates',
+                tree: `
+                    <div class="tree-item">📦 softmax (Safe Softmax Engine)</div>
+                    <div class="tree-node">
+                        <div class="tree-item">1. Max-Finder Comparator Tree</div>
+                        <div class="tree-item">2. Delta Shift Subtractors (delta &le; 0)</div>
+                        <div class="tree-item">3. Exponential LUT (exp(delta) in Q0.8)</div>
+                        <div class="tree-item">4. Sum Reduction Tree (&Sigma; exp)</div>
+                        <div class="tree-item">5. Normalization Dividers (prob = exp/sum)</div>
+                    </div>
+                `
+            },
+            'rsqrt': {
+                file: 'rsqrt.svg',
+                name: 'rsqrt',
+                src: 'rtl/rsqrt.sv',
+                dff: '0 (SFU Reciprocal Root)',
+                mult: '0 (Shift & Seed LUT)',
+                add: '8 (Digit Recurrence Subtractors)',
+                gates: '~210 Gates',
+                tree: `
+                    <div class="tree-item">📦 rsqrt (RMSNorm / LayerNorm SFU)</div>
+                    <div class="tree-node">
+                        <div class="tree-item">1. Zero Check &amp; Corner Clamping</div>
+                        <div class="tree-item">2. Seed ROM (Small Range Constants)</div>
+                        <div class="tree-item">3. Digit-by-Digit Root Engine</div>
+                        <div class="tree-item">4. Normalized Q8.8 Output Scaler</div>
+                    </div>
+                `
+            },
+            'exp2_sfu': {
+                file: 'exp2_sfu.svg',
+                name: 'exp2_sfu',
+                src: 'rtl/exp2_sfu.sv',
+                dff: '0 (Combinational SFU)',
+                mult: '1 (log2(e) Fixed-Point Scaler)',
+                add: '2 (Integer / Fractional Split)',
+                gates: '~340 Gates',
+                tree: `
+                    <div class="tree-item">📦 exp2_sfu (Exponential SFU)</div>
+                    <div class="tree-node">
+                        <div class="tree-item">1. log2(e) Multiplier (Base-2 Conversion)</div>
+                        <div class="tree-item">2. Integer / Fractional Split (I + F)</div>
+                        <div class="tree-item">3. 16-Entry Fractional LUT (2^F)</div>
+                        <div class="tree-item">4. Barrel Shifter (2^F &lt;&lt; I / &gt;&gt; -I)</div>
                     </div>
                 `
             }

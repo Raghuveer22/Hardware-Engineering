@@ -1,0 +1,1015 @@
+#!/usr/bin/env python3
+"""
+=============================================================================
+Hardware AI Acceleration Curriculum - Bento-Grid Modern PPTX Slide Generator
+Implements High-Retention Technical Content Architecture:
+1. 🪝 The Hook & Silicon Consequence (Why naive hardware destroys LLMs)
+2. 💡 Mathematical & Hardware Intuition (Visual equations, bit sizing)
+3. 💻 Synthesizable SystemVerilog RTL Walkthrough
+4. 🧪 Cocotb Golden Verification & Cycle Analysis (Sequential clocking vs combinational)
+5. 🎯 Student Challenge / Homework (Concrete modification task & pytest command)
+=============================================================================
+"""
+
+import os
+import sys
+from pathlib import Path
+from PIL import Image
+Image.MAX_IMAGE_PIXELS = None  # Suppress large schematic decompression warning
+
+from pptx import Presentation
+from pptx.util import Inches, Pt
+from pptx.dml.color import RGBColor
+from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
+from pptx.enum.shapes import MSO_SHAPE
+
+# 2026 Modern Tech Dark Theme Palette
+COLOR_BG = RGBColor(11, 15, 25)          # Deep Obsidian #0B0F19
+COLOR_CARD = RGBColor(17, 24, 39)        # Bento Card #111827
+COLOR_CARD_ALT = RGBColor(23, 32, 51)    # Bento Card Hover #172033
+COLOR_BORDER = RGBColor(40, 53, 75)      # Crisp Border #28354B
+
+COLOR_CYAN = RGBColor(56, 189, 248)      # Electric Cyan #38BDF8
+COLOR_EMERALD = RGBColor(52, 211, 153)   # Neon Emerald #34D399
+COLOR_AMBER = RGBColor(251, 191, 36)     # Warm Amber #FBBF24
+COLOR_ROSE = RGBColor(251, 113, 133)     # Coral Rose #FB7185
+COLOR_PURPLE = RGBColor(192, 132, 252)   # Violet Purple #C084FC
+COLOR_INDIGO = RGBColor(129, 140, 248)   # Indigo #818CF8
+
+COLOR_TEXT_MAIN = RGBColor(248, 250, 252)
+COLOR_TEXT_MUTED = RGBColor(148, 163, 184)
+COLOR_TEXT_SUBTLE = RGBColor(100, 116, 139)
+
+FONT_HEAD = "Trebuchet MS"
+FONT_BODY = "Calibri"
+FONT_CODE = "Consolas"
+
+def create_deck():
+    prs = Presentation()
+    prs.slide_width = Inches(13.333)
+    prs.slide_height = Inches(7.5)
+    return prs
+
+def apply_background(slide):
+    bg = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, 0, 0, Inches(13.333), Inches(7.5))
+    bg.fill.solid()
+    bg.fill.fore_color.rgb = COLOR_BG
+    bg.line.fill.background()
+    return bg
+
+def add_header(slide, lab_pill, title, subtitle=None):
+    # Top Accent Line
+    line = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0.8), Inches(0.35), Inches(11.733), Inches(0.03))
+    line.fill.solid()
+    line.fill.fore_color.rgb = COLOR_CYAN
+    line.line.fill.background()
+
+    # Lab Tag Pill
+    pill = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(0.8), Inches(0.48), Inches(2.2), Inches(0.28))
+    pill.fill.solid()
+    pill.fill.fore_color.rgb = RGBColor(15, 30, 50)
+    pill.line.color.rgb = COLOR_CYAN
+    pill.line.width = Pt(1.0)
+    tf_p = pill.text_frame
+    p_p = tf_p.paragraphs[0]
+    p_p.text = lab_pill.upper()
+    p_p.alignment = PP_ALIGN.CENTER
+    p_p.font.name = FONT_HEAD
+    p_p.font.size = Pt(9.5)
+    p_p.font.bold = True
+    p_p.font.color.rgb = COLOR_CYAN
+
+    # Main Title
+    tb = slide.shapes.add_textbox(Inches(3.1), Inches(0.42), Inches(9.4), Inches(0.45))
+    p = tb.text_frame.paragraphs[0]
+    p.text = title
+    p.font.name = FONT_HEAD
+    p.font.size = Pt(20)
+    p.font.bold = True
+    p.font.color.rgb = COLOR_TEXT_MAIN
+
+    if subtitle:
+        p2 = tb.text_frame.add_paragraph()
+        p2.text = subtitle
+        p2.font.name = FONT_BODY
+        p2.font.size = Pt(11)
+        p2.font.color.rgb = COLOR_TEXT_MUTED
+
+    # Footer
+    tb_foot = slide.shapes.add_textbox(Inches(0.8), Inches(7.05), Inches(11.733), Inches(0.3))
+    p_foot = tb_foot.text_frame.paragraphs[0]
+    p_foot.text = "⚡ Hardware AI Acceleration Curriculum | Pre-Silicon Tensor Core Engineering"
+    p_foot.font.name = FONT_BODY
+    p_foot.font.size = Pt(8.5)
+    p_foot.font.color.rgb = COLOR_TEXT_SUBTLE
+
+def add_bento_card(slide, left, top, width, height, title=None, title_color=COLOR_CYAN, bg_color=COLOR_CARD, border_color=COLOR_BORDER):
+    card = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(left), Inches(top), Inches(width), Inches(height))
+    card.fill.solid()
+    card.fill.fore_color.rgb = bg_color
+    card.line.color.rgb = border_color
+    card.line.width = Pt(1.2)
+
+    content_top = top + 0.15
+    content_height = height - 0.3
+
+    if title:
+        tb = slide.shapes.add_textbox(Inches(left + 0.2), Inches(top + 0.12), Inches(width - 0.4), Inches(0.35))
+        p = tb.text_frame.paragraphs[0]
+        p.text = title
+        p.font.name = FONT_HEAD
+        p.font.size = Pt(12.5)
+        p.font.bold = True
+        p.font.color.rgb = title_color
+        content_top += 0.35
+        content_height -= 0.35
+
+    tb_body = slide.shapes.add_textbox(Inches(left + 0.2), Inches(content_top), Inches(width - 0.4), Inches(content_height))
+    tf = tb_body.text_frame
+    tf.word_wrap = True
+    return tf
+
+def add_stat_card(slide, left, top, width, height, stat_number, stat_label, accent_color=COLOR_CYAN):
+    card = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(left), Inches(top), Inches(width), Inches(height))
+    card.fill.solid()
+    card.fill.fore_color.rgb = COLOR_CARD
+    card.line.color.rgb = accent_color
+    card.line.width = Pt(1.2)
+
+    tb = slide.shapes.add_textbox(Inches(left + 0.1), Inches(top + 0.1), Inches(width - 0.2), Inches(height * 0.55))
+    p1 = tb.text_frame.paragraphs[0]
+    p1.text = stat_number
+    p1.alignment = PP_ALIGN.CENTER
+    p1.font.name = FONT_HEAD
+    p1.font.size = Pt(22)
+    p1.font.bold = True
+    p1.font.color.rgb = accent_color
+
+    tb2 = slide.shapes.add_textbox(Inches(left + 0.1), Inches(top + (height * 0.55)), Inches(width - 0.2), Inches(height * 0.4))
+    p2 = tb2.text_frame.paragraphs[0]
+    p2.text = stat_label.upper()
+    p2.alignment = PP_ALIGN.CENTER
+    p2.font.name = FONT_HEAD
+    p2.font.size = Pt(8.5)
+    p2.font.bold = True
+    p2.font.color.rgb = COLOR_TEXT_MUTED
+
+def add_bullet(tf, bold_prefix, text, font_size=10.5, level=0, text_color=COLOR_TEXT_MAIN, prefix_color=COLOR_CYAN):
+    p = tf.add_paragraph() if len(tf.paragraphs[0].text) > 0 else tf.paragraphs[0]
+    p.level = level
+    p.space_after = Pt(4)
+
+    if bold_prefix:
+        r1 = p.add_run()
+        r1.text = bold_prefix + " "
+        r1.font.bold = True
+        r1.font.name = FONT_BODY
+        r1.font.size = Pt(font_size)
+        r1.font.color.rgb = prefix_color
+
+    r2 = p.add_run()
+    r2.text = text
+    r2.font.bold = False
+    r2.font.name = FONT_BODY
+    r2.font.size = Pt(font_size)
+    r2.font.color.rgb = text_color
+
+def add_code_bento(slide, left, top, width, height, title, code_text):
+    card = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(left), Inches(top), Inches(width), Inches(height))
+    card.fill.solid()
+    card.fill.fore_color.rgb = RGBColor(8, 12, 20)
+    card.line.color.rgb = RGBColor(37, 99, 235)
+    card.line.width = Pt(1.5)
+
+    tb = slide.shapes.add_textbox(Inches(left + 0.15), Inches(top + 0.1), Inches(width - 0.3), Inches(0.25))
+    p = tb.text_frame.paragraphs[0]
+    p.text = f"// SystemVerilog RTL: {title}"
+    p.font.name = FONT_CODE
+    p.font.size = Pt(9.5)
+    p.font.bold = True
+    p.font.color.rgb = COLOR_CYAN
+
+    tb_code = slide.shapes.add_textbox(Inches(left + 0.15), Inches(top + 0.35), Inches(width - 0.3), Inches(height - 0.45))
+    tf = tb_code.text_frame
+    tf.word_wrap = True
+    p_code = tf.paragraphs[0]
+    p_code.text = code_text.strip()
+    p_code.font.name = FONT_CODE
+    p_code.font.size = Pt(8.5)
+    p_code.font.color.rgb = RGBColor(226, 232, 240)
+
+def add_schematic_card(slide, left, top, width, height, title, image_path, caption=None):
+    card = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(left), Inches(top), Inches(width), Inches(height))
+    card.fill.solid()
+    card.fill.fore_color.rgb = COLOR_CARD
+    card.line.color.rgb = COLOR_BORDER
+    card.line.width = Pt(1.2)
+
+    tb = slide.shapes.add_textbox(Inches(left + 0.2), Inches(top + 0.12), Inches(width - 0.4), Inches(0.3))
+    p = tb.text_frame.paragraphs[0]
+    p.text = title
+    p.font.name = FONT_HEAD
+    p.font.size = Pt(12)
+    p.font.bold = True
+    p.font.color.rgb = COLOR_CYAN
+
+    img_top = top + 0.45
+    img_height = height - 0.85
+    img_width = width - 0.4
+
+    if os.path.exists(image_path):
+        try:
+            slide.shapes.add_picture(image_path, Inches(left + 0.2), Inches(img_top), width=Inches(img_width))
+        except Exception:
+            tb_err = slide.shapes.add_textbox(Inches(left + 0.2), Inches(img_top), Inches(img_width), Inches(img_height))
+            p_err = tb_err.text_frame.paragraphs[0]
+            p_err.text = f"[Gate Schematic: {os.path.basename(image_path)}]"
+            p_err.font.name = FONT_CODE
+            p_err.font.size = Pt(10)
+            p_err.font.color.rgb = COLOR_TEXT_MUTED
+    else:
+        tb_err = slide.shapes.add_textbox(Inches(left + 0.2), Inches(img_top), Inches(img_width), Inches(img_height))
+        p_err = tb_err.text_frame.paragraphs[0]
+        p_err.text = f"[Gate Schematic: {os.path.basename(image_path)}]"
+        p_err.font.name = FONT_CODE
+        p_err.font.size = Pt(10)
+        p_err.font.color.rgb = COLOR_TEXT_MUTED
+
+    if caption:
+        tb_cap = slide.shapes.add_textbox(Inches(left + 0.2), Inches(top + height - 0.35), Inches(width - 0.4), Inches(0.28))
+        p_cap = tb_cap.text_frame.paragraphs[0]
+        p_cap.text = caption
+        p_cap.font.name = FONT_BODY
+        p_cap.font.size = Pt(8.5)
+        p_cap.font.color.rgb = COLOR_TEXT_MUTED
+
+def add_challenge_card(slide, left, top, width, height, challenge_title, steps, test_command):
+    card = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(left), Inches(top), Inches(width), Inches(height))
+    card.fill.solid()
+    card.fill.fore_color.rgb = RGBColor(16, 24, 40)
+    card.line.color.rgb = COLOR_AMBER
+    card.line.width = Pt(1.5)
+
+    tb_head = slide.shapes.add_textbox(Inches(left + 0.2), Inches(top + 0.12), Inches(width - 0.4), Inches(0.35))
+    p_head = tb_head.text_frame.paragraphs[0]
+    p_head.text = f"🎯 STUDENT HOMEWORK / CHALLENGE: {challenge_title}"
+    p_head.font.name = FONT_HEAD
+    p_head.font.size = Pt(12)
+    p_head.font.bold = True
+    p_head.font.color.rgb = COLOR_AMBER
+
+    tb_body = slide.shapes.add_textbox(Inches(left + 0.2), Inches(top + 0.45), Inches(width - 0.4), Inches(height - 1.15))
+    tf = tb_body.text_frame
+    tf.word_wrap = True
+    for step_num, step_text in enumerate(steps, 1):
+        add_bullet(tf, f"Step {step_num}:", step_text, font_size=10, prefix_color=COLOR_AMBER)
+
+    # Command Box
+    tb_cmd = slide.shapes.add_textbox(Inches(left + 0.2), Inches(top + height - 0.55), Inches(width - 0.4), Inches(0.4))
+    p_cmd = tb_cmd.text_frame.paragraphs[0]
+    p_cmd.text = f"$ {test_command}"
+    p_cmd.font.name = FONT_CODE
+    p_cmd.font.size = Pt(9.5)
+    p_cmd.font.bold = True
+    p_cmd.font.color.rgb = COLOR_EMERALD
+
+# ==============================================================================
+# SLIDE BUILDERS FOR EACH LAB (5-Part High Retention Structure)
+# ==============================================================================
+
+def build_title_slide(prs):
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    apply_background(slide)
+
+    hero = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(0.8), Inches(0.8), Inches(11.733), Inches(5.9))
+    hero.fill.solid()
+    hero.fill.fore_color.rgb = COLOR_CARD
+    hero.line.color.rgb = COLOR_CYAN
+    hero.line.width = Pt(2.0)
+
+    tb = slide.shapes.add_textbox(Inches(1.2), Inches(1.1), Inches(10.9), Inches(1.6))
+    p = tb.text_frame.paragraphs[0]
+    p.text = "⚡ Hardware AI Acceleration"
+    p.font.name = FONT_HEAD
+    p.font.size = Pt(36)
+    p.font.bold = True
+    p.font.color.rgb = COLOR_CYAN
+
+    p2 = tb.text_frame.add_paragraph()
+    p2.text = "Pre-Silicon Tensor Core Engineering & Transformer SFU Curriculum"
+    p2.font.name = FONT_HEAD
+    p2.font.size = Pt(20)
+    p2.font.bold = True
+    p2.font.color.rgb = COLOR_TEXT_MAIN
+
+    add_stat_card(slide, 1.2, 3.0, 2.5, 1.3, "9 Labs", "Silicon Co-Design Flow", COLOR_CYAN)
+    add_stat_card(slide, 3.9, 3.0, 2.5, 1.3, "O(3N)", "2D Systolic Wavefront", COLOR_EMERALD)
+    add_stat_card(slide, 6.6, 3.0, 2.5, 1.3, "200×", "DRAM vs ALU Energy Wall", COLOR_ROSE)
+    add_stat_card(slide, 9.3, 3.0, 2.8, 1.3, "100%", "Cocotb Verification Pass", COLOR_PURPLE)
+
+    tf_feat = add_bento_card(slide, 1.2, 4.5, 10.9, 1.9, "🎯 Curriculum Scope: From Raw Gates to Transformer SFUs", COLOR_TEXT_MAIN, bg_color=RGBColor(11, 17, 28))
+    add_bullet(tf_feat, "1. Silicon Math Engines:", "Signed Adders, Multipliers, MAC Units, Saturation Arithmetic (Labs 00-02)", 10.5, prefix_color=COLOR_CYAN)
+    add_bullet(tf_feat, "2. 2D Tensor Cores:", "Weight-Stationary Processing Elements, 4x4 Systolic Array with Skewing (Labs 03-04)", 10.5, prefix_color=COLOR_EMERALD)
+    add_bullet(tf_feat, "3. Transformer SFUs:", "Square Root (Attention Scaling), Safe Softmax, Fast rsqrt (RMSNorm), exp2 (SwiGLU) (Labs 05-08)", 10.5, prefix_color=COLOR_PURPLE)
+
+def build_roadmap_slide(prs):
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    apply_background(slide)
+    add_header(slide, "Architectural Map", "9-Lab Hardware AI Curriculum Matrix", "From basic logic gates to 2D tensor cores and Transformer non-linearities")
+
+    tf1 = add_bento_card(slide, 0.8, 1.5, 3.7, 5.2, "🧱 Track 1: Silicon Math Engines", COLOR_CYAN)
+    add_bullet(tf1, "Lab 00:", "Parameterized Signed Adder & Saturation Arithmetic")
+    add_bullet(tf1, "Lab 01:", "Parameterized INT8 Signed Multiplier & Partial Products")
+    add_bullet(tf1, "Lab 02:", "Multiply-Accumulate (MAC) Unit & 32-bit Sizing")
+    add_bullet(tf1, "Takeaway:", "Establishes low-latency, overflow-safe arithmetic foundations.")
+
+    tf2 = add_bento_card(slide, 4.8, 1.5, 3.7, 5.2, "⚡ Track 2: 2D Tensor Meshes", COLOR_EMERALD)
+    add_bullet(tf2, "Lab 03:", "Weight-Stationary Processing Element (PE)")
+    add_bullet(tf2, "Lab 04:", "4x4 2D Systolic Matrix Multiplier Engine")
+    add_bullet(tf2, "Speedup:", "O(3N) execution vs O(N³) CPU matrix multiplication")
+    add_bullet(tf2, "Takeaway:", "Maximizes data reuse and eliminates costly off-chip DRAM traffic.")
+
+    tf3 = add_bento_card(slide, 8.8, 1.5, 3.7, 5.2, "🧠 Track 3: Transformer SFUs", COLOR_PURPLE)
+    add_bullet(tf3, "Lab 05:", "Square Root Unit (1/√d_k Attention Scaling)")
+    add_bullet(tf3, "Lab 06:", "Hardware Safe Softmax & FlashAttention Foundations")
+    add_bullet(tf3, "Lab 07:", "Fast Reciprocal Square Root (rsqrt) for RMSNorm")
+    add_bullet(tf3, "Lab 08:", "Hardware Exponential SFU (2^x / e^x) for SwiGLU")
+    add_bullet(tf3, "Takeaway:", "Eliminates memory stalls for modern LLM activation layers.")
+
+# ==============================================================================
+# LAB 00: ADDER & SATURATION
+# ==============================================================================
+def build_lab00_slides(prs):
+    # Slide 1: Hook & Intuition
+    slide1 = prs.slides.add_slide(prs.slide_layouts[6])
+    apply_background(slide1)
+    add_header(slide1, "Lab 00 | Core Arithmetic", "Parameterized Signed Adder & Saturation Arithmetic", "Preventing catastrophic activation wrap-around in deep learning inference")
+
+    add_stat_card(slide1, 0.8, 1.5, 2.7, 1.2, "O(N)", "Area & Delay Complexity", COLOR_CYAN)
+    add_stat_card(slide1, 3.7, 1.5, 2.7, 1.2, "[-128, +127]", "INT8 Dynamic Range", COLOR_EMERALD)
+    add_stat_card(slide1, 6.6, 1.5, 2.7, 1.2, "+100 + +50", "Wraps to -106 (Without Sat)", COLOR_ROSE)
+    add_stat_card(slide1, 9.5, 1.5, 3.0, 1.2, "+127 / -128", "Clamped Saturation Value", COLOR_AMBER)
+
+    tf_left = add_bento_card(slide1, 0.8, 2.9, 5.7, 3.8, "🪝 The Hook: The Overflow Disaster", COLOR_ROSE)
+    add_bullet(tf_left, "The Wrap-Around Bug:", "In two's complement, adding +100 and +50 produces +150, which overflows into -106!")
+    add_bullet(tf_left, "Model Collapse:", "A highly positive neuron activation flips to an extreme negative penalty, destroying LLM output.")
+    add_bullet(tf_left, "Saturation Arithmetic:", "Clamps positive overflows to +127 (0x7F) and negative to -128 (0x80).")
+
+    tf_right = add_bento_card(slide1, 6.8, 2.9, 5.7, 3.8, "💡 Hardware Intuition & Gate Sizing", COLOR_CYAN)
+    add_bullet(tf_right, "1-Bit Full Adder:", "Sum S = A ⊕ B ⊕ Cin | Carry Cout = (A·B) + (Cin·(A ⊕ B))")
+    add_bullet(tf_right, "Gate Complexity:", "O(N) Linear (~5 basic gates per bit, ~40 gates for 8-bit ripple carry).")
+    add_bullet(tf_right, "Timing / Cycles:", "Purely combinational (0 clock latency). Propagation delay is N × t_gate.")
+
+    # Slide 2: RTL & Synthesis
+    slide2 = prs.slides.add_slide(prs.slide_layouts[6])
+    apply_background(slide2)
+    add_header(slide2, "Lab 00 | Implementation", "SystemVerilog RTL & Gate-Level Logic Schematics", "Synthesizable RTL, timing paths, and verification coverage")
+
+    code_adder = """module adder #(parameter int DATA_WIDTH = 8)(
+    input  logic signed [DATA_WIDTH-1:0] a, b,
+    input  logic                         saturate,
+    output logic signed [DATA_WIDTH-1:0] sum,
+    output logic                         carry_out, overflow
+);
+    logic signed [DATA_WIDTH:0] raw_sum;
+    localparam logic signed [DATA_WIDTH-1:0] MAX_POS = {1'b0, {(DATA_WIDTH-1){1'b1}}};
+    localparam logic signed [DATA_WIDTH-1:0] MAX_NEG = {1'b1, {(DATA_WIDTH-1){1'b0}}};
+
+    assign raw_sum   = {a[DATA_WIDTH-1], a} + {b[DATA_WIDTH-1], b};
+    assign overflow  = (a[DATA_WIDTH-1] == b[DATA_WIDTH-1]) && 
+                       (raw_sum[DATA_WIDTH-1] != a[DATA_WIDTH-1]);
+    assign carry_out = raw_sum[DATA_WIDTH];
+
+    always_comb begin
+        if (saturate && overflow)
+            sum = a[DATA_WIDTH-1] ? MAX_NEG : MAX_POS;
+        else
+            sum = raw_sum[DATA_WIDTH-1:0];
+    end
+endmodule"""
+    add_code_bento(slide2, 0.8, 1.5, 6.0, 5.2, "rtl/adder.sv", code_adder)
+    add_schematic_card(slide2, 7.0, 1.5, 5.5, 5.2, "Synthesized Gate-Level Logic", "schematics/adder.png", "Yosys Open-Source Synthesis: 32 standard cells (8 Full Adders + 8 Clamping MUXes)")
+
+    # Slide 3: Cocotb Verification & Student Challenge
+    slide3 = prs.slides.add_slide(prs.slide_layouts[6])
+    apply_background(slide3)
+    add_header(slide3, "Lab 00 | Verification & Challenge", "Cocotb Testbench & Student Homework", "Corner cases, Python golden model, and hands-on RTL enhancement")
+
+    tf_v = add_bento_card(slide3, 0.8, 1.5, 5.7, 5.2, "🧪 Cocotb Verification Suite", COLOR_CYAN)
+    add_bullet(tf_v, "Golden Reference:", "Python integer model compared directly against DUT output pins.")
+    add_bullet(tf_v, "Corner Cases:", "Zero (0+0), Boundaries (-128, +127), Positive Saturation (+100+50->+127), Negative Saturation (-100+-50->-128).")
+    add_bullet(tf_v, "Execution Command:", "python labs/run_lab.py --lab 00")
+
+    add_challenge_card(slide3, 6.8, 1.5, 5.7, 5.2, "Asymmetric Quantized Clamping", [
+        "Open rtl/adder.sv in VS Code.",
+        "Add an asymmetric_clamp parameter allowing custom INT7 bounds [-64, +63].",
+        "Modify labs/test_adder.py to assert the new clamped limits.",
+        "Verify your changes by running pytest."
+    ], "pytest labs/test_adder.py")
+
+# ==============================================================================
+# LAB 01: INT8 MULTIPLIER
+# ==============================================================================
+def build_lab01_slides(prs):
+    # Slide 1: Hook & Intuition
+    slide1 = prs.slides.add_slide(prs.slide_layouts[6])
+    apply_background(slide1)
+    add_header(slide1, "Lab 01 | Multiplier Core", "Parameterized Signed Multiplier (INT8)", "Partial product generation, Wallace tree reduction, and bit-growth sizing")
+
+    add_stat_card(slide1, 0.8, 1.5, 2.7, 1.2, "O(N²)", "Gate Area Complexity", COLOR_CYAN)
+    add_stat_card(slide1, 3.7, 1.5, 2.7, 1.2, "16 Bits", "Required INT8×INT8 Width", COLOR_EMERALD)
+    add_stat_card(slide1, 6.6, 1.5, 2.7, 1.2, "1 DSP", "FPGA Resource Mapping", COLOR_AMBER)
+    add_stat_card(slide1, 9.5, 1.5, 3.0, 1.2, "[-16.2k, +16.3k]", "Full Product Range", COLOR_PURPLE)
+
+    tf_left = add_bento_card(slide1, 0.8, 2.9, 5.7, 3.8, "🪝 The Hook: Why Multipliers Dominate Silicon", COLOR_ROSE)
+    add_bullet(tf_left, "The Matrix Engine:", "99% of LLM compute is matrix multiplications (Y = W · X).")
+    add_bullet(tf_left, "Quadratic Growth:", "While adders scale O(N), multipliers scale O(N²) in gate area (~456 gates for 8-bit).")
+    add_bullet(tf_left, "Bit-Growth Rule:", "Multiplying two 8-bit numbers strictly requires 16 bits (8 + 8) to avoid losing precision.")
+
+    tf_right = add_bento_card(slide1, 6.8, 2.9, 5.7, 3.8, "💡 Hardware Intuition & Sign Extension", COLOR_CYAN)
+    add_bullet(tf_right, "Range:", "[-128 × +127 = -16256] to [-128 × -128 = +16384].")
+    add_bullet(tf_right, "Sign Extension:", "Must treat inputs as signed two's complement, preventing -1 from converting to 255.")
+    add_bullet(tf_right, "Timing / Cycles:", "Combinational (0 clock cycles) or mapped to DSP slices.")
+
+    # Slide 2: RTL & Synthesis
+    slide2 = prs.slides.add_slide(prs.slide_layouts[6])
+    apply_background(slide2)
+    add_header(slide2, "Lab 01 | Implementation", "SystemVerilog RTL & Gate Schematics", "Signed partial products, Booth tree reduction, and Cocotb verification")
+
+    code_mult = """module multiplier_int8 #(
+    parameter int A_WIDTH   = 8,
+    parameter int B_WIDTH   = 8,
+    localparam int PROD_WIDTH = A_WIDTH + B_WIDTH
+)(
+    input  logic signed [A_WIDTH-1:0]    a,
+    input  logic signed [B_WIDTH-1:0]    b,
+    output logic signed [PROD_WIDTH-1:0] product
+);
+    // Explicit signed multiplication datapath
+    assign product = a * b;
+endmodule"""
+    add_code_bento(slide2, 0.8, 1.5, 6.0, 5.2, "rtl/multiplier_int8.sv", code_mult)
+    add_schematic_card(slide2, 7.0, 1.5, 5.5, 5.2, "Synthesized Multiplier Schematic", "schematics/multiplier_int8.png", "Yosys Open-Source Synthesis: Synthesized 8x8 signed Booth multiplier tree")
+
+    # Slide 3: Cocotb Verification & Student Challenge
+    slide3 = prs.slides.add_slide(prs.slide_layouts[6])
+    apply_background(slide3)
+    add_header(slide3, "Lab 01 | Verification & Challenge", "Cocotb Testbench & Student Homework", "Signed edge cases, quantization scaling, and homework challenge")
+
+    tf_v = add_bento_card(slide3, 0.8, 1.5, 5.7, 5.2, "🧪 Cocotb Verification Suite", COLOR_CYAN)
+    add_bullet(tf_v, "Golden Reference:", "Python signed 'a * b' reference model.")
+    add_bullet(tf_v, "Edge Cases Tested:", "0 * 127 = 0, -128 * 127 = -16256, -128 * -128 = +16384, -45 * 1 = -45.")
+    add_bullet(tf_v, "Execution Command:", "python labs/run_lab.py --lab 01")
+
+    add_challenge_card(slide3, 6.8, 1.5, 5.7, 5.2, "Quantized Q4.4 Truncation Mode", [
+        "Open rtl/multiplier_int8.sv.",
+        "Add a truncation mode that shifts the 16-bit product right by 4 bits (Q4.4 scaling).",
+        "Add 8-bit signed saturation to prevent wrap-around on large outputs.",
+        "Add a test in labs/test_multiplier.py and verify with pytest."
+    ], "pytest labs/test_multiplier.py")
+
+# ==============================================================================
+# LAB 02: MAC UNIT
+# ==============================================================================
+def build_lab02_slides(prs):
+    # Slide 1: Hook & Intuition
+    slide1 = prs.slides.add_slide(prs.slide_layouts[6])
+    apply_background(slide1)
+    add_header(slide1, "Lab 02 | MAC Engines", "Multiply-Accumulate (MAC) Unit & Sizing", "Cycle-by-cycle pipelining and accumulator bit-width sizing for deep neural networks")
+
+    add_stat_card(slide1, 0.8, 1.5, 2.7, 1.2, "Accum + A·B", "Core Math Formula", COLOR_CYAN)
+    add_stat_card(slide1, 3.7, 1.5, 2.7, 1.2, "32 Bits", "Zero-Overflow Accumulator", COLOR_EMERALD)
+    add_stat_card(slide1, 6.6, 1.5, 2.7, 1.2, "65,536", "Safe Consecutive Steps", COLOR_AMBER)
+    add_stat_card(slide1, 9.5, 1.5, 3.0, 1.2, "16b ➔ 32b", "Sign-Extension Path", COLOR_PURPLE)
+
+    tf_left = add_bento_card(slide1, 0.8, 2.9, 5.7, 3.8, "🪝 The Hook: The Most Executed Op in AI", COLOR_ROSE)
+    add_bullet(tf_left, "Scale:", "A single 70B LLM inference executes hundreds of trillions of Multiply-Accumulates.")
+    add_bullet(tf_left, "The Accumulator Overflow Bug:", "Summing 10 consecutive products of 127*127 (16,129) overflows 16 bits (>32767).")
+    add_bullet(tf_left, "The 32-bit Solution:", "32 bits allows over 65,000 continuous accumulations with ZERO overflow!")
+
+    tf_right = add_bento_card(slide1, 6.8, 2.9, 5.7, 3.8, "💡 Hardware Intuition & Sign Extension", COLOR_CYAN)
+    add_bullet(tf_right, "Sign Extension:", "sum_out = sum_in + sign_extend_32(A_8b * B_8b).")
+    add_bullet(tf_right, "Datapath:", "{{16{prod[15]}}, prod} preserves negative values in 32-bit registers.")
+    add_bullet(tf_right, "Timing / Cycles:", "Combinational MAC unit (0 clock latency). Register slicing added in Lab 03.")
+
+    # Slide 2: RTL & Synthesis
+    slide2 = prs.slides.add_slide(prs.slide_layouts[6])
+    apply_background(slide2)
+    add_header(slide2, "Lab 02 | Implementation", "SystemVerilog RTL & Gate Schematics", "Sign-extended Multiply-Accumulate logic and Yosys synthesis")
+
+    code_mac = """module mac_unit #(
+    parameter int A_WIDTH   = 8,
+    parameter int B_WIDTH   = 8,
+    parameter int ACC_WIDTH = 32
+)(
+    input  logic signed [A_WIDTH-1:0]   a,
+    input  logic signed [B_WIDTH-1:0]   b,
+    input  logic signed [ACC_WIDTH-1:0] sum_in,
+    output logic signed [ACC_WIDTH-1:0] sum_out
+);
+    localparam int PROD_WIDTH = A_WIDTH + B_WIDTH;
+    logic signed [PROD_WIDTH-1:0] mult_product;
+    logic signed [ACC_WIDTH-1:0]  mult_product_ext;
+
+    assign mult_product     = a * b;
+    assign mult_product_ext = {{(ACC_WIDTH-PROD_WIDTH){mult_product[PROD_WIDTH-1]}}, mult_product};
+    assign sum_out          = sum_in + mult_product_ext;
+endmodule"""
+    add_code_bento(slide2, 0.8, 1.5, 6.0, 5.2, "rtl/mac_unit.sv", code_mac)
+    add_schematic_card(slide2, 7.0, 1.5, 5.5, 5.2, "MAC Synthesized Schematic", "schematics/mac_unit.png", "Yosys Open-Source Synthesis: 16-bit Multiplier + 32-bit Adder + Sign Extension")
+
+    # Slide 3: Cocotb Verification & Student Challenge
+    slide3 = prs.slides.add_slide(prs.slide_layouts[6])
+    apply_background(slide3)
+    add_header(slide3, "Lab 02 | Verification & Challenge", "Cocotb Testbench & Student Homework", "Accumulation chains, overflow bounds, and homework challenge")
+
+    tf_v = add_bento_card(slide3, 0.8, 1.5, 5.7, 5.2, "🧪 Cocotb Verification Suite", COLOR_CYAN)
+    add_bullet(tf_v, "Golden Reference:", "Python 'sum_in + (a * b)' model.")
+    add_bullet(tf_v, "Scenarios Tested:", "Zero init (sum_in=0, a=12, b=-5 -> -60), Chained 100-step accumulation, Deep negative accumulation (-128*127 x 10 -> -162,560).")
+    add_bullet(tf_v, "Execution Command:", "python labs/run_lab.py --lab 02")
+
+    add_challenge_card(slide3, 6.8, 1.5, 5.7, 5.2, "32-Bit Accumulator Saturation", [
+        "Open rtl/mac_unit.sv.",
+        "Add an overflow output pin and saturation logic to the 32-bit accumulator.",
+        "Clamp at [-2^31, +2^31 - 1] if accumulation ever overflows.",
+        "Add test cases in labs/test_mac.py and verify with pytest."
+    ], "pytest labs/test_mac.py")
+
+# ==============================================================================
+# LAB 03: WEIGHT-STATIONARY PE
+# ==============================================================================
+def build_lab03_slides(prs):
+    # Slide 1: Hook & Intuition
+    slide1 = prs.slides.add_slide(prs.slide_layouts[6])
+    apply_background(slide1)
+    add_header(slide1, "Lab 03 | 2D Processing Elements", "Weight-Stationary Processing Element (PE)", "The building block of Google TPU and modern 2D Systolic Tensor Cores")
+
+    add_stat_card(slide1, 0.8, 1.5, 2.7, 1.2, "200×", "DRAM vs ALU Energy Ratio", COLOR_ROSE)
+    add_stat_card(slide1, 3.7, 1.5, 2.7, 1.2, "48 D-FFs", "Registers in 1 PE", COLOR_CYAN)
+    add_stat_card(slide1, 6.6, 1.5, 2.7, 1.2, "Left ➔ Right", "Activation Flow (East)", COLOR_EMERALD)
+    add_stat_card(slide1, 9.5, 1.5, 3.0, 1.2, "Top ➔ Bottom", "Accumulation Flow (South)", COLOR_AMBER)
+
+    tf_left = add_bento_card(slide1, 0.8, 2.9, 5.7, 3.8, "🪝 The Hook: The DRAM Energy Wall", COLOR_ROSE)
+    add_bullet(tf_left, "Memory Energy Wall:", "Fetching weights from off-chip DRAM takes ~200x more energy than the actual ALU math!")
+    add_bullet(tf_left, "CPU Bottleneck:", "A CPU constantly re-fetches the same weights from caches.")
+    add_bullet(tf_left, "Weight-Stationary Fix:", "Lock weights into PE local flip-flops once; stream activations horizontally with zero redundant memory re-fetches.")
+
+    tf_right = add_bento_card(slide1, 6.8, 2.9, 5.7, 3.8, "💡 Hardware Intuition & Clocked Pipeline", COLOR_CYAN)
+    add_bullet(tf_right, "Internal Registers:", "8b Weight Reg + 8b Activation Forward Reg + 32b Accumulator Reg = 48 Flip-Flops.")
+    add_bullet(tf_right, "Cycle Timing (Sequential):", "T=0: Preload weight (load_weight=1). T=1+: Forward activation East & partial sum South on every clock tick.")
+
+    # Slide 2: RTL & Synthesis
+    slide2 = prs.slides.add_slide(prs.slide_layouts[6])
+    apply_background(slide2)
+    add_header(slide2, "Lab 03 | Implementation", "SystemVerilog RTL & Gate Schematics", "Synchronous reset, weight locking, and forwarding registers")
+
+    code_pe = """module pe #(
+    parameter int A_WIDTH = 8, B_WIDTH = 8, ACC_WIDTH = 32
+)(
+    input  logic clk, rst_n, clr, load_weight,
+    input  logic signed [A_WIDTH-1:0]   a_in,
+    input  logic signed [B_WIDTH-1:0]   w_in,
+    input  logic signed [ACC_WIDTH-1:0] sum_in,
+    output logic signed [A_WIDTH-1:0]   a_out,
+    output logic signed [ACC_WIDTH-1:0] sum_out
+);
+    logic signed [B_WIDTH-1:0] w_reg;
+    logic signed [ACC_WIDTH-1:0] mac_res;
+    mac_unit #(.A_WIDTH(A_WIDTH), .B_WIDTH(B_WIDTH), .ACC_WIDTH(ACC_WIDTH))
+        u_mac (.a(a_in), .b(w_reg), .sum_in(sum_in), .sum_out(mac_res));
+
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            w_reg <= '0; a_out <= '0; sum_out <= '0;
+        end else begin
+            if (load_weight) w_reg <= w_in;
+            a_out   <= a_in;
+            sum_out <= clr ? '0 : mac_res;
+        end
+    end
+endmodule"""
+    add_code_bento(slide2, 0.8, 1.5, 6.0, 5.2, "rtl/pe.sv", code_pe)
+    add_schematic_card(slide2, 7.0, 1.5, 5.5, 5.2, "PE Synthesized Datapath", "schematics/pe.png", "Yosys Open-Source Synthesis: PE cell with weight latch, MAC unit, and forwarding DFFs")
+
+    # Slide 3: Cocotb Verification & Student Challenge
+    slide3 = prs.slides.add_slide(prs.slide_layouts[6])
+    apply_background(slide3)
+    add_header(slide3, "Lab 03 | Verification & Challenge", "Cocotb Testbench & Student Homework", "Cycle-by-cycle clock transitions, weight swapping, and challenge")
+
+    tf_v = add_bento_card(slide3, 0.8, 1.5, 5.7, 5.2, "🧪 Cocotb Verification & Cycles", COLOR_CYAN)
+    add_bullet(tf_v, "Cycle 0 (Preload):", "Set w_in=5, load_weight=1, pulse clk -> w_reg locks 5.")
+    add_bullet(tf_v, "Cycle 1 (Compute):", "Set a_in=10, sum_in=0, pulse clk -> sum_out=50, a_out=10.")
+    add_bullet(tf_v, "Cycle 2 (Chain):", "Set a_in=-4, sum_in=50, pulse clk -> sum_out=50+(-20)=30.")
+    add_bullet(tf_v, "Execution Command:", "python -m pytest tests/test_pe.py")
+
+    add_challenge_card(slide3, 6.8, 1.5, 5.7, 5.2, "Double-Buffering Shadow Weights", [
+        "Open rtl/pe.sv.",
+        "Add a shadow weight register (w_shadow) and an activate_shadow pin.",
+        "Preload the next matrix tile weights in the background during active compute.",
+        "Write a Cocotb test in tests/test_pe.py asserting zero-bubble weight swapping."
+    ], "pytest tests/test_pe.py")
+
+# ==============================================================================
+# LAB 04: 2D SYSTOLIC ARRAY
+# ==============================================================================
+def build_lab04_slides(prs):
+    # Slide 1: Hook & Intuition
+    slide1 = prs.slides.add_slide(prs.slide_layouts[6])
+    apply_background(slide1)
+    add_header(slide1, "Lab 04 | 2D Mesh Multipliers", "2D Systolic Matrix Multiplier (4x4 Mesh Engine)", "Diagonal wavefront scheduling and activation skewing registers")
+
+    add_stat_card(slide1, 0.8, 1.5, 2.7, 1.2, "16 PEs", "4×4 Interconnected Grid", COLOR_CYAN)
+    add_stat_card(slide1, 3.7, 1.5, 2.7, 1.2, "10 Cycles", "Full 4×4 Matrix Product", COLOR_EMERALD)
+    add_stat_card(slide1, 6.6, 1.5, 2.7, 1.2, "O(3N - 2)", "Systolic Time Complexity", COLOR_AMBER)
+    add_stat_card(slide1, 9.5, 1.5, 3.0, 1.2, "6.4×", "Speedup vs Sequential CPU", COLOR_PURPLE)
+
+    tf_left = add_bento_card(slide1, 0.8, 2.9, 5.7, 3.8, "🪝 The Hook: Beating O(N³) CPU Complexity", COLOR_ROSE)
+    add_bullet(tf_left, "CPU Bottleneck:", "Multiplying two 4096 x 4096 matrices takes O(N³) = 68 Billion operations on a single CPU core.")
+    add_bullet(tf_left, "The Systolic Wavefront:", "A 2D PE grid streams activations from West, partial sums from North, completing matrix math in O(3N) cycles!")
+    add_bullet(tf_left, "Industry Standard:", "Powers Google TPU v1-v5 and NVIDIA Tensor Cores.")
+
+    tf_right = add_bento_card(slide1, 6.8, 2.9, 5.7, 3.8, "💡 Hardware Intuition & Activation Skewing", COLOR_CYAN)
+    add_bullet(tf_right, "Why Skewing is Required:", "PE[0][0] finishes at Cycle 1; PE[1][1] needs inputs at Cycle 2.")
+    add_bullet(tf_right, "Skewing Shift Registers:", "Row 0: 0 delay | Row 1: 1 DFF | Row 2: 2 DFFs | Row 3: 3 DFFs.")
+    add_bullet(tf_right, "Total Latency:", "3N - 2 = 10 clock cycles for 4x4 matrix!")
+
+    # Slide 2: RTL & Synthesis
+    slide2 = prs.slides.add_slide(prs.slide_layouts[6])
+    apply_background(slide2)
+    add_header(slide2, "Lab 04 | Implementation", "SystemVerilog RTL & 2D Grid Schematics", "2D generate loops, skewing registers, and Yosys synthesis")
+
+    code_sys = """module systolic_array #(
+    parameter int ARRAY_SIZE = 4, A_WIDTH = 8, B_WIDTH = 8, ACC_WIDTH = 32
+)(
+    input  logic clk, rst_n, clr, load_weights,
+    input  logic signed [A_WIDTH-1:0]   a_in[ARRAY_SIZE],
+    input  logic signed [B_WIDTH-1:0]   w_in[ARRAY_SIZE][ARRAY_SIZE],
+    output logic signed [ACC_WIDTH-1:0] c_out[ARRAY_SIZE]
+);
+    // Skewing registers + 4x4 PE 2D Grid Interconnections
+    genvar r, c;
+    generate
+        for (r = 0; r < ARRAY_SIZE; r++) begin : gen_row
+            for (c = 0; c < ARRAY_SIZE; c++) begin : gen_col
+                pe #(.A_WIDTH(A_WIDTH), .B_WIDTH(B_WIDTH), .ACC_WIDTH(ACC_WIDTH)) u_pe (
+                    .clk(clk), .rst_n(rst_n), .clr(clr), .load_weight(load_weights),
+                    .w_in(w_in[r][c]), .a_in(horiz_wires[r][c]),
+                    .sum_in(vert_wires[r][c]), .a_out(horiz_wires[r][c+1]),
+                    .sum_out(vert_wires[r+1][c])
+                );
+            end
+        end
+    endgenerate
+endmodule"""
+    add_code_bento(slide2, 0.8, 1.5, 6.0, 5.2, "rtl/systolic_array.sv", code_sys)
+    add_schematic_card(slide2, 7.0, 1.5, 5.5, 5.2, "4x4 Systolic Grid Schematic", "schematics/systolic_array.png", "Yosys Open-Source Synthesis: 16 Interconnected PEs with Skewing Delay Registers")
+
+    # Slide 3: Cocotb Verification & Student Challenge
+    slide3 = prs.slides.add_slide(prs.slide_layouts[6])
+    apply_background(slide3)
+    add_header(slide3, "Lab 04 | Verification & Challenge", "Cocotb Testbench & Student Homework", "NumPy matrix golden model, visual wavefront, and homework challenge")
+
+    tf_v = add_bento_card(slide3, 0.8, 1.5, 5.7, 5.2, "🧪 Cocotb Verification & Wavefront", COLOR_CYAN)
+    add_bullet(tf_v, "Cycle Pipeline:", "Cycles 0-3: Skewed activations stream into rows. Cycle 4: C[0][0] exits. Cycle 7: Matrix multiply complete.")
+    add_bullet(tf_v, "Golden Model:", "NumPy np.matmul(A, W) compared on output pins.")
+    add_bullet(tf_v, "Interactive Visualizer:", "Run 'python visualizer/serve.py' for 2D visual wavefront.")
+    add_bullet(tf_v, "Execution Command:", "python -m pytest tests/test_systolic_array.py")
+
+    add_challenge_card(slide3, 6.8, 1.5, 5.7, 5.2, "Tiled Non-Square Matrix Multiplication", [
+        "Open tests/test_systolic_array.py.",
+        "Implement a test for 4x8 by 8x4 matrix multiplication across two consecutive tiles.",
+        "Accumulate partial results across passes and compare with NumPy.",
+        "Verify 100% test pass with pytest."
+    ], "pytest tests/test_systolic_array.py")
+
+# ==============================================================================
+# LAB 05: HARDWARE SQUARE ROOT
+# ==============================================================================
+def build_lab05_slides(prs):
+    # Slide 1: Hook & Intuition
+    slide1 = prs.slides.add_slide(prs.slide_layouts[6])
+    apply_background(slide1)
+    add_header(slide1, "Lab 05 | Attention Scaling", "Hardware Square Root Unit (1/√d_k Attention)", "Preventing Softmax gradient vanishing in Transformer multi-head attention")
+
+    add_stat_card(slide1, 0.8, 1.5, 2.7, 1.2, "1/√d_k", "Attention Scaling Factor", COLOR_CYAN)
+    add_stat_card(slide1, 3.7, 1.5, 2.7, 1.2, "Var = d_k", "Unscaled Dot-Product", COLOR_ROSE)
+    add_stat_card(slide1, 6.6, 1.5, 2.7, 1.2, "Var = 1.0", "Scaled Stable Variance", COLOR_EMERALD)
+    add_stat_card(slide1, 9.5, 1.5, 3.0, 1.2, "8 Stages", "Digit-by-Digit Extraction", COLOR_AMBER)
+
+    tf_left = add_bento_card(slide1, 0.8, 2.9, 5.7, 3.8, "🪝 The Hook: Softmax Gradient Vanishing", COLOR_ROSE)
+    add_bullet(tf_left, "The Variance Explosion:", "Query-Key dot products have variance Var(q·k) = d_k. For d_k=128, logits reach ±30.")
+    add_bullet(tf_left, "Gradient Vanishing:", "Softmax produces a sharp one-hot vector ([1.0, 0.0, 0.0...]), causing gradients to vanish completely (-> 0).")
+    add_bullet(tf_left, "The Silicon Fix:", "Dividing by √d_k rescales variance back to 1.0, keeping Softmax in its active learning zone.")
+
+    tf_right = add_bento_card(slide1, 6.8, 2.9, 5.7, 3.8, "💡 Hardware Intuition: Digit-by-Digit √X", COLOR_CYAN)
+    add_bullet(tf_right, "No Multipliers Needed:", "Extracts 1 root bit for every 2 radicand bits using shift-and-subtract.")
+    add_bullet(tf_right, "Stage Logic:", "rem = (rem << 2) | radicand[2i+1:2i]; test = (root << 2) | 1. If rem >= test: subtract and root bit = 1.")
+    add_bullet(tf_right, "Complexity:", "Zero DSP slices! Built entirely from cheap adders and muxes.")
+
+    # Slide 2: RTL & Synthesis
+    slide2 = prs.slides.add_slide(prs.slide_layouts[6])
+    apply_background(slide2)
+    add_header(slide2, "Lab 05 | Implementation", "SystemVerilog RTL & Gate Schematics", "Unrolled digit-by-digit extraction stages and Yosys synthesis")
+
+    code_sqrt = """module sqrt #(
+    parameter int RADICAND_WIDTH = 16,
+    parameter int ROOT_WIDTH     = RADICAND_WIDTH / 2
+)(
+    input  logic [RADICAND_WIDTH-1:0] radicand_in,
+    output logic [ROOT_WIDTH-1:0]     root_out,
+    output logic [RADICAND_WIDTH-1:0] remainder_out
+);
+    logic [RADICAND_WIDTH-1:0] rem[ROOT_WIDTH+1];
+    logic [ROOT_WIDTH-1:0]     root[ROOT_WIDTH+1];
+    assign rem[0] = '0; assign root[0] = '0;
+
+    generate
+        for (genvar i = 0; i < ROOT_WIDTH; i++) begin : gen_stage
+            // 8 unrolled digit-by-digit extraction stages
+        end
+    endgenerate
+endmodule"""
+    add_code_bento(slide2, 0.8, 1.5, 6.0, 5.2, "rtl/sqrt.sv", code_sqrt)
+    add_schematic_card(slide2, 7.0, 1.5, 5.5, 5.2, "Square Root Synthesized Datapath", "schematics/sqrt.png", "Yosys Open-Source Synthesis: 8 unrolled digit-by-digit shift-and-subtract stages")
+
+    # Slide 3: Cocotb Verification & Student Challenge
+    slide3 = prs.slides.add_slide(prs.slide_layouts[6])
+    apply_background(slide3)
+    add_header(slide3, "Lab 05 | Verification & Challenge", "Cocotb Testbench & Student Homework", "Corner cases, integer invariant check, and homework challenge")
+
+    tf_v = add_bento_card(slide3, 0.8, 1.5, 5.7, 5.2, "🧪 Cocotb Verification Suite", COLOR_CYAN)
+    add_bullet(tf_v, "Golden Reference:", "Python math.isqrt(x) reference model.")
+    add_bullet(tf_v, "Invariant Assertion:", "Asserts that root² + remainder == X for all 65,536 16-bit inputs!")
+    add_bullet(tf_v, "Corner Cases:", "0 -> 0, 1 -> 1, Perfect squares (144->12, 65025->255), Max (65535->root 255, rem 510).")
+    add_bullet(tf_v, "Execution Command:", "python labs/run_lab.py --lab 05")
+
+    add_challenge_card(slide3, 6.8, 1.5, 5.7, 5.2, "2-Stage Pipelined Square Root", [
+        "Open rtl/sqrt.sv.",
+        "Insert a pipeline register slice between Stage 3 and Stage 4.",
+        "Update labs/test_sqrt.py to handle the 2-cycle latency.",
+        "Synthesize with Yosys and observe the maximum clock frequency (Fmax) speedup."
+    ], "pytest labs/test_sqrt.py")
+
+# ==============================================================================
+# LAB 06: SAFE SOFTMAX
+# ==============================================================================
+def build_lab06_slides(prs):
+    # Slide 1: Hook & Intuition
+    slide1 = prs.slides.add_slide(prs.slide_layouts[6])
+    apply_background(slide1)
+    add_header(slide1, "Lab 06 | Normalization Engines", "Hardware Safe Softmax & FlashAttention Foundations", "Three-stage streaming pipeline and numerical overflow prevention")
+
+    add_stat_card(slide1, 0.8, 1.5, 2.7, 1.2, "e⁵⁰ ≈ 10²¹", "Naive Softmax Overflow", COLOR_ROSE)
+    add_stat_card(slide1, 3.7, 1.5, 2.7, 1.2, "Δ = x - M ≤ 0", "Safe Max Subtraction", COLOR_CYAN)
+    add_stat_card(slide1, 6.6, 1.5, 2.7, 1.2, "(0.0, 1.0]", "Bounded Exp Range", COLOR_EMERALD)
+    add_stat_card(slide1, 9.5, 1.5, 3.0, 1.2, "3 Stages", "Streaming Hardware Pipeline", COLOR_AMBER)
+
+    tf_left = add_bento_card(slide1, 0.8, 2.9, 5.7, 3.8, "🪝 The Hook: Naive Softmax Destroys Silicon", COLOR_ROSE)
+    add_bullet(tf_left, "The Overflow Disaster:", "If attention logits reach +50, e^50 ≈ 5.18 x 10²¹, overflowing even a 64-bit integer!")
+    add_bullet(tf_left, "Silicon Crash:", "In silicon, overflow wraps to 0, producing NaN probabilities and model collapse.")
+    add_bullet(tf_left, "Safe Softmax Fix:", "Subtract M = max(x_j) before computing exponentials. Since x_i - M ≤ 0, e^(x_i - M) ∈ (0, 1], fitting cleanly in Q0.8 fixed-point!")
+
+    tf_right = add_bento_card(slide1, 6.8, 2.9, 5.7, 3.8, "💡 Hardware Intuition & FlashAttention", COLOR_CYAN)
+    add_bullet(tf_right, "3-Stage Datapath:", "Max-Search Unit ➔ Subtraction (x - M) ➔ Exp LUT ➔ Adder Tree ➔ Normalizer.")
+    add_bullet(tf_right, "FlashAttention (Online Softmax):", "Fuses all 3 passes into local SRAM tiles with recursive rescaling: S_new = S_old · e^(M_old - M_new) + e^(x - M_new).")
+
+    # Slide 2: RTL & Synthesis
+    slide2 = prs.slides.add_slide(prs.slide_layouts[6])
+    apply_background(slide2)
+    add_header(slide2, "Lab 06 | Implementation", "SystemVerilog RTL & Gate Schematics", "Safe Softmax datapath, LUT exponentials, and Yosys synthesis")
+
+    code_soft = """module softmax #(
+    parameter int VECTOR_SIZE = 4, IN_WIDTH = 8, OUT_WIDTH = 8
+)(
+    input  logic signed [IN_WIDTH-1:0]  logits_in[VECTOR_SIZE],
+    output logic        [OUT_WIDTH-1:0] probs_out[VECTOR_SIZE]
+);
+    // 1. Comparator Tree: Find max_val = max(logits_in)
+    // 2. Subtraction: delta_i = logits_in[i] - max_val (<= 0)
+    // 3. Exponential ROM LUT in Q0.8 fixed-point
+    // 4. Adder Tree: sum_exp = sum(exp_vals)
+    // 5. Fixed-point normalization: probs_out = (exp_vals * 255) / sum_exp
+endmodule"""
+    add_code_bento(slide2, 0.8, 1.5, 6.0, 5.2, "rtl/softmax.sv", code_soft)
+    add_schematic_card(slide2, 7.0, 1.5, 5.5, 5.2, "Synthesized Softmax Pipeline", "schematics/softmax.png", "Yosys Open-Source Synthesis: 3-stage hardware pipeline with comparator tree and normalizer")
+
+    # Slide 3: Cocotb Verification & Student Challenge
+    slide3 = prs.slides.add_slide(prs.slide_layouts[6])
+    apply_background(slide3)
+    add_header(slide3, "Lab 06 | Verification & Challenge", "Cocotb Testbench & Student Homework", "PyTorch golden model, probability invariants, and challenge")
+
+    tf_v = add_bento_card(slide3, 0.8, 1.5, 5.7, 5.2, "🧪 Cocotb Verification Suite", COLOR_CYAN)
+    add_bullet(tf_v, "Golden Reference:", "PyTorch torch.nn.functional.softmax(x) * 255.")
+    add_bullet(tf_v, "Key Corner Tests:", "Equal logits ([10,10,10,10]->[64,64,64,64]), Extreme dominance ([100,0,0,0]->[255,0,0,0]), Deep negative logits.")
+    add_bullet(tf_v, "Invariant Assertion:", "Asserts sum of output probabilities equals ~255.")
+    add_bullet(tf_v, "Execution Command:", "python labs/run_lab.py --lab 06")
+
+    add_challenge_card(slide3, 6.8, 1.5, 5.7, 5.2, "Reciprocal Multiplier Normalizer", [
+        "Open rtl/softmax.sv.",
+        "Replace the slow integer division step with a Reciprocal LUT + Multiplier.",
+        "Synthesize with Yosys and measure reduction in standard cell count.",
+        "Verify with pytest labs/test_softmax.py."
+    ], "pytest labs/test_softmax.py")
+
+# ==============================================================================
+# LAB 07: FAST RSQRT (RMSNORM)
+# ==============================================================================
+def build_lab07_slides(prs):
+    # Slide 1: Hook & Intuition
+    slide1 = prs.slides.add_slide(prs.slide_layouts[6])
+    apply_background(slide1)
+    add_header(slide1, "Lab 07 | Fast Normalization", "Fast Reciprocal Square Root (rsqrt) for RMSNorm", "Powering RMSNorm layers in LLaMA 3, Mistral, and DeepSeek")
+
+    add_stat_card(slide1, 0.8, 1.5, 2.7, 1.2, "1/√x", "RMSNorm Operation", COLOR_CYAN)
+    add_stat_card(slide1, 3.7, 1.5, 2.7, 1.2, "4-8 Cycles", "Dedicated SFU Latency", COLOR_EMERALD)
+    add_stat_card(slide1, 6.6, 1.5, 2.7, 1.2, "< 0.5%", "Quantization Error", COLOR_AMBER)
+    add_stat_card(slide1, 9.5, 1.5, 3.0, 1.2, "0 Stalls", "Pipelined SFU Path", COLOR_PURPLE)
+
+    tf_left = add_bento_card(slide1, 0.8, 2.9, 5.7, 3.8, "🪝 The Hook: Why RMSNorm is Everywhere", COLOR_ROSE)
+    add_bullet(tf_left, "Scale in LLMs:", "LLaMA 3, Gemma, and DeepSeek run RMSNorm before every attention and FFN block (2 x Layers per token).")
+    add_bullet(tf_left, "The Pipeline Stall:", "Dividing by square root (x / √v) in software stalls execution pipelines for 40+ cycles.")
+    add_bullet(tf_left, "The SFU Solution:", "A dedicated rsqrt SFU computes 1/√v in fixed-point, converting division into a single fast multiplication!")
+
+    tf_right = add_bento_card(slide1, 6.8, 2.9, 5.7, 3.8, "💡 Hardware Intuition & Seed LUT Scaling", COLOR_CYAN)
+    add_bullet(tf_right, "1/√x vs n-th Root:", "1/√x is used billions of times; n-th root is almost never needed in AI models.")
+    add_bullet(tf_right, "Seed LUT (x < 16):", "Precomputed 16-entry seed table gives high precision for small variance inputs.")
+    add_bullet(tf_right, "Root Scaler (x >= 16):", "Digit root extractor + 256/root scaler outputs normalized Q8.8 fixed-point.")
+
+    # Slide 2: RTL & Synthesis
+    slide2 = prs.slides.add_slide(prs.slide_layouts[6])
+    apply_background(slide2)
+    add_header(slide2, "Lab 07 | Implementation", "SystemVerilog RTL & Gate Schematics", "Seed LUT, digit engine, and division-by-zero protection")
+
+    code_rsqrt = """module rsqrt #(
+    parameter int INPUT_WIDTH  = 16,
+    parameter int OUTPUT_WIDTH = 16
+)(
+    input  logic [INPUT_WIDTH-1:0]  x_in,
+    output logic [OUTPUT_WIDTH-1:0] y_out,
+    output logic                    valid_out
+);
+    // 1. Zero input detector: valid_out = (x_in != 0)
+    // 2. Small x (<16) Seed LUT for instant high precision
+    // 3. Digit-by-digit root extractor for x >= 16
+    // 4. Fixed-point reciprocal scaler y_out = 256 / root (Q8.8)
+endmodule"""
+    add_code_bento(slide2, 0.8, 1.5, 6.0, 5.2, "rtl/rsqrt.sv", code_rsqrt)
+    add_schematic_card(slide2, 7.0, 1.5, 5.5, 5.2, "rsqrt Synthesized Schematic", "schematics/rsqrt.png", "Yosys Open-Source Synthesis: Dedicated SFU combining Seed ROM, digit root, and Q8.8 scaler")
+
+    # Slide 3: Cocotb Verification & Student Challenge
+    slide3 = prs.slides.add_slide(prs.slide_layouts[6])
+    apply_background(slide3)
+    add_header(slide3, "Lab 07 | Verification & Challenge", "Cocotb Testbench & Student Homework", "IEEE FP32 reference model, valid flag, and challenge")
+
+    tf_v = add_bento_card(slide3, 0.8, 1.5, 5.7, 5.2, "🧪 Cocotb Verification Suite", COLOR_CYAN)
+    add_bullet(tf_v, "Golden Reference:", "NumPy round(256.0 / sqrt(x)) Q8.8 reference model.")
+    add_bullet(tf_v, "Tests Run:", "Divide-by-zero check (x=0 -> valid=0), small numbers (x=1 -> 256, x=4 -> 128), perfect squares (x=16 -> 64, x=64 -> 32).")
+    add_bullet(tf_v, "Execution Command:", "python labs/run_lab.py --lab 07")
+
+    add_challenge_card(slide3, 6.8, 1.5, 5.7, 5.2, "Newton-Raphson Refinement Step", [
+        "Open rtl/rsqrt.sv.",
+        "Implement 1 iteration of Newton-Raphson refinement: y_{n+1} = y_n · (1.5 - 0.5 · x · y_n²).",
+        "Verify in labs/test_rsqrt.py that RMS relative error drops from <2% to <0.1%.",
+        "Run pytest to verify accuracy."
+    ], "pytest labs/test_rsqrt.py")
+
+# ==============================================================================
+# LAB 08: EXPONENTIAL SFU
+# ==============================================================================
+def build_lab08_slides(prs):
+    # Slide 1: Hook & Intuition
+    slide1 = prs.slides.add_slide(prs.slide_layouts[6])
+    apply_background(slide1)
+    add_header(slide1, "Lab 08 | Special Function Units", "Hardware Exponential SFU (2^x & e^x) for SwiGLU", "Base-2 hardware decomposition trick: zero-cost bit-shift + LUT interpolation")
+
+    add_stat_card(slide1, 0.8, 1.5, 2.7, 1.2, "e^x = 2^y", "Base-2 Conversion", COLOR_CYAN)
+    add_stat_card(slide1, 3.7, 1.5, 2.7, 1.2, "1 << i", "Zero-Cost Integer Shift", COLOR_EMERALD)
+    add_stat_card(slide1, 6.6, 1.5, 2.7, 1.2, "16-Entry LUT", "Fractional Interpolation", COLOR_AMBER)
+    add_stat_card(slide1, 9.5, 1.5, 3.0, 1.2, "SwiGLU", "LLM Activation Layer", COLOR_PURPLE)
+
+    tf_left = add_bento_card(slide1, 0.8, 2.9, 5.7, 3.8, "🪝 The Hook: Accelerating 60% of LLM FLOPs", COLOR_ROSE)
+    add_bullet(tf_left, "Scale in LLMs:", "Modern LLMs spend over 60% of compute evaluating Feed-Forward Networks using SwiGLU & SiLU (SiLU(x) = x / (1 + e^-x)).")
+    add_bullet(tf_left, "Silicon Barrier:", "Computing e^x directly with Taylor series in silicon requires dozens of high-latency multiplier stages.")
+    add_bullet(tf_left, "The Breakthrough:", "Base-2 decomposition: e^x = 2^(x · log2(e)). Integer parts become free bitshifts, fractional parts evaluate via a tiny 16-entry ROM!")
+
+    tf_right = add_bento_card(slide1, 6.8, 2.9, 5.7, 3.8, "💡 Hardware Intuition: Base-2 Decomposition", COLOR_CYAN)
+    add_bullet(tf_right, "Range Reduction:", "u = x · log2(e) = I + F. 2^u = 2^I · 2^F.")
+    add_bullet(tf_right, "Integer Part 2^I:", "Computed with a zero-cost hardware barrel shifter (1 << I).")
+    add_bullet(tf_right, "Fractional Part 2^F:", "Looked up in a compact 16-entry ROM table.")
+    add_bullet(tf_right, "Speedup:", "High-precision exponential in 1-2 clock cycles instead of a 30-cycle software loop!")
+
+    # Slide 2: RTL & Synthesis
+    slide2 = prs.slides.add_slide(prs.slide_layouts[6])
+    apply_background(slide2)
+    add_header(slide2, "Lab 08 | Implementation", "SystemVerilog RTL & SFU Architecture", "Dual-mode (2^x / e^x) architecture and Q8.8 fixed-point scaling")
+
+    code_exp = """module exp2_sfu #(
+    parameter int IN_WIDTH  = 8,   // Signed Q4.4 input
+    parameter int OUT_WIDTH = 16   // Unsigned Q8.8 output
+)(
+    input  logic signed [IN_WIDTH-1:0]  x_in,
+    input  logic                        mode_e,     // 1 = e^x, 0 = 2^x
+    output logic        [OUT_WIDTH-1:0] y_out,
+    output logic                        overflow
+);
+    // 1. Optional log2(e) scaling stage for mode_e
+    // 2. Integer bitshift (2^I) & 16-entry fractional ROM (2^F)
+    // 3. Multiplier combiner + Q8.8 saturation clamp
+endmodule"""
+    add_code_bento(slide2, 0.8, 1.5, 6.0, 5.2, "rtl/exp2_sfu.sv", code_exp)
+    add_schematic_card(slide2, 7.0, 1.5, 5.5, 5.2, "Exponential SFU Architecture", "schematics/softmax.png", "Dual-mode hardware Special Function Unit (SFU) with log2(e) prescaler and ROM")
+
+    # Slide 3: Cocotb Verification & Student Challenge
+    slide3 = prs.slides.add_slide(prs.slide_layouts[6])
+    apply_background(slide3)
+    add_header(slide3, "Lab 08 | Verification & Challenge", "Cocotb Testbench & Student Homework", "NumPy reference models, boundary saturation, and challenge")
+
+    tf_v = add_bento_card(slide3, 0.8, 1.5, 5.7, 5.2, "🧪 Cocotb Verification Suite", COLOR_CYAN)
+    add_bullet(tf_v, "Golden Reference:", "NumPy 2**x and np.exp(x) models converted to Q8.8.")
+    add_bullet(tf_v, "Corner Cases:", "Base-2 (x=0 -> 256, x=1 -> 512, x=-1 -> 128), Base-e (x=1.0 -> ~696), Negative exponents (x=-4.0 -> 5).")
+    add_bullet(tf_v, "Execution Command:", "python labs/run_lab.py --lab 08")
+
+    add_challenge_card(slide3, 6.8, 1.5, 5.7, 5.2, "Hardware SiLU Activation Unit", [
+        "Open rtl/exp2_sfu.sv.",
+        "Design a hardware SiLU activation unit: SiLU(x) = x · (1 / (1 + e^-x)).",
+        "Connect exp2_sfu (in e^x mode) with an inverse LUT and multiplier.",
+        "Verify in labs/test_exp2_sfu.py against PyTorch torch.nn.functional.silu()."
+    ], "pytest labs/test_exp2_sfu.py")
+
+# ==============================================================================
+# SUMMARY SLIDE
+# ==============================================================================
+def build_summary_slide(prs):
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    apply_background(slide)
+    add_header(slide, "Curriculum Verification", "Synthesis Metrics & Verification Summary", "100% Cocotb verification, clean Yosys synthesizability, and interactive tooling")
+
+    add_stat_card(slide, 0.8, 1.5, 2.7, 1.2, "9 / 9 Labs", "Verified with Cocotb", COLOR_CYAN)
+    add_stat_card(slide, 3.7, 1.5, 2.7, 1.2, "0 Lint Errors", "SystemVerilog RTL", COLOR_EMERALD)
+    add_stat_card(slide, 6.6, 1.5, 2.7, 1.2, "100% Clean", "Yosys Gate Synthesis", COLOR_AMBER)
+    add_stat_card(slide, 9.5, 1.5, 3.0, 1.2, "Interactive", "Web Visualizer Tools", COLOR_PURPLE)
+
+    tf_left = add_bento_card(slide, 0.8, 2.9, 5.7, 3.8, "🧪 Verification Coverage Matrix", COLOR_CYAN)
+    add_bullet(tf_left, "Automated Test Suite:", "Run all labs with 'python labs/run_lab.py --lab all'.")
+    add_bullet(tf_left, "Corner Case Coverage:", "Exhaustive signed two's complement boundaries (-128, +127), saturation clamps, and overflow checks.")
+    add_bullet(tf_left, "Golden Math References:", "Verified against NumPy, math.exp, and IEEE FP32 standard.")
+
+    tf_right = add_bento_card(slide, 6.8, 2.9, 5.7, 3.8, "🚀 Silicon Ready Engineering", COLOR_EMERALD)
+    add_bullet(tf_right, "End-to-End Flow:", "From full adders to 2D systolic meshes and LLM SFUs.")
+    add_bullet(tf_right, "Interactive Web App:", "Run 'python3 slides/serve.py' for animated presentations.")
+    add_bullet(tf_right, "Tape-Out Ready:", "Synthesizable SystemVerilog standard cells ready for FPGA and ASIC.")
+
+# ==============================================================================
+# MAIN EXPORT ROUTINE
+# ==============================================================================
+def generate_all_decks():
+    output_dir = Path("slides")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # 1. Master Deck (All Labs)
+    master_prs = create_deck()
+    build_title_slide(master_prs)
+    build_roadmap_slide(master_prs)
+    build_lab00_slides(master_prs)
+    build_lab01_slides(master_prs)
+    build_lab02_slides(master_prs)
+    build_lab03_slides(master_prs)
+    build_lab04_slides(master_prs)
+    build_lab05_slides(master_prs)
+    build_lab06_slides(master_prs)
+    build_lab07_slides(master_prs)
+    build_lab08_slides(master_prs)
+    build_summary_slide(master_prs)
+
+    master_path = output_dir / "Hardware_AI_Acceleration_Master_Slides.pptx"
+    master_prs.save(str(master_path))
+    print(f"✅ Generated Master Presentation: {master_path}")
+
+    root_master_path = Path("Hardware_AI_Acceleration_Master_Slides.pptx")
+    master_prs.save(str(root_master_path))
+    print(f"✅ Saved Root Copy: {root_master_path}")
+
+    # 2. Individual Lab Decks
+    lab_generators = [
+        ("Lab00_Signed_Adder_Saturation.pptx", build_lab00_slides),
+        ("Lab01_INT8_Multiplier.pptx", build_lab01_slides),
+        ("Lab02_MAC_Unit.pptx", build_lab02_slides),
+        ("Lab03_Weight_Stationary_PE.pptx", build_lab03_slides),
+        ("Lab04_Systolic_Matrix_Multiplier.pptx", build_lab04_slides),
+        ("Lab05_Hardware_Square_Root.pptx", build_lab05_slides),
+        ("Lab06_Safe_Softmax.pptx", build_lab06_slides),
+        ("Lab07_Reciprocal_Square_Root_rsqrt.pptx", build_lab07_slides),
+        ("Lab08_Exponential_SFU.pptx", build_lab08_slides),
+    ]
+
+    for filename, build_fn in lab_generators:
+        prs = create_deck()
+        build_title_slide(prs)
+        build_fn(prs)
+        build_summary_slide(prs)
+        deck_path = output_dir / filename
+        prs.save(str(deck_path))
+        print(f"✅ Generated Individual Deck: {deck_path}")
+
+if __name__ == "__main__":
+    generate_all_decks()

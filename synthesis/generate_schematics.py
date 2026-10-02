@@ -1155,6 +1155,199 @@ def generate_systolic_array_svg(out_path):
     save_and_validate_svg("\n".join(svg), out_path)
 
 # ==============================================================================
+# 5. ADDER SCHEMATIC GENERATOR
+# ==============================================================================
+def generate_adder_svg(out_path):
+    width, height = 1000, 600
+    svg = [create_svg_header(width, height, "adder - Parameterized Signed Adder with Saturation")]
+
+    svg.append("""
+    <g transform="translate(40, 80)">
+        <text x="0" y="0" fill="#f8fafc" font-size="22" font-weight="700">🔬 MODULE: adder</text>
+        <text x="0" y="24" fill="#94a3b8" font-size="13">Parameterized Signed Adder with Overflow Detection &amp; Saturation Logic</text>
+    </g>
+
+    <!-- Main Adder Component Box -->
+    <g id="comp_adder" class="collapsible-comp expanded" transform="translate(180, 140)">
+        <g class="component-box" onclick="toggleComponent('comp_adder')">
+            <rect class="box-rect" x="0" y="0" width="640" height="380" rx="12" fill="#0f172a" stroke="#38bdf8" stroke-width="2" />
+            <rect x="0" y="0" width="640" height="42" rx="12" fill="#0369a1" />
+            <rect x="0" y="30" width="640" height="12" fill="#0369a1" />
+            
+            <text x="24" y="27" fill="#f0f9ff" font-size="15" font-weight="700">⚙️ adder Core (Signed + Saturation)</text>
+            <text x="320" y="26" fill="#bae6fd" font-size="12" font-family="'JetBrains Mono', monospace">DATA_WIDTH = 8</text>
+        </g>
+        
+        <!-- Collapsed View -->
+        <g class="collapsed-only" transform="translate(170, 100)">
+            <rect x="0" y="0" width="300" height="180" rx="10" fill="#0369a1" stroke="#38bdf8" stroke-width="2" />
+            <text x="150" y="70" fill="#ffffff" font-size="28" font-weight="bold" text-anchor="middle">➕ ADDER</text>
+            <text x="150" y="105" fill="#bae6fd" font-size="14" font-family="'JetBrains Mono', monospace" text-anchor="middle">sum = a + b (Saturated)</text>
+        </g>
+
+        <!-- Expanded View -->
+        <g class="collapsible-content expanded-only">
+            <!-- 8-Bit Ripple Carry Core -->
+            <g transform="translate(40, 70)">
+                <rect class="box-rect" x="0" y="0" width="240" height="260" rx="8" fill="#1e293b" stroke="#60a5fa" stroke-width="1.5" />
+                <rect x="0" y="0" width="240" height="32" rx="8" fill="#1d4ed8" />
+                <text x="12" y="21" fill="#eff6ff" font-size="13" font-weight="700">1. Full Adder Array (8x FA)</text>
+                <text x="120" y="80" fill="#93c5fd" font-size="12" text-anchor="middle">Two's Complement Addition</text>
+                <rect x="20" y="110" width="200" height="120" rx="6" fill="#0f172a" stroke="#3b82f6" />
+                <text x="120" y="145" fill="#60a5fa" font-size="12" font-family="'JetBrains Mono', monospace" text-anchor="middle">raw_sum = {a[7], a}</text>
+                <text x="120" y="175" fill="#60a5fa" font-size="12" font-family="'JetBrains Mono', monospace" text-anchor="middle">+ {b[7], b}</text>
+                <text x="120" y="205" fill="#4ade80" font-size="11" text-anchor="middle">~42 Logic Gates Total</text>
+            </g>
+
+            <!-- Overflow & Saturation MUX -->
+            <g transform="translate(340, 70)">
+                <rect class="box-rect" x="0" y="0" width="260" height="260" rx="8" fill="#1e293b" stroke="#f59e0b" stroke-width="1.5" />
+                <rect x="0" y="0" width="260" height="32" rx="8" fill="#b45309" />
+                <text x="12" y="21" fill="#fffbeb" font-size="13" font-weight="700">2. Overflow &amp; Saturation MUX</text>
+                <text x="130" y="70" fill="#fde68a" font-size="12" text-anchor="middle">AI Saturation Clamp Logic</text>
+                <rect x="20" y="90" width="220" height="140" rx="6" fill="#0f172a" stroke="#d97706" />
+                <text x="130" y="125" fill="#fcd34d" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">overflow = (a7 == b7) &amp;&amp; (s7 != a7)</text>
+                <text x="130" y="160" fill="#f87171" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">Pos Over: clamp to +127</text>
+                <text x="130" y="195" fill="#60a5fa" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">Neg Over: clamp to -128</text>
+            </g>
+        </g>
+    </g>
+    """)
+
+    svg.append(create_svg_footer())
+    save_and_validate_svg("\n".join(svg), out_path)
+
+# ==============================================================================
+# 6. SQRT SCHEMATIC GENERATOR
+# ==============================================================================
+def generate_sqrt_svg(out_path):
+    width, height = 1000, 600
+    svg = [create_svg_header(width, height, "sqrt - Non-Restoring Hardware Square Root Unit")]
+
+    svg.append("""
+    <g transform="translate(40, 80)">
+        <text x="0" y="0" fill="#f8fafc" font-size="22" font-weight="700">🔬 MODULE: sqrt</text>
+        <text x="0" y="24" fill="#94a3b8" font-size="13">Digit-by-Digit Hardware Square Root Unit for Attention Scaling (1 / sqrt(d_k))</text>
+    </g>
+
+    <!-- Main Sqrt Component Box -->
+    <g id="comp_sqrt" class="collapsible-comp expanded" transform="translate(180, 140)">
+        <g class="component-box" onclick="toggleComponent('comp_sqrt')">
+            <rect class="box-rect" x="0" y="0" width="640" height="380" rx="12" fill="#141e2e" stroke="#10b981" stroke-width="2" />
+            <rect x="0" y="0" width="640" height="42" rx="12" fill="#065f46" />
+            <rect x="0" y="30" width="640" height="12" fill="#065f46" />
+            
+            <text x="24" y="27" fill="#ecfdf5" font-size="15" font-weight="700">⚙️ sqrt Core (Digit Recurrence)</text>
+            <text x="320" y="26" fill="#a7f3d0" font-size="12" font-family="'JetBrains Mono', monospace">RADICAND=16, ROOT=8</text>
+        </g>
+        
+        <g class="collapsible-content expanded-only">
+            <!-- 8 Shift-and-Subtract Stages -->
+            <g transform="translate(40, 70)">
+                <rect class="box-rect" x="0" y="0" width="560" height="260" rx="8" fill="#0f172a" stroke="#059669" stroke-width="1.5" />
+                <rect x="0" y="0" width="560" height="32" rx="8" fill="#047857" />
+                <text x="12" y="21" fill="#ecfdf5" font-size="13" font-weight="700">Digit-by-Digit Recurrence Pipeline (8 Stages)</text>
+                <text x="280" y="70" fill="#6ee7b7" font-size="12" text-anchor="middle">Iteratively processes bit-pairs from MSB [15:14] down to LSB [1:0]</text>
+                
+                <rect x="30" y="90" width="500" height="140" rx="6" fill="#134e4a" stroke="#0d9488" />
+                <text x="280" y="125" fill="#ccfbf1" font-size="12" font-family="'JetBrains Mono', monospace" text-anchor="middle">rem = (rem &lt;&lt; 2) | radicand[2i+1:2i]</text>
+                <text x="280" y="155" fill="#ccfbf1" font-size="12" font-family="'JetBrains Mono', monospace" text-anchor="middle">test_val = {root, 2'b01}</text>
+                <text x="280" y="185" fill="#fef08a" font-size="12" font-family="'JetBrains Mono', monospace" text-anchor="middle">if (rem &gt;= test_val) -&gt; rem -= test_val; root = (root &lt;&lt; 1) | 1'b1</text>
+                <text x="280" y="215" fill="#a7f3d0" font-size="11" text-anchor="middle">Zero Multipliers Required • Exact Integer Root &amp; Remainder</text>
+            </g>
+        </g>
+    </g>
+    """)
+
+    svg.append(create_svg_footer())
+    save_and_validate_svg("\n".join(svg), out_path)
+
+# ==============================================================================
+# 7. SOFTMAX SCHEMATIC GENERATOR
+# ==============================================================================
+def generate_softmax_svg(out_path):
+    width, height = 1000, 600
+    svg = [create_svg_header(width, height, "softmax - Hardware Safe Softmax Unit")]
+
+    svg.append("""
+    <g transform="translate(40, 80)">
+        <text x="0" y="0" fill="#f8fafc" font-size="22" font-weight="700">🔬 MODULE: softmax</text>
+        <text x="0" y="24" fill="#94a3b8" font-size="13">Safe Softmax Pipeline: Max Search → Delta Subtraction → Exp LUT → Normalizer</text>
+    </g>
+
+    <!-- Main Softmax Component Box -->
+    <g id="comp_softmax" class="collapsible-comp expanded" transform="translate(180, 140)">
+        <g class="component-box" onclick="toggleComponent('comp_softmax')">
+            <rect class="box-rect" x="0" y="0" width="640" height="380" rx="12" fill="#1e1b4b" stroke="#a855f7" stroke-width="2" />
+            <rect x="0" y="0" width="640" height="42" rx="12" fill="#6b21a8" />
+            <rect x="0" y="30" width="640" height="12" fill="#6b21a8" />
+            
+            <text x="24" y="27" fill="#faf5ff" font-size="15" font-weight="700">⚙️ softmax Pipeline (Safe Max-Subtraction)</text>
+            <text x="360" y="26" fill="#e9d5ff" font-size="12" font-family="'JetBrains Mono', monospace">VEC_SIZE = 4, DATA = 8</text>
+        </g>
+        
+        <g class="collapsible-content expanded-only">
+            <!-- 4 Stages of Safe Softmax -->
+            <g transform="translate(25, 65)">
+                <!-- Stage 1: Max Finder -->
+                <rect x="0" y="0" width="135" height="270" rx="6" fill="#0f172a" stroke="#818cf8" />
+                <rect x="0" y="0" width="135" height="28" rx="6" fill="#3730a3" />
+                <text x="67" y="19" fill="#ffffff" font-size="11" font-weight="700" text-anchor="middle">1. Max-Search</text>
+                <text x="67" y="60" fill="#c7d2fe" font-size="10" text-anchor="middle">Find M = max(x_i)</text>
+                <text x="67" y="90" fill="#94a3b8" font-size="9" text-anchor="middle">Safe Softmax:</text>
+                <text x="67" y="110" fill="#94a3b8" font-size="9" text-anchor="middle">Prevents exp()</text>
+                <text x="67" y="130" fill="#94a3b8" font-size="9" text-anchor="middle">overflow</text>
+
+                <!-- Stage 2: Subtraction -->
+                <rect x="150" y="0" width="135" height="270" rx="6" fill="#0f172a" stroke="#38bdf8" />
+                <rect x="150" y="0" width="135" height="28" rx="6" fill="#0369a1" />
+                <text x="217" y="19" fill="#ffffff" font-size="11" font-weight="700" text-anchor="middle">2. Delta Shift</text>
+                <text x="217" y="60" fill="#bae6fd" font-size="10" text-anchor="middle">Δ_i = x_i - M</text>
+                <text x="217" y="90" fill="#94a3b8" font-size="9" text-anchor="middle">All Δ_i &lt;= 0</text>
+                <text x="217" y="120" fill="#94a3b8" font-size="9" text-anchor="middle">Mapped to (0, 1]</text>
+
+                <!-- Stage 3: Exp LUT -->
+                <rect x="300" y="0" width="135" height="270" rx="6" fill="#0f172a" stroke="#ec4899" />
+                <rect x="300" y="0" width="135" height="28" rx="6" fill="#9d174d" />
+                <text x="367" y="19" fill="#ffffff" font-size="11" font-weight="700" text-anchor="middle">3. Exp LUT</text>
+                <text x="367" y="60" fill="#fbcfe8" font-size="10" text-anchor="middle">e^(Δ_i) in Q0.8</text>
+                <text x="367" y="90" fill="#94a3b8" font-size="9" text-anchor="middle">exp(0) = 255</text>
+                <text x="367" y="110" fill="#94a3b8" font-size="9" text-anchor="middle">exp(-1) = 94</text>
+                <text x="367" y="130" fill="#94a3b8" font-size="9" text-anchor="middle">exp(-2) = 35</text>
+
+                <!-- Stage 4: Normalization -->
+                <rect x="450" y="0" width="135" height="270" rx="6" fill="#0f172a" stroke="#22c55e" />
+                <rect x="450" y="0" width="135" height="28" rx="6" fill="#15803d" />
+                <text x="517" y="19" fill="#ffffff" font-size="11" font-weight="700" text-anchor="middle">4. Normalizer</text>
+                <text x="517" y="60" fill="#bbf7d0" font-size="10" text-anchor="middle">Sum &amp; Divide</text>
+                <text x="517" y="90" fill="#94a3b8" font-size="9" text-anchor="middle">sum = Σ e^(Δ)</text>
+                <text x="517" y="120" fill="#94a3b8" font-size="9" text-anchor="middle">prob_i =</text>
+                <text x="517" y="140" fill="#94a3b8" font-size="9" text-anchor="middle">(e_i * 255) / sum</text>
+            </g>
+        </g>
+    </g>
+    """)
+
+    svg.append(create_svg_footer())
+    save_and_validate_svg("\n".join(svg), out_path)
+
+def generate_generic_svg(module_name, out_path):
+    if module_name == "adder":
+        generate_adder_svg(out_path)
+    elif module_name == "sqrt":
+        generate_sqrt_svg(out_path)
+    elif module_name == "softmax":
+        generate_softmax_svg(out_path)
+    elif module_name == "multiplier_int8":
+        generate_multiplier_svg(out_path)
+    elif module_name == "mac_unit":
+        generate_mac_unit_svg(out_path)
+    elif module_name == "pe":
+        generate_pe_svg(out_path)
+    elif module_name == "systolic_array":
+        generate_systolic_array_svg(out_path)
+
+# ==============================================================================
 # MAIN ENTRYPOINT
 # ==============================================================================
 def generate_all_schematics(out_dir="schematics"):
@@ -1166,13 +1359,17 @@ def generate_all_schematics(out_dir="schematics"):
     print("🎨 GENERATING INTERACTIVE COLLAPSIBLE HARDWARE SCHEMATICS")
     print("=======================================================\n")
 
+    generate_adder_svg(target_dir / "adder.svg")
     generate_multiplier_svg(target_dir / "multiplier_int8.svg")
     generate_mac_unit_svg(target_dir / "mac_unit.svg")
     generate_pe_svg(target_dir / "pe.svg")
     generate_systolic_array_svg(target_dir / "systolic_array.svg")
+    generate_sqrt_svg(target_dir / "sqrt.svg")
+    generate_softmax_svg(target_dir / "softmax.svg")
 
     print("\n✨ All interactive collapsible SVGs successfully generated and XML-validated in:", target_dir)
 
 if __name__ == "__main__":
     out = sys.argv[1] if len(sys.argv) > 1 else "schematics"
     generate_all_schematics(out)
+

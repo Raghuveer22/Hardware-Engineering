@@ -1,5 +1,8 @@
 # AI Hardware Tensor Engine & Pre-Silicon Emulation Platform
 
+**🪝 YouTube Hook:** *"Ever wondered how chips like Google's TPU or NVIDIA's GPUs actually process AI models? Today, we're building a complete AI hardware accelerator from scratch, taking you from software algorithms down to silicon gates!"*
+
+
 A 100% free, open-source hardware/software co-design & emulation environment for AI tensor compute engines and LLM Transformer acceleration.
 
 ---
@@ -39,74 +42,66 @@ For large context windows (e.g. **1 Million Tokens**):
 * **Weight-Stationary Dataflow:** Model weights ($W_Q, W_K, W_V$) remain locked in local Processing Element (PE) registers inside fast on-chip SRAM. Tokens stream through with zero redundant memory re-fetches.
 * **Hardware Matrix Tiling:** Physical chips don't build 1-million-wide systolic arrays. Instead, a parameterized array (e.g., $4 \times 4$, $16 \times 16$, or $128 \times 128$) processes matrices chunk-by-chunk (**tiles**), accumulating results in local SRAM buffers.
 * **FlashAttention (Online Softmax):** Fuses softmax scaling directly into the hardware accumulation loop, computing attention without ever materializing the massive intermediate matrix to DRAM.
+* **Square Root Scaling ($1/\sqrt{d_k}$):** Keeps dot-product variance normalized to $1.0$, preventing Softmax gradients from vanishing during training and inference.
+
+---
+
+## 🔬 Hands-On AI Hardware Curriculum (Labs 00 - 08)
+
+| Lab | Module | SystemVerilog RTL | Cocotb Verification | Guide | Gate Complexity |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Lab 00** | Parameterized Signed Adder | [`rtl/adder.sv`](rtl/adder.sv) | [`labs/test_adder.py`](labs/test_adder.py) | [Lab 00 Guide](labs/slides/lab00_adder_slides.md) | **$O(N)$ Linear** (~42 gates) |
+| **Lab 01** | Signed Multiplier (INT8) | [`rtl/multiplier_int8.sv`](rtl/multiplier_int8.sv) | [`labs/test_multiplier.py`](labs/test_multiplier.py) | [Lab 01 Guide](labs/slides/lab01_multiplier_slides.md) | **$O(N^2)$ Quadratic** (~456 gates) |
+| **Lab 02** | Multiply-Accumulate (MAC) | [`rtl/mac_unit.sv`](rtl/mac_unit.sv) | [`labs/test_mac.py`](labs/test_mac.py) | [Lab 02 Guide](labs/slides/lab02_mac_unit_slides.md) | Sign-Extension (16b ➔ 32b) |
+| **Lab 03** | Processing Element (PE) | [`rtl/pe.sv`](rtl/pe.sv) | [`tests/test_pe.py`](tests/test_pe.py) | [Lab 03 Guide](labs/slides/lab03_processing_element_slides.md) | 48 D-Flip-Flop Registers |
+| **Lab 04** | 2D Systolic Matrix Array | [`rtl/systolic_array.sv`](rtl/systolic_array.sv) | [`tests/test_systolic_array.py`](tests/test_systolic_array.py) | [Lab 04 Guide](labs/slides/lab04_systolic_array_slides.md) | 4x4 Grid (816 Registers) |
+| **Lab 05** | Square Root Unit | [`rtl/sqrt.sv`](rtl/sqrt.sv) | [`labs/test_sqrt.py`](labs/test_sqrt.py) | [Lab 05 Guide](labs/slides/lab05_sqrt_slides.md) | Attention Scaling ($1/\sqrt{d_k}$) |
+| **Lab 06** | Safe Softmax Engine | [`rtl/softmax.sv`](rtl/softmax.sv) | [`labs/test_softmax.py`](labs/test_softmax.py) | [Lab 06 Guide](labs/slides/lab06_softmax_slides.md) | FlashAttention & LUT Exponentials |
+| **Lab 07** | Reciprocal Sqrt (`rsqrt`) | [`rtl/rsqrt.sv`](rtl/rsqrt.sv) | [`labs/test_rsqrt.py`](labs/test_rsqrt.py) | [Lab 07 Guide](labs/slides/lab07_rsqrt_slides.md) | RMSNorm & LayerNorm SFU |
+| **Lab 08** | Exponential SFU ($2^x / e^x$) | [`rtl/exp2_sfu.sv`](rtl/exp2_sfu.sv) | [`labs/test_exp2_sfu.py`](labs/test_exp2_sfu.py) | [Lab 08 Guide](labs/slides/lab08_exponential_sfu_slides.md) | Base-2 Scaler for SwiGLU / SiLU |
 
 ---
 
 ## 📂 Source Code vs. Auto-Generated Files
 
-To navigate the repository cleanly, here is the breakdown between **Source Code** and **Auto-Generated Files**:
-
 ### 🟢 Source Code Files (Read and Edit These)
 
 | Path | Language | Purpose |
 | :--- | :--- | :--- |
+| [`rtl/adder.sv`](rtl/adder.sv) | SystemVerilog | Parameterized Signed Adder with Saturation arithmetic |
+| [`rtl/multiplier_int8.sv`](rtl/multiplier_int8.sv) | SystemVerilog | Signed 8-bit multiplier generating 16-bit product |
 | [`rtl/mac_unit.sv`](rtl/mac_unit.sv) | SystemVerilog | Combinational Multiply-Accumulate unit (`sum_out = sum_in + a*b`) |
 | [`rtl/pe.sv`](rtl/pe.sv) | SystemVerilog | Single Weight-Stationary Processing Element cell with registers |
 | [`rtl/systolic_array.sv`](rtl/systolic_array.sv) | SystemVerilog | Full 2D Grid of PEs with built-in activation skewing registers |
-| [`tests/test_pe.py`](tests/test_pe.py) | Python (Cocotb) | Unit verification of PE covering reset, signed numbers, and edge cases |
-| [`tests/test_systolic_array.py`](tests/test_systolic_array.py) | Python (Cocotb) | Full matrix multiplication ($C = A \cdot W$) verified vs. NumPy |
-| [`cpp_emulation/main.cpp`](cpp_emulation/main.cpp) | C++ | Cycle-accurate pre-silicon emulator driving the Verilated hardware model |
-| [`sim/run.py`](sim/run.py) | Python | Test runner compiling RTL and executing Cocotb testbenches |
-| [`visualizer/index.html`](visualizer/index.html) | HTML/JS | Interactive 2D hardware visualizer with live matrix inputs & output pins |
-| [`visualizer/serve.py`](visualizer/serve.py) | Python | Web server launcher for the browser visualizer |
-| [`build_and_run.sh`](build_and_run.sh) | Bash | Master one-click verification and emulation script |
-
----
-
-### ⚙️ Auto-Generated Files (Do NOT Edit Directly)
-
-* **`.venv/`**: Python virtual environment containing packages (`cocotb`, `numpy`, `pytest`).
-* **`sim/sim_build_*/`**: Intermediate compilation folders generated by Icarus Verilog / Cocotb.
-  * `*.fst` / `*.vcd`: Digital waveform traces generated by simulation.
-* **`cpp_emulation/verilated/`**: C++ classes automatically generated from SystemVerilog by Verilator.
-* **`cpp_emulation/emulator`**: Compiled native C++ cycle simulator binary executable.
-* **`systolic_emulation.vcd`**: Waveform trace dump file for GTKWave / Surfer.
-
----
-
-## 📖 Recommended Reading Sequence
-
-1. **[`tests/test_systolic_array.py`](tests/test_systolic_array.py)**: Start here to understand the problem in Python (NumPy golden reference, feeding matrices, checking outputs).
-2. **[`rtl/mac_unit.sv`](rtl/mac_unit.sv)**: The fundamental math equation.
-3. **[`rtl/pe.sv`](rtl/pe.sv)**: How a single compute cell holds weights and registers data.
-4. **[`rtl/systolic_array.sv`](rtl/systolic_array.sv)**: How PEs are connected into a 2D mesh with activation skewing.
-5. **[`cpp_emulation/main.cpp`](cpp_emulation/main.cpp)**: How pre-silicon emulators use C++ to step hardware cycles.
+| [`rtl/sqrt.sv`](rtl/sqrt.sv) | SystemVerilog | Digit-by-digit hardware square root unit |
+| [`rtl/softmax.sv`](rtl/softmax.sv) | SystemVerilog | Safe Softmax unit with max-subtraction and exp LUT |
+| [`labs/run_lab.py`](labs/run_lab.py) | Python | Master Cocotb test runner for all labs (00 - 08) |
+| [`synthesis/synthesize.py`](synthesis/synthesize.py) | Python | Centralized Yosys logic synthesis & schematic generator |
+| [`visualizer/index.html`](visualizer/index.html) | HTML/JS | Interactive 2D hardware visualizer with live matrix inputs |
+| [`schematics/index.html`](schematics/index.html) | HTML/JS | Interactive collapsible gate-level schematic explorer |
 
 ---
 
 ## 🚀 How to Run
 
-### 1. Launch Interactive Hardware Visualizer
-Watch matrix dataflow and compute cycles step-by-step in your browser:
-```bash
-python3 visualizer/serve.py
-```
-* Open [http://localhost:8080](http://localhost:8080)
-* Click on any matrix cell to edit numbers in real-time, change grid dimensions (2x2, 3x3, 4x4), or click **Play** to watch the systolic wavefront.
-
-### 2. Run All Tests & C++ Emulation
-```bash
-./build_and_run.sh
-```
-
-### 3. Run Python Cocotb Tests Only
+### 1. Run All Lab Testbenches (Labs 00 - 08)
 ```bash
 source .venv/bin/activate
-# Test individual PE
-python sim/run.py --dut pe
+python labs/run_lab.py --lab all
+```
 
-# Test full 2D Systolic Array
-python sim/run.py --dut systolic_array
+### 2. Synthesize All Hardware Modules & Generate Interactive Schematics
+```bash
+python3 synthesis/synthesize.py --top all
+```
+
+### 3. Launch Interactive Hardware Visualizer & Schematics
+```bash
+# 2D Systolic Array Compute Wavefront:
+python3 visualizer/serve.py
+
+# Interactive Schematics Explorer:
+open schematics/index.html
 ```
 
 ---
@@ -114,5 +109,6 @@ python sim/run.py --dut systolic_array
 ## 🎯 Key Interview Talking Points
 
 * **Hardware/Software Co-Design:** *"We used Python/Cocotb with NumPy to verify mathematical correctness at the functional level, and Verilator/C++ to create a high-speed pre-silicon cycle emulator for running software drivers."*
-* **Weight-Stationary Data Reuse:** *"Weights remain stationary in local registers inside each PE, reducing DRAM memory traffic from $O(N^3)$ to $O(N)$."*
-* **Handling Large/1M Contexts via Tiling:** *"Physical systolic arrays are parameterizable tiles. Large matrices and long-context attention sequences are sliced into hardware tiles and streamed through the array with zero memory blowup."*
+* **$O(N)$ vs $O(N^2)$ Arithmetic Complexity:** *"Adders require linear $O(N)$ gates (~42 gates for INT8), while multipliers require quadratic $O(N^2)$ gates (~456 gates). Quantizing from INT16 to INT8 reduces multiplier silicon area by $4\times$, which is why AI chips heavily leverage quantization."*
+* **Attention Scaling:** *"Dot products have variance scaling with embedding dimension $d_k$. Dividing by $\sqrt{d_k}$ in hardware normalizes variance back to $1.0$, preventing Softmax gradients from vanishing."*
+* **FlashAttention / Safe Softmax:** *"Softmax in silicon subtracts the row maximum to avoid exponential overflow, keeping fixed-point representations strictly bounded within $(0, 1]$."*

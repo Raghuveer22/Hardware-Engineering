@@ -3,6 +3,9 @@
 ==============================================================================
 File: labs/run_lab.py
 Description: Master test runner for all lab testbenches using Cocotb.
+Supports: Lab 00 (Adder), Lab 01 (Multiplier), Lab 02 (MAC),
+          Lab 03 (PE), Lab 04 (Systolic Array), Lab 05 (Sqrt),
+          Lab 06 (Softmax), Lab 07 (rsqrt), Lab 08 (exp2_sfu).
 ==============================================================================
 """
 
@@ -24,7 +27,12 @@ def run_lab_test(lab_id, simulator="icarus"):
     print(f"   Simulator: {simulator}")
     print(f"========================================================\n")
 
-    if lab_id in ["lab01", "lab01_multiplier", "multiplier"]:
+    if lab_id in ["lab00", "lab00_adder", "adder"]:
+        sources = [rtl_dir / "adder.sv"]
+        toplevel = "adder"
+        module = "test_adder"
+        test_dir = labs_dir
+    elif lab_id in ["lab01", "lab01_multiplier", "multiplier"]:
         sources = [rtl_dir / "multiplier_int8.sv"]
         toplevel = "multiplier_int8"
         module = "test_multiplier"
@@ -44,6 +52,26 @@ def run_lab_test(lab_id, simulator="icarus"):
         toplevel = "systolic_array"
         module = "test_systolic_array"
         test_dir = tests_dir
+    elif lab_id in ["lab05", "lab05_sqrt", "sqrt"]:
+        sources = [rtl_dir / "sqrt.sv"]
+        toplevel = "sqrt"
+        module = "test_sqrt"
+        test_dir = labs_dir
+    elif lab_id in ["lab06", "lab06_softmax", "softmax"]:
+        sources = [rtl_dir / "softmax.sv"]
+        toplevel = "softmax"
+        module = "test_softmax"
+        test_dir = labs_dir
+    elif lab_id in ["lab07", "lab07_rsqrt", "rsqrt"]:
+        sources = [rtl_dir / "rsqrt.sv"]
+        toplevel = "rsqrt"
+        module = "test_rsqrt"
+        test_dir = labs_dir
+    elif lab_id in ["lab08", "lab08_exp2_sfu", "lab08_exponential_sfu", "exp2_sfu"]:
+        sources = [rtl_dir / "exp2_sfu.sv"]
+        toplevel = "exp2_sfu"
+        module = "test_exp2_sfu"
+        test_dir = labs_dir
     else:
         raise ValueError(f"Unknown lab: {lab_id}")
 
@@ -66,15 +94,17 @@ def run_lab_test(lab_id, simulator="icarus"):
     )
 
 if __name__ == "__main__":
+    LAB_CHOICES = ["lab00", "lab01", "lab02", "lab03", "lab04", "lab05", "lab06", "lab07", "lab08", "all"]
     parser = argparse.ArgumentParser(description="Run Lab Tests")
     parser.add_argument("--lab", default="all",
-                        choices=["lab01", "lab02", "lab03", "lab04", "all"],
+                        choices=LAB_CHOICES,
                         help="Which lab to test (default: all)")
     parser.add_argument("--sim", default="icarus", choices=["icarus", "verilator"])
     args = parser.parse_args()
 
     if args.lab == "all":
-        for lab in ["lab01", "lab02", "lab03", "lab04"]:
+        for lab in ["lab00", "lab01", "lab02", "lab03", "lab04", "lab05", "lab06", "lab07", "lab08"]:
             run_lab_test(lab, args.sim)
     else:
         run_lab_test(args.lab, args.sim)
+

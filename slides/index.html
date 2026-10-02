@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚡ Hardware AI Acceleration | 2026 Interactive Bento Slides & Animations</title>
+    <!-- Modern Tech Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- KaTeX for Equations -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+
+    <style>
+        :root {
+            --bg-obsidian: #080c14;
+            --bg-panel: #0d131f;
+            --bg-card: #121927;
+            --bg-card-hover: #182235;
+            --border: #202b3d;
+            --border-glow: #2563eb;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --text-subtle: #64748b;
+            --accent-cyan: #38bdf8;
+            --accent-emerald: #34d399;
+            --accent-amber: #fbbf24;
+            --accent-rose: #fb7185;
+            --accent-purple: #c084fc;
+            --radius-lg: 16px;
+            --radius-md: 10px;
+            --radius-sm: 6px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-obsidian);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* Top App Navigation */
+        header {
+            background: var(--bg-panel);
+            border-bottom: 1px solid var(--border);
+            padding: 10px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 100;
+        }
+
+        .brand-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            letter-spacing: -0.02em;
+        }
+
+        .brand-tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.72rem;
+            font-weight: 700;
+            background: rgba(56, 189, 248, 0.12);
+            color: var(--accent-cyan);
+            border: 1px solid rgba(56, 189, 248, 0.35);
+            padding: 3px 10px;
+            border-radius: 20px;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        select.lab-picker {
+            background: var(--bg-card);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            padding: 7px 14px;
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            font-weight: 500;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .btn {
+            background: var(--bg-card);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            padding: 7px 14px;
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            text-decoration: none;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .btn:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--accent-cyan);
+            color: #fff;
+            transform: translateY(-1px);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(37, 99, 235, 0.25));
+            color: var(--accent-cyan);
+            border-color: rgba(56, 189, 248, 0.4);
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.15);
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-cyan);
+            color: #080c14;
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
+        }
+
+        /* Presentation Workspace */
+        .stage {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .slide-frame {
+            width: 100%;
+            max-width: 1240px;
+            aspect-ratio: 16 / 9;
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 40px rgba(56, 189, 248, 0.05);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+            animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: scale(0.97) translateY(8px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        /* Slide Top Banner */
+        .slide-topbar {
+            padding: 16px 28px 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .slide-pill {
+            display: inline-block;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--accent-cyan);
+            background: rgba(56, 189, 248, 0.1);
+            border: 1px solid rgba(56, 189, 248, 0.25);
+            padding: 3px 10px;
+            border-radius: 20px;
+            margin-bottom: 6px;
+        }
+
+        .slide-heading {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.55rem;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: -0.02em;
+        }
+
+        .slide-subheading {
+            font-size: 0.88rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* Bento Grid Content Container */
+        .slide-bento {
+            flex: 1;
+            padding: 18px 28px;
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 16px;
+            overflow-y: auto;
+        }
+
+        /* Bento Box Components */
+        .bento-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            position: relative;
+            transition: all 0.2s ease;
+        }
+
+        .bento-card:hover {
+            border-color: rgba(56, 189, 248, 0.4);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .bento-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--accent-cyan);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 8px;
+        }
+
+        .bento-stat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 12px;
+        }
+
+        .stat-val {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--accent-cyan);
+            line-height: 1.1;
+        }
+
+        .stat-lbl {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .bento-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            font-size: 0.85rem;
+            line-height: 1.45;
+            color: #cbd5e1;
+        }
+
+        .bento-list li {
+            position: relative;
+            padding-left: 16px;
+        }
+
+        .bento-list li::before {
+            content: "▸";
+            position: absolute;
+            left: 0;
+            color: var(--accent-cyan);
+            font-weight: bold;
+        }
+
+        .code-snippet {
+            background: #06090f;
+            border: 1px solid #1e293b;
+            border-radius: var(--radius-sm);
+            padding: 12px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.76rem;
+            color: #e2e8f0;
+            overflow-x: auto;
+            white-space: pre;
+            line-height: 1.42;
+        }
+
+        /* Interactive Animation Widget Box */
+        .anim-box {
+            background: #06090f;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .anim-ctrl-btn {
+            background: #1e293b;
+            color: var(--accent-cyan);
+            border: 1px solid var(--accent-cyan);
+            padding: 6px 14px;
+            border-radius: var(--radius-sm);
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .anim-ctrl-btn:hover {
+            background: var(--accent-cyan);
+            color: #080c14;
+        }
+
+        /* Systolic Grid Animation */
+        .pe-mesh {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            width: 220px;
+        }
+
+        .pe-mesh-cell {
+            aspect-ratio: 1;
+            background: #111827;
+            border: 1px solid #374151;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.65rem;
+            font-family: 'JetBrains Mono', monospace;
+            transition: all 0.2s ease;
+        }
+
+        .pe-mesh-cell.active {
+            background: rgba(56, 189, 248, 0.25);
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+            color: #fff;
+        }
+
+        /* Slide Footer & Navigation */
+        .slide-bottombar {
+            padding: 10px 28px;
+            background: rgba(0, 0, 0, 0.3);
+            border-top: 1px solid rgba(255, 255, 255, 0.04);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .progress-track {
+            flex: 1;
+            height: 4px;
+            background: #1e293b;
+            border-radius: 2px;
+            margin: 0 24px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-emerald));
+            width: 10%;
+            transition: width 0.25s ease;
+        }
+
+        .slide-nav-btns {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-btn {
+            background: var(--bg-card);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            width: 32px;
+            height: 32px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-weight: 700;
+            transition: all 0.15s ease;
+        }
+
+        .nav-btn:hover {
+            border-color: var(--accent-cyan);
+            color: var(--accent-cyan);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Navigation -->
+    <header>
+        <div class="brand-group">
+            <span class="brand-title">⚡ Hardware AI Acceleration</span>
+            <span class="brand-tag">2026 Bento Presentation</span>
+        </div>
+
+        <div class="header-actions">
+            <select class="lab-picker" id="labPicker" onchange="jumpSlide(this.value)">
+                <option value="0">Curriculum Overview</option>
+                <option value="1">Lab 00: Parameterized Signed Adder & Saturation</option>
+                <option value="3">Lab 01: Parameterized INT8 Signed Multiplier</option>
+                <option value="4">Lab 02: Pipelined MAC Unit & Accumulator Sizing</option>
+                <option value="5">Lab 03: Weight-Stationary Processing Element (PE)</option>
+                <option value="6">Lab 04: 2D Systolic Matrix Multiplier (4x4 Mesh)</option>
+                <option value="7">Lab 05: Hardware Square Root (Attention Scaling)</option>
+                <option value="8">Lab 06: Hardware Safe Softmax (FlashAttention)</option>
+                <option value="9">Lab 07: Fast Reciprocal Square Root (rsqrt)</option>
+                <option value="10">Lab 08: Hardware Exponential SFU (SwiGLU)</option>
+                <option value="11">Synthesis & Verification Summary</option>
+            </select>
+
+            <a href="Hardware_AI_Acceleration_Master_Slides.pptx" download class="btn btn-primary">
+                📥 Download Master PPTX
+            </a>
+        </div>
+    </header>
+
+    <!-- Stage Viewport -->
+    <div class="stage">
+        <div class="slide-frame" id="slideFrame">
+            <!-- Dynamic Slide Injected by JS -->
+        </div>
+    </div>
+
+    <!-- Presentation Engine Script -->
+    <script>
+        const deck = [
+            // Slide 0: Title
+            {
+                pill: "Curriculum Architecture",
+                title: "Hardware AI Acceleration & Tensor Core Engineering",
+                subtitle: "Pre-Silicon Design, 2D Systolic Matrix Meshes, and LLM Transformer SFUs",
+                bento: `
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-cyan);">
+                        <div class="stat-val" style="color: var(--accent-cyan);">9 Labs</div>
+                        <div class="stat-lbl">Full Silicon Flow</div>
+                    </div>
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-emerald);">
+                        <div class="stat-val" style="color: var(--accent-emerald);">O(3N)</div>
+                        <div class="stat-lbl">Systolic Wavefront</div>
+                    </div>
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-amber);">
+                        <div class="stat-val" style="color: var(--accent-amber);">200×</div>
+                        <div class="stat-lbl">DRAM vs ALU Energy</div>
+                    </div>
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-purple);">
+                        <div class="stat-val" style="color: var(--accent-purple);">100%</div>
+                        <div class="stat-lbl">Cocotb Verified</div>
+                    </div>
+
+                    <div class="bento-card" style="grid-column: span 8;">
+                        <div class="bento-title">🎯 Curriculum Scope & Topics</div>
+                        <ul class="bento-list">
+                            <li><strong>Tier 1: Core Arithmetic (Labs 00-02):</strong> Signed Adders with Saturation, INT8 Multipliers, and 32-bit Pipelined MAC Units.</li>
+                            <li><strong>Tier 2: 2D Tensor Meshes (Labs 03-04):</strong> Weight-Stationary Processing Elements & 4x4 Systolic Array Wavefronts.</li>
+                            <li><strong>Tier 3: Transformer SFUs (Labs 05-08):</strong> Square Root (Attention Scaling), Safe Softmax, Fast rsqrt (RMSNorm), and exp2 (SwiGLU).</li>
+                        </ul>
+                    </div>
+
+                    <div class="bento-card" style="grid-column: span 4;">
+                        <div class="bento-title">📦 Downloadable Presentations</div>
+                        <p style="font-size:0.8rem; color:#94a3b8; margin-bottom:8px;">Ready-to-present widescreen PowerPoint decks:</p>
+                        <div style="display:flex; flex-direction:column; gap:6px;">
+                            <a href="Hardware_AI_Acceleration_Master_Slides.pptx" download class="btn btn-primary" style="justify-content:center;">📥 Master Deck (All 9 Labs)</a>
+                            <a href="Lab04_Systolic_Matrix_Multiplier.pptx" download class="btn" style="justify-content:center;">📥 Lab 04 Systolic Array Deck</a>
+                        </div>
+                    </div>
+                `
+            },
+            // Slide 1: Lab 00 Theory
+            {
+                pill: "Lab 00 | Core Arithmetic",
+                title: "Parameterized Signed Adder & Saturation Arithmetic",
+                subtitle: "Preventing catastrophic activation wrap-around in deep learning inference",
+                bento: `
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-cyan);">
+                        <div class="stat-val" style="color: var(--accent-cyan);">O(N)</div>
+                        <div class="stat-lbl">Gate Complexity</div>
+                    </div>
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-emerald);">
+                        <div class="stat-val" style="color: var(--accent-emerald);">[-128, 127]</div>
+                        <div class="stat-lbl">INT8 Range</div>
+                    </div>
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-rose);">
+                        <div class="stat-val" style="color: var(--accent-rose);">+150 ➔ -106</div>
+                        <div class="stat-lbl">Wrap-Around Error</div>
+                    </div>
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-amber);">
+                        <div class="stat-val" style="color: var(--accent-amber);">+127 / -128</div>
+                        <div class="stat-lbl">Clamped Output</div>
+                    </div>
+
+                    <div class="bento-card" style="grid-column: span 6;">
+                        <div class="bento-title">📚 1-Bit Full Adder Boolean Logic</div>
+                        <ul class="bento-list">
+                            <li><strong>Sum:</strong> \\(S = A \\oplus B \\oplus C_{\\text{in}}\\)</li>
+                            <li><strong>Carry Out:</strong> \\(C_{\\text{out}} = (A \\cdot B) + (C_{\\text{in}} \\cdot (A \\oplus B))\\)</li>
+                            <li><strong>Linear Complexity:</strong> 8-bit adder requires only 8 full adders (≈ 40 basic gates).</li>
+                        </ul>
+                    </div>
+
+                    <div class="bento-card" style="grid-column: span 6;">
+                        <div class="bento-title">⚠️ The Inversion Disaster & Saturation Rule</div>
+                        <ul class="bento-list">
+                            <li><strong>The Problem:</strong> A positive neuron activation wrapping to negative completely inverts predictions!</li>
+                            <li><strong>Detection:</strong> \\(\\text{overflow} = (A_{\\text{sign}} == B_{\\text{sign}}) \\ \\&\\&\\ (S_{\\text{sign}} \\ne A_{\\text{sign}})\\)</li>
+                            <li><strong>Saturation Clamping:</strong> Mux positive overflow to \\(+127\\) and negative to \\(-128\\).</li>
+                        </ul>
+                    </div>
+                `
+            },
+            // Slide 2: Lab 00 Live Interactive Simulator
+            {
+                pill: "Lab 00 | Live Simulation",
+                title: "Two's Complement Adder & Saturation Simulator",
+                subtitle: "Interactive bit-level overflow demonstration and clamping logic",
+                bento: `
+                    <div class="bento-card" style="grid-column: span 6;">
+                        <div class="bento-title">💻 SystemVerilog Implementation</div>
+                        <div class="code-snippet">assign raw_sum   = {a[7], a} + {b[7], b};
+assign overflow  = (a[7] == b[7]) && (raw_sum[7] != a[7]);
+assign carry_out = raw_sum[8];
+
+always_comb begin
+  if (saturate && overflow)
+    sum = a[7] ? -128 : +127;
+  else
+    sum = raw_sum[7:0];
+end</div>
+                    </div>
+
+                    <div class="bento-card anim-box" style="grid-column: span 6;">
+                        <div style="font-family:'Space Grotesk'; font-weight:700; color:var(--accent-cyan); font-size:1.05rem;">⚡ Interactive Adder Calculator</div>
+                        <div style="display:flex; gap:12px; align-items:center;">
+                            <input type="number" id="simA" value="100" min="-128" max="127" style="width:70px; background:#1e293b; color:#fff; border:1px solid #334155; padding:6px; border-radius:6px; font-weight:bold;">
+                            <span style="font-weight:bold; font-size:1.1rem;">+</span>
+                            <input type="number" id="simB" value="50" min="-128" max="127" style="width:70px; background:#1e293b; color:#fff; border:1px solid #334155; padding:6px; border-radius:6px; font-weight:bold;">
+                            <label style="font-size:0.85rem; color:var(--accent-emerald); font-weight:600;"><input type="checkbox" id="simSat" checked> Saturation</label>
+                        </div>
+                        <button class="anim-ctrl-btn" onclick="runAdderSim()">Evaluate Hardware Datapath</button>
+                        <div id="simRes" style="font-family:'JetBrains Mono'; font-size:0.95rem; color:var(--accent-emerald); font-weight:700;">Result: +127 (Clamped Saturation)</div>
+                    </div>
+                `
+            },
+            // Slide 3: Lab 01 Multiplier
+            {
+                pill: "Lab 01 | Multiplier Datapaths",
+                title: "Parameterized Signed Multiplier (INT8)",
+                subtitle: "Partial products, Wallace trees, and bit-growth management",
+                bento: `
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-cyan);">
+                        <div class="stat-val" style="color: var(--accent-cyan);">O(N²)</div>
+                        <div class="stat-lbl">Quadratic Area</div>
+                    </div>
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-emerald);">
+                        <div class="stat-val" style="color: var(--accent-emerald);">16 Bits</div>
+                        <div class="stat-lbl">Required Product</div>
+                    </div>
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-amber);">
+                        <div class="stat-val" style="color: var(--accent-amber);">1 DSP</div>
+                        <div class="stat-lbl">FPGA Slice Usage</div>
+                    </div>
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-purple);">
+                        <div class="stat-val" style="color: var(--accent-purple);">10k Tests</div>
+                        <div class="stat-lbl">Cocotb Monte Carlo</div>
+                    </div>
+
+                    <div class="bento-card" style="grid-column: span 7;">
+                        <div class="bento-title">📚 Multiplier Architectures Comparison</div>
+                        <ul class="bento-list">
+                            <li><strong>Array Multiplier:</strong> \\(O(N^2)\\) area with \\(O(N)\\) ripple delay.</li>
+                            <li><strong>Wallace / Dadda Tree:</strong> \\(O(N^2)\\) area with \\(O(\\log N)\\) carry-save tree reduction.</li>
+                            <li><strong>Radix-4 Booth Encoding:</strong> Halves partial products from \\(N\\) to \\(N/2\\), standard in Tensor Cores.</li>
+                            <li><strong>Corner Case:</strong> \\((-128) \\times (-128) = +16,384\\) (0x4000) requires full 16-bit signed range.</li>
+                        </ul>
+                    </div>
+
+                    <div class="bento-card" style="grid-column: span 5;">
+                        <div class="bento-title">💻 RTL Snippet</div>
+                        <div class="code-snippet">module multiplier_int8 #(
+  parameter int A_WIDTH   = 8,
+  parameter int B_WIDTH   = 8,
+  parameter int OUT_WIDTH = 16
+)(
+  input  logic signed [A_WIDTH-1:0] a, b,
+  output logic signed [OUT_WIDTH-1:0] p
+);
+  always_comb p = a * b;
+endmodule</div>
+                    </div>
+                `
+            },
+            // Slide 4: Lab 02 MAC Unit
+            {
+                pill: "Lab 02 | MAC Engines",
+                title: "Pipelined Multiply-Accumulate (MAC) Unit",
+                subtitle: "Accumulator sizing and cycle-by-cycle pipelining for matrix dot products",
+                bento: `
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-cyan);">
+                        <div class="stat-val" style="color: var(--accent-cyan);">32 Bits</div>
+                        <div class="stat-lbl">Accumulator Width</div>
+                    </div>
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-emerald);">
+                        <div class="stat-val" style="color: var(--accent-emerald);">1 Cycle</div>
+                        <div class="stat-lbl">MAC Throughput</div>
+                    </div>
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-amber);">
+                        <div class="stat-val" style="color: var(--accent-amber);">131,072</div>
+                        <div class="stat-lbl">Zero-Overflow Steps</div>
+                    </div>
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-purple);">
+                        <div class="stat-val" style="color: var(--accent-purple);">100%</div>
+                        <div class="stat-lbl">Pipeline Efficiency</div>
+                    </div>
+
+                    <div class="bento-card" style="grid-column: span 6;">
+                        <div class="bento-title">🧠 Accumulator Bit-Width Derivation</div>
+                        <ul class="bento-list">
+                            <li><strong>Worst Case Product:</strong> INT8 max is \\(128 \\times 128 = 16,384 = 2^{14}\\).</li>
+                            <li><strong>Inner Dimension K = 1024:</strong> Max sum is \\(1024 \\times 2^{14} = 2^{24}\\) (25 bits needed).</li>
+                            <li><strong>32-Bit Register:</strong> Completely guarantees zero overflow up to \\(2^{17} = 131,072\\) operations!</li>
+                        </ul>
+                    </div>
+
+                    <div class="bento-card" style="grid-column: span 6;">
+                        <div class="bento-title">🔍 Pipeline Control Signals</div>
+                        <ul class="bento-list">
+                            <li><strong>clk, rst_n:</strong> Asynchronous active-low reset.</li>
+                            <li><strong>clr:</strong> Synchronously clears accumulator to 0 on new matrix tile.</li>
+                            <li><strong>accum_en:</strong> Clock enable gating power when idle.</li>
+                        </ul>
+                    </div>
+                `
+            },
+            // Slide 5: Lab 03 Processing Element
+            {
+                pill: "Lab 03 | 2D Processing Elements",
+                title: "Weight-Stationary Processing Element (PE)",
+                subtitle: "Energy optimization and 2D systolic mesh interconnects",
+                bento: `
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-rose);">
+                        <div class="stat-val" style="color: var(--accent-rose);">200×</div>
+                        <div class="stat-lbl">DRAM Access Cost</div>
+                    </div>
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-cyan);">
+                        <div class="stat-val" style="color: var(--accent-cyan);">Left ➔ Right</div>
+                        <div class="stat-lbl">Activation Flow</div>
+                    </div>
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-emerald);">
+                        <div class="stat-val" style="color: var(--accent-emerald);">Top ➔ Bottom</div>
+                        <div class="stat-lbl">Partial Sum Flow</div>
+                    </div>
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-amber);">
+                        <div class="stat-val" style="color: var(--accent-amber);">2 Phases</div>
+                        <div class="stat-lbl">Preload vs Compute</div>
+                    </div>
+
+                    <div class="bento-card" style="grid-column: span 7;">
+                        <div class="bento-title">🏢 Why Weight-Stationary Dataflow?</div>
+                        <ul class="bento-list">
+                            <li><strong>Memory Energy Wall:</strong> Fetching from DRAM drains 100-200 pJ vs 1 pJ for ALU math. WS locks weights in PE local flip-flops.</li>
+                            <li><strong>Horizontal Forwarding:</strong> Activations enter \\(a_{\\text{in}}\\), multiply with local weight, and pass to \\(a_{\\text{out}}\\) on the next clock tick.</li>
+                            <li><strong>Vertical Accumulation:</strong> Partial sums enter \\(\\text{sum}_{\\text{in}}\\), accumulate \\(a \\cdot w\\), and pass to \\(\\text{sum}_{\\text{out}}\\).</li>
+                        </ul>
+                    </div>
+
+                    <div class="bento-card" style="grid-column: span 5;">
+                        <div class="bento-title">🔄 Two-Phase Operation</div>
+                        <ul class="bento-list">
+                            <li><strong>Phase 1 (Preload):</strong> \\(\\text{weight\\_en} = 1\\) latches weights.</li>
+                            <li><strong>Phase 2 (Compute):</strong> \\(\\text{accum\\_en} = 1\\) streams activations and partial sums.</li>
+                        </ul>
+                    </div>
+                `
+            },
+            // Slide 6: Lab 04 Systolic Array
+            {
+                pill: "Lab 04 | 2D Mesh Multipliers",
+                title: "2D Systolic Matrix Multiplier (4x4 Mesh Engine)",
+                subtitle: "Diagonal wavefront scheduling and activation skewing registers",
+                bento: `
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-cyan);">
+                        <div class="stat-val" style="color: var(--accent-cyan);">16 PEs</div>
+                        <div class="stat-lbl">4×4 Matrix Core</div>
+                    </div>
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-emerald);">
+                        <div class="stat-val" style="color: var(--accent-emerald);">10 Cycles</div>
+                        <div class="stat-lbl">Full Matrix Multiply</div>
+                    </div>
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-amber);">
+                        <div class="stat-val" style="color: var(--accent-amber);">O(3N-2)</div>
+                        <div class="stat-lbl">Wavefront Time</div>
+                    </div>
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-purple);">
+                        <div class="stat-val" style="color: var(--accent-purple);">6.4×</div>
+                        <div class="stat-lbl">CPU Speedup</div>
+                    </div>
+
+                    <div class="bento-card" style="grid-column: span 6;">
+                        <div class="bento-title">📐 Why Activation Skewing is Mandatory</div>
+                        <ul class="bento-list">
+                            <li><strong>Wavefront Alignment:</strong> Activations and partial sums take 1 clock hop per PE. Skewing row \\(r\\) by \\(r\\) clock cycles ensures \\(A_{i,k}\\) meets \\(W_{k,j}\\) at the exact cycle when the partial sum arrives.</li>
+                            <li><strong>Row 0:</strong> 0 delay | <strong>Row 1:</strong> 1 DFF | <strong>Row 2:</strong> 2 DFFs | <strong>Row 3:</strong> 3 DFFs.</li>
+                        </ul>
+                    </div>
+
+                    <div class="bento-card anim-box" style="grid-column: span 6;">
+                        <div style="font-family:'Space Grotesk'; font-weight:700; color:var(--accent-cyan); font-size:0.9rem;">4x4 Systolic Wavefront Animator</div>
+                        <div class="pe-mesh" id="peMeshGrid">
+                            <div class="pe-mesh-cell" id="p00">PE 0,0</div><div class="pe-mesh-cell" id="p01">PE 0,1</div><div class="pe-mesh-cell" id="p02">PE 0,2</div><div class="pe-mesh-cell" id="p03">PE 0,3</div>
+                            <div class="pe-mesh-cell" id="p10">PE 1,0</div><div class="pe-mesh-cell" id="p11">PE 1,1</div><div class="pe-mesh-cell" id="p12">PE 1,2</div><div class="pe-mesh-cell" id="p13">PE 1,3</div>
+                            <div class="pe-mesh-cell" id="p20">PE 2,0</div><div class="pe-mesh-cell" id="p21">PE 2,1</div><div class="pe-mesh-cell" id="p22">PE 2,2</div><div class="pe-mesh-cell" id="p23">PE 2,3</div>
+                            <div class="pe-mesh-cell" id="p30">PE 3,0</div><div class="pe-mesh-cell" id="p31">PE 3,1</div><div class="pe-mesh-cell" id="p32">PE 3,2</div><div class="pe-mesh-cell" id="p33">PE 3,3</div>
+                        </div>
+                        <div style="display:flex; gap:8px;">
+                            <button class="anim-ctrl-btn" onclick="stepMesh()">Step Clock (Cycle <span id="meshCycle">0</span>)</button>
+                            <button class="anim-ctrl-btn" onclick="resetMesh()">Reset</button>
+                        </div>
+                    </div>
+                `
+            },
+            // Slide 7: Lab 05 Square Root
+            {
+                pill: "Lab 05 | Attention Scaling",
+                title: "Hardware Square Root Unit (1/√d_k Attention)",
+                subtitle: "Preventing Softmax gradient vanishing in Transformer multi-head attention",
+                bento: `
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-cyan);">
+                        <div class="stat-val" style="color: var(--accent-cyan);">1/√d_k</div>
+                        <div class="stat-lbl">Scaling Factor</div>
+                    </div>
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-rose);">
+                        <div class="stat-val" style="color: var(--accent-rose);">Var = d_k</div>
+                        <div class="stat-lbl">Unscaled Variance</div>
+                    </div>
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-emerald);">
+                        <div class="stat-val" style="color: var(--accent-emerald);">Var = 1.0</div>
+                        <div class="stat-lbl">Stabilized Variance</div>
+                    </div>
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-amber);">
+                        <div class="stat-val" style="color: var(--accent-amber);">N/2 Cycles</div>
+                        <div class="stat-lbl">Extraction Latency</div>
+                    </div>
+
+                    <div class="bento-card" style="grid-column: span 7;">
+                        <div class="bento-title">🧠 The Mathematical Motivation in Transformers</div>
+                        <ul class="bento-list">
+                            <li><strong>Dot Product Variance:</strong> If \\(q_i, k_i \\sim \\mathcal{N}(0, 1)\\), \\(\\text{Var}(q \\cdot k) = d_k\\). For \\(d_k = 128\\), logits reach \\(\\pm 25\\).</li>
+                            <li><strong>Gradient Vanishing:</strong> Large logits cause Softmax saturation where gradients approach ZERO. Scaling by \\(1/\\sqrt{d_k}\\) stabilizes variance to 1.0.</li>
+                        </ul>
+                    </div>
+
+                    <div class="bento-card" style="grid-column: span 5;">
+                        <div class="bento-title">⚙️ Non-Restoring Digit Extraction</div>
+                        <ul class="bento-list">
+                            <li>Computes 1 bit of root per stage using pure shift-and-subtract registers.</li>
+                            <li>Zero costly floating-point divisions required.</li>
+                        </ul>
+                    </div>
+                `
+            },
+            // Slide 8: Lab 06 Safe Softmax
+            {
+                pill: "Lab 06 | Normalization Engines",
+                title: "Hardware Safe Softmax & FlashAttention Foundations",
+                subtitle: "Three-stage streaming pipeline and numerical overflow prevention",
+                bento: `
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-rose);">
+                        <div class="stat-val" style="color: var(--accent-rose);">e⁵⁰ ≈ 10²¹</div>
+                        <div class="stat-lbl">Naive Overflow</div>
+                    </div>
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-cyan);">
+                        <div class="stat-val" style="color: var(--accent-cyan);">Δ = x - M</div>
+                        <div class="stat-lbl">Max Subtraction</div>
+                    </div>
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-emerald);">
+                        <div class="stat-val" style="color: var(--accent-emerald);">(0.0, 1.0]</div>
+                        <div class="stat-lbl">Bounded Range</div>
+                    </div>
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-amber);">
+                        <div class="stat-val" style="color: var(--accent-amber);">3 Stages</div>
+                        <div class="stat-lbl">Streaming Pipeline</div>
+                    </div>
+
+                    <div class="bento-card" style="grid-column: span 6;">
+                        <div class="bento-title">🛡️ Safe Softmax Numerical Stability</div>
+                        <ul class="bento-list">
+                            <li><strong>Subtraction:</strong> \\(M = \\max_j(x_j) \\implies \\Delta_i = x_i - M \\le 0\\).</li>
+                            <li><strong>No Overflow:</strong> Because \\(\\Delta_i \\le 0\\), \\(e^{\\Delta_i} \\in (0.0, 1.0]\\) fitting fixed-point registers cleanly.</li>
+                        </ul>
+                    </div>
+
+                    <div class="bento-card" style="grid-column: span 6;">
+                        <div class="bento-title">🏗️ 3-Stage Hardware Datapath</div>
+                        <ul class="bento-list">
+                            <li><strong>Stage 1:</strong> Comparator Tree finds Max \\(M\\).</li>
+                            <li><strong>Stage 2:</strong> Evaluates Exponentials \\(e^{x_i - M}\\).</li>
+                            <li><strong>Stage 3:</strong> Accumulates Sum and normalizes probabilities.</li>
+                        </ul>
+                    </div>
+                `
+            },
+            // Slide 9: Lab 07 Fast rsqrt
+            {
+                pill: "Lab 07 | Fast Normalization",
+                title: "Fast Reciprocal Square Root (rsqrt) for RMSNorm",
+                subtitle: "Powering RMSNorm layers in LLaMA 3, Mistral, and DeepSeek",
+                bento: `
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-cyan);">
+                        <div class="stat-val" style="color: var(--accent-cyan);">1/√x</div>
+                        <div class="stat-lbl">RMSNorm Core</div>
+                    </div>
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-emerald);">
+                        <div class="stat-val" style="color: var(--accent-emerald);">4-8 Cycles</div>
+                        <div class="stat-lbl">SFU Latency</div>
+                    </div>
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-amber);">
+                        <div class="stat-val" style="color: var(--accent-amber);">&lt; 0.5%</div>
+                        <div class="stat-lbl">Quantization Error</div>
+                    </div>
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-purple);">
+                        <div class="stat-val" style="color: var(--accent-purple);">0 Stalls</div>
+                        <div class="stat-lbl">Pipelined SFU</div>
+                    </div>
+
+                    <div class="bento-card" style="grid-column: span 7;">
+                        <div class="bento-title">⚡ Why Modern LLMs Depend on rsqrt</div>
+                        <ul class="bento-list">
+                            <li><strong>RMSNorm Formula:</strong> \\(\\text{RMSNorm}(x) = x \\cdot \\text{rsqrt}\\left(\\frac{1}{d} \\sum_{i=1}^d x_i^2 + \\epsilon\\right)\\)</li>
+                            <li><strong>Silicon Motivation:</strong> Division and square root create 40-cycle stalls. A dedicated SFU computes rsqrt in 4-8 cycles.</li>
+                        </ul>
+                    </div>
+
+                    <div class="bento-card" style="grid-column: span 5;">
+                        <div class="bento-title">🔍 Verification Standard</div>
+                        <ul class="bento-list">
+                            <li>Exhaustively tested with Cocotb against IEEE FP32 standard reference.</li>
+                        </ul>
+                    </div>
+                `
+            },
+            // Slide 10: Lab 08 Exponential SFU
+            {
+                pill: "Lab 08 | Special Function Units",
+                title: "Hardware Exponential SFU (2^x & e^x) for SwiGLU",
+                subtitle: "Base-2 hardware decomposition trick: zero-cost bit-shift + LUT interpolation",
+                bento: `
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-cyan);">
+                        <div class="stat-val" style="color: var(--accent-cyan);">e^x = 2^y</div>
+                        <div class="stat-lbl">Base-2 Trick</div>
+                    </div>
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-emerald);">
+                        <div class="stat-val" style="color: var(--accent-emerald);">1 &lt;&lt; i</div>
+                        <div class="stat-lbl">Zero-Cost Shift</div>
+                    </div>
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-amber);">
+                        <div class="stat-val" style="color: var(--accent-amber);">32-Entry</div>
+                        <div class="stat-lbl">LUT Interpolation</div>
+                    </div>
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-purple);">
+                        <div class="stat-val" style="color: var(--accent-purple);">SwiGLU</div>
+                        <div class="stat-lbl">Target Activation</div>
+                    </div>
+
+                    <div class="bento-card" style="grid-column: span 6;">
+                        <div class="bento-title">💡 The Base-2 Hardware Decomposition Trick</div>
+                        <ul class="bento-list">
+                            <li><strong>Conversion:</strong> \\(e^x = 2^{x \\cdot \\log_2(e)} = 2^y\\), where \\(\\log_2(e) \\approx 1.442695\\).</li>
+                            <li><strong>Range Reduction:</strong> Split \\(y\\) into integer \\(i\\) and fractional \\(f\\): \\(2^y = 2^i \\cdot 2^f\\).</li>
+                            <li><strong>Integer Part \\(2^i\\):</strong> Computed as a zero-cost hardware barrel bit-shift \\((1 \\ll i)\\)!</li>
+                            <li><strong>Fractional Part \\(2^f\\):</strong> Evaluated using a compact 32-entry LUT.</li>
+                        </ul>
+                    </div>
+
+                    <div class="bento-card" style="grid-column: span 6;">
+                        <div class="bento-title">🧠 Powers Modern LLM Non-Linearities</div>
+                        <ul class="bento-list">
+                            <li><strong>SwiGLU / SiLU:</strong> \\(\\text{SiLU}(x) = x \\cdot (1 / (1 + e^{-x}))\\). Standard in LLaMA 3 FFN layers.</li>
+                            <li><strong>Softmax Attention:</strong> Powers scaled dot-product attention probabilities.</li>
+                        </ul>
+                    </div>
+                `
+            },
+            // Slide 11: Summary
+            {
+                pill: "Curriculum Verification",
+                title: "Synthesis Metrics & Verification Summary",
+                subtitle: "100% Cocotb verification, clean Yosys synthesizability, and interactive tooling",
+                bento: `
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-cyan);">
+                        <div class="stat-val" style="color: var(--accent-cyan);">9 / 9 Labs</div>
+                        <div class="stat-lbl">Cocotb Verified</div>
+                    </div>
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-emerald);">
+                        <div class="stat-val" style="color: var(--accent-emerald);">0 Lint Errors</div>
+                        <div class="stat-lbl">SystemVerilog RTL</div>
+                    </div>
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-amber);">
+                        <div class="stat-val" style="color: var(--accent-amber);">100% Clean</div>
+                        <div class="stat-lbl">Yosys Synthesis</div>
+                    </div>
+                    <div class="bento-card bento-stat" style="grid-column: span 3; border-color: var(--accent-purple);">
+                        <div class="stat-val" style="color: var(--accent-purple);">Interactive</div>
+                        <div class="stat-lbl">Web Visualizers</div>
+                    </div>
+
+                    <div class="bento-card" style="grid-column: span 6;">
+                        <div class="bento-title">🧪 Verification Coverage Matrix</div>
+                        <ul class="bento-list">
+                            <li><strong>Automated Test Suite:</strong> Run all labs via <code>python labs/run_lab.py --lab all</code>.</li>
+                            <li><strong>Corner Case Coverage:</strong> Exhaustive signed two's complement boundaries (-128, +127) and saturation clamps.</li>
+                            <li><strong>Golden References:</strong> Verified against NumPy, math.exp, and IEEE FP32 standard.</li>
+                        </ul>
+                    </div>
+
+                    <div class="bento-card" style="grid-column: span 6;">
+                        <div class="bento-title">🚀 Silicon Ready Engineering</div>
+                        <ul class="bento-list">
+                            <li><strong>End-to-End Flow:</strong> From full adders to 2D systolic meshes and LLM SFUs.</li>
+                            <li><strong>Interactive Web App:</strong> Run <code>python3 slides/serve.py</code> for animated presentations.</li>
+                        </ul>
+                    </div>
+                `
+            }
+        ];
+
+        let curSlide = 0;
+
+        function renderCurrentSlide() {
+            const s = deck[curSlide];
+            const frame = document.getElementById("slideFrame");
+
+            frame.innerHTML = `
+                <div class="slide-topbar">
+                    <div>
+                        <div class="slide-pill">${s.pill}</div>
+                        <div class="slide-heading">${s.title}</div>
+                        <div class="slide-subheading">${s.subtitle}</div>
+                    </div>
+                    <div style="font-family:'JetBrains Mono'; font-size:0.85rem; color:var(--text-muted); padding-top:6px;">
+                        Slide ${curSlide + 1} / ${deck.length}
+                    </div>
+                </div>
+
+                <div class="slide-bento">
+                    ${s.bento}
+                </div>
+
+                <div class="slide-bottombar">
+                    <div>Hardware AI Acceleration Curriculum | Pre-Silicon Engineering</div>
+                    <div class="progress-track">
+                        <div class="progress-fill" style="width: ${((curSlide + 1) / deck.length) * 100}%"></div>
+                    </div>
+                    <div class="slide-nav-btns">
+                        <button class="nav-btn" onclick="prev()">◀</button>
+                        <button class="nav-btn" onclick="next()">▶</button>
+                    </div>
+                </div>
+            `;
+
+            // Render LaTeX Math Formulas
+            if (window.renderMathInElement) {
+                renderMathInElement(frame, {
+                    delimiters: [
+                        { left: "$$", right: "$$", display: true },
+                        { left: "\\(", right: "\\)", display: false }
+                    ]
+                });
+            }
+        }
+
+        function next() {
+            if (curSlide < deck.length - 1) {
+                curSlide++;
+                renderCurrentSlide();
+            }
+        }
+
+        function prev() {
+            if (curSlide > 0) {
+                curSlide--;
+                renderCurrentSlide();
+            }
+        }
+
+        function jumpSlide(idx) {
+            curSlide = parseInt(idx);
+            renderCurrentSlide();
+        }
+
+        // Keyboard navigation
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "ArrowRight" || e.key === " ") {
+                next();
+            } else if (e.key === "ArrowLeft") {
+                prev();
+            }
+        });
+
+        // Interactive Lab 00 Sim
+        function runAdderSim() {
+            const a = parseInt(document.getElementById("simA").value) || 0;
+            const b = parseInt(document.getElementById("simB").value) || 0;
+            const sat = document.getElementById("simSat").checked;
+            const raw = a + b;
+            let result = raw;
+            let clamped = false;
+
+            if (sat) {
+                if (raw > 127) { result = 127; clamped = true; }
+                else if (raw < -128) { result = -128; clamped = true; }
+            } else {
+                result = ((raw + 128) % 256) - 128;
+            }
+
+            const resDiv = document.getElementById("simRes");
+            resDiv.innerHTML = `Result: ${result > 0 ? '+' : ''}${result} ${clamped ? '<span style="color:#fbbf24;">(Clamped Saturation)</span>' : (raw !== result ? '<span style="color:#fb7185;">(Wrapped Overflow!)</span>' : '<span style="color:#34d399;">(Normal)</span>')}`;
+        }
+
+        // Interactive Lab 04 Systolic Sim
+        let meshStep = 0;
+        function stepMesh() {
+            meshStep = (meshStep + 1) % 11;
+            document.getElementById("meshCycle").innerText = meshStep;
+
+            for (let r = 0; r < 4; r++) {
+                for (let c = 0; c < 4; c++) {
+                    const el = document.getElementById(`p${r}${c}`);
+                    if (el) {
+                        if (meshStep >= (r + c + 1) && meshStep <= (r + c + 4)) {
+                            el.classList.add("active");
+                            el.innerHTML = `PE ${r},${c}<br><span style="color:#34d399;">MAC</span>`;
+                        } else {
+                            el.classList.remove("active");
+                            el.innerHTML = `PE ${r},${c}`;
+                        }
+                    }
+                }
+            }
+        }
+
+        function resetMesh() {
+            meshStep = 0;
+            document.getElementById("meshCycle").innerText = 0;
+            for (let r = 0; r < 4; r++) {
+                for (let c = 0; c < 4; c++) {
+                    const el = document.getElementById(`p${r}${c}`);
+                    if (el) {
+                        el.classList.remove("active");
+                        el.innerHTML = `PE ${r},${c}`;
+                    }
+                }
+            }
+        }
+
+        window.onload = () => {
+            renderCurrentSlide();
+        };
+    </script>
+</body>
+</html>

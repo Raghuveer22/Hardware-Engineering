@@ -1,0 +1,430 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600" width="100%" height="100%" class="schematic-canvas" id="schematic-svg" data-title="adder - Parameterized Signed Adder with Saturation">
+<defs>
+    <style><![CDATA[
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap');
+        
+        :root {
+            --bg: #090d13;
+            --panel: #111827;
+            --card: #1f2937;
+            --card-header: #374151;
+            --border: #374151;
+            --text: #f3f4f6;
+            --text-muted: #9ca3af;
+            --accent: #38bdf8;
+            --accent-glow: rgba(56, 189, 248, 0.4);
+            --bus-color: #60a5fa;
+            --bus-width: 3.5px;
+            --wire-color: #94a3b8;
+            --control-color: #f59e0b;
+            --highlight: #22d3ee;
+            --pe-bg: #131d2e;
+            --pe-border: #2563eb;
+            --mac-bg: #1e1b4b;
+            --mac-border: #6366f1;
+            --reg-bg: #142e2b;
+            --reg-border: #10b981;
+            --mult-bg: #31132b;
+            --mult-border: #ec4899;
+        }
+        
+        text {
+            font-family: 'Inter', -apple-system, sans-serif;
+            user-select: none;
+        }
+        
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        
+        /* Interactive Component Styling */
+        .component-box {
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+        
+        .component-box:hover .box-rect {
+            stroke: var(--highlight);
+            stroke-width: 2.5px;
+            filter: drop-shadow(0 0 10px var(--accent-glow));
+        }
+        
+        .toggle-btn {
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        .toggle-btn:hover circle {
+            fill: var(--highlight);
+        }
+        
+        /* Collapsible Elements */
+        .collapsible-content {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        .collapsed .collapsible-content {
+            display: none;
+            opacity: 0;
+        }
+        .collapsed .expanded-only {
+            display: none;
+        }
+        .expanded .collapsed-only {
+            display: none;
+        }
+        
+        /* Wire and Bus Styling */
+        .net-bus {
+            fill: none;
+            stroke: var(--bus-color);
+            stroke-width: 3.5px;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            transition: stroke 0.2s, stroke-width 0.2s, filter 0.2s;
+        }
+        
+        .net-control {
+            fill: none;
+            stroke: var(--control-color);
+            stroke-width: 1.5px;
+            stroke-dasharray: 4 3;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            transition: stroke 0.2s, stroke-width 0.2s;
+        }
+        
+        .net-wire {
+            fill: none;
+            stroke: var(--wire-color);
+            stroke-width: 2px;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            transition: stroke 0.2s, stroke-width 0.2s;
+        }
+        
+        .net-active {
+            stroke: #f43f5e !important;
+            stroke-width: 4.5px !important;
+            filter: drop-shadow(0 0 8px #f43f5e) !important;
+        }
+        
+        .net-highlight {
+            stroke: #38bdf8 !important;
+            stroke-width: 4.5px !important;
+            filter: drop-shadow(0 0 10px #38bdf8) !important;
+        }
+        
+        /* Ports and Pins */
+        .pin-node {
+            cursor: pointer;
+            transition: r 0.2s, fill 0.2s;
+        }
+        .pin-node:hover {
+            r: 6px;
+            fill: var(--highlight);
+        }
+        
+        /* Tooltip */
+        #svg-tooltip {
+            position: absolute;
+            display: none;
+            background: rgba(17, 24, 39, 0.95);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-family: 'JetBrains Mono', monospace;
+            border: 1px solid #38bdf8;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            pointer-events: none;
+            z-index: 1000;
+        }
+        
+        /* Toolbar inside SVG */
+        .svg-toolbar {
+            fill: #111827;
+            stroke: #374151;
+            stroke-width: 1px;
+            rx: 6px;
+        }
+        .svg-tool-btn {
+            cursor: pointer;
+        }
+        .svg-tool-btn:hover rect {
+            fill: #1f2937;
+            stroke: #38bdf8;
+        }
+    ]]></style>
+    
+    <!-- Gradients and Markers -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#0a0f18" />
+        <stop offset="100%" stop-color="#04070c" />
+    </linearGradient>
+    
+    <linearGradient id="peGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#1e293b" />
+        <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+    
+    <linearGradient id="macGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#2d1b4e" />
+        <stop offset="100%" stop-color="#19102c" />
+    </linearGradient>
+    
+    <linearGradient id="regGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#064e3b" />
+        <stop offset="100%" stop-color="#022c22" />
+    </linearGradient>
+    
+    <linearGradient id="multGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#701a75" />
+        <stop offset="100%" stop-color="#4a044e" />
+    </linearGradient>
+    
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur stdDeviation="4" result="blur" />
+        <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+    
+    <marker id="bus-arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1 L 9 5 L 0 9 z" fill="#60a5fa" />
+    </marker>
+    <marker id="wire-arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#94a3b8" />
+    </marker>
+    <marker id="ctrl-arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#f59e0b" />
+    </marker>
+</defs>
+
+<!-- Background -->
+<rect width="100%" height="100%" fill="url(#bgGrad)" />
+
+<!-- Grid Pattern -->
+<pattern id="dotGrid" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
+    <circle cx="2" cy="2" r="1" fill="#1e293b" opacity="0.6" />
+</pattern>
+<rect width="100%" height="100%" fill="url(#dotGrid)" />
+
+<!-- Canvas Viewport for Pan/Zoom -->
+<g id="viewport" transform="translate(0, 0) scale(1)">
+
+
+    <g transform="translate(40, 80)">
+        <text x="0" y="0" fill="#f8fafc" font-size="22" font-weight="700">🔬 MODULE: adder</text>
+        <text x="0" y="24" fill="#94a3b8" font-size="13">Parameterized Signed Adder with Overflow Detection &amp; Saturation Logic</text>
+    </g>
+
+    <!-- Main Adder Component Box -->
+    <g id="comp_adder" class="collapsible-comp expanded" transform="translate(180, 140)">
+        <g class="component-box" onclick="toggleComponent('comp_adder')">
+            <rect class="box-rect" x="0" y="0" width="640" height="380" rx="12" fill="#0f172a" stroke="#38bdf8" stroke-width="2" />
+            <rect x="0" y="0" width="640" height="42" rx="12" fill="#0369a1" />
+            <rect x="0" y="30" width="640" height="12" fill="#0369a1" />
+            
+            <text x="24" y="27" fill="#f0f9ff" font-size="15" font-weight="700">⚙️ adder Core (Signed + Saturation)</text>
+            <text x="320" y="26" fill="#bae6fd" font-size="12" font-family="'JetBrains Mono', monospace">DATA_WIDTH = 8</text>
+        </g>
+        
+        <!-- Collapsed View -->
+        <g class="collapsed-only" transform="translate(170, 100)">
+            <rect x="0" y="0" width="300" height="180" rx="10" fill="#0369a1" stroke="#38bdf8" stroke-width="2" />
+            <text x="150" y="70" fill="#ffffff" font-size="28" font-weight="bold" text-anchor="middle">➕ ADDER</text>
+            <text x="150" y="105" fill="#bae6fd" font-size="14" font-family="'JetBrains Mono', monospace" text-anchor="middle">sum = a + b (Saturated)</text>
+        </g>
+
+        <!-- Expanded View -->
+        <g class="collapsible-content expanded-only">
+            <!-- 8-Bit Ripple Carry Core -->
+            <g transform="translate(40, 70)">
+                <rect class="box-rect" x="0" y="0" width="240" height="260" rx="8" fill="#1e293b" stroke="#60a5fa" stroke-width="1.5" />
+                <rect x="0" y="0" width="240" height="32" rx="8" fill="#1d4ed8" />
+                <text x="12" y="21" fill="#eff6ff" font-size="13" font-weight="700">1. Full Adder Array (8x FA)</text>
+                <text x="120" y="80" fill="#93c5fd" font-size="12" text-anchor="middle">Two's Complement Addition</text>
+                <rect x="20" y="110" width="200" height="120" rx="6" fill="#0f172a" stroke="#3b82f6" />
+                <text x="120" y="145" fill="#60a5fa" font-size="12" font-family="'JetBrains Mono', monospace" text-anchor="middle">raw_sum = {a[7], a}</text>
+                <text x="120" y="175" fill="#60a5fa" font-size="12" font-family="'JetBrains Mono', monospace" text-anchor="middle">+ {b[7], b}</text>
+                <text x="120" y="205" fill="#4ade80" font-size="11" text-anchor="middle">~42 Logic Gates Total</text>
+            </g>
+
+            <!-- Overflow & Saturation MUX -->
+            <g transform="translate(340, 70)">
+                <rect class="box-rect" x="0" y="0" width="260" height="260" rx="8" fill="#1e293b" stroke="#f59e0b" stroke-width="1.5" />
+                <rect x="0" y="0" width="260" height="32" rx="8" fill="#b45309" />
+                <text x="12" y="21" fill="#fffbeb" font-size="13" font-weight="700">2. Overflow &amp; Saturation MUX</text>
+                <text x="130" y="70" fill="#fde68a" font-size="12" text-anchor="middle">AI Saturation Clamp Logic</text>
+                <rect x="20" y="90" width="220" height="140" rx="6" fill="#0f172a" stroke="#d97706" />
+                <text x="130" y="125" fill="#fcd34d" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">overflow = (a7 == b7) &amp;&amp; (s7 != a7)</text>
+                <text x="130" y="160" fill="#f87171" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">Pos Over: clamp to +127</text>
+                <text x="130" y="195" fill="#60a5fa" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">Neg Over: clamp to -128</text>
+            </g>
+        </g>
+    </g>
+    
+</g>
+
+<!-- Integrated Interactive Controls Toolbar -->
+<g id="ui-toolbar" transform="translate(20, 20)">
+    <rect width="360" height="42" class="svg-toolbar" rx="8" />
+    
+    <g class="svg-tool-btn" onclick="toggleAllComponents(true)" transform="translate(10, 7)">
+        <rect width="100" height="28" rx="5" fill="#1f2937" stroke="#4b5563" />
+        <text x="50" y="18" fill="#e2e8f0" font-size="11" font-weight="600" text-anchor="middle">➕ Expand All</text>
+    </g>
+    
+    <g class="svg-tool-btn" onclick="toggleAllComponents(false)" transform="translate(118, 7)">
+        <rect width="105" height="28" rx="5" fill="#1f2937" stroke="#4b5563" />
+        <text x="52" y="18" fill="#e2e8f0" font-size="11" font-weight="600" text-anchor="middle">➖ Collapse All</text>
+    </g>
+    
+    <g class="svg-tool-btn" onclick="toggleControls()" transform="translate(230, 7)">
+        <rect width="120" height="28" rx="5" fill="#1f2937" stroke="#4b5563" />
+        <text x="60" y="18" fill="#f59e0b" font-size="11" font-weight="600" text-anchor="middle">⚡ Toggle Control</text>
+    </g>
+</g>
+
+<!-- Tooltip Container -->
+<g id="tooltip-group" style="display: none; pointer-events: none;">
+    <rect id="tooltip-bg" fill="#111827" stroke="#38bdf8" stroke-width="1.5" rx="6" opacity="0.95" />
+    <text id="tooltip-text" fill="#f3f4f6" font-size="12" font-family="'JetBrains Mono', monospace" y="0"></text>
+</g>
+
+<script><![CDATA[
+    // Interactive Collapsible Schematic Logic
+    let showControlNets = true;
+    let currentHighlightedNet = null;
+
+    function toggleComponent(id) {
+        const comp = document.getElementById(id);
+        if (!comp) return;
+        const isCollapsed = comp.classList.contains('collapsed');
+        if (isCollapsed) {
+            comp.classList.remove('collapsed');
+            comp.classList.add('expanded');
+        } else {
+            comp.classList.remove('expanded');
+            comp.classList.add('collapsed');
+        }
+        updateBadge(comp);
+    }
+
+    function updateBadge(comp) {
+        const badge = comp.querySelector('.toggle-badge text');
+        if (badge) {
+            badge.textContent = comp.classList.contains('collapsed') ? '+' : '−';
+        }
+    }
+
+    function toggleAllComponents(expand) {
+        const comps = document.querySelectorAll('.collapsible-comp');
+        comps.forEach(c => {
+            if (expand) {
+                c.classList.remove('collapsed');
+                c.classList.add('expanded');
+            } else {
+                c.classList.remove('expanded');
+                c.classList.add('collapsed');
+            }
+            updateBadge(c);
+        });
+    }
+
+    function toggleControls() {
+        showControlNets = !showControlNets;
+        const ctrls = document.querySelectorAll('.net-control, .control-port');
+        ctrls.forEach(el => {
+            el.style.display = showControlNets ? '' : 'none';
+        });
+    }
+
+    function highlightNet(netName) {
+        if (currentHighlightedNet === netName) {
+            clearHighlight();
+            return;
+        }
+        clearHighlight();
+        currentHighlightedNet = netName;
+        const wires = document.querySelectorAll(`[data-net="${netName}"]`);
+        wires.forEach(w => {
+            w.classList.add('net-highlight');
+        });
+    }
+
+    function clearHighlight() {
+        if (currentHighlightedNet) {
+            const wires = document.querySelectorAll(`[data-net="${currentHighlightedNet}"]`);
+            wires.forEach(w => w.classList.remove('net-highlight'));
+            currentHighlightedNet = null;
+        }
+    }
+
+    function showTooltip(evt, text) {
+        const tt = document.getElementById('tooltip-group');
+        const bg = document.getElementById('tooltip-bg');
+        const txt = document.getElementById('tooltip-text');
+        if (!tt || !txt || !bg) return;
+        
+        txt.textContent = text;
+        const bbox = txt.getBBox();
+        bg.setAttribute('width', bbox.width + 16);
+        bg.setAttribute('height', bbox.height + 12);
+        bg.setAttribute('x', bbox.x - 8);
+        bg.setAttribute('y', bbox.y - 6);
+        
+        // Position near mouse
+        const pt = getSVGPoint(evt);
+        tt.setAttribute('transform', `translate(${pt.x + 12}, ${pt.y - 20})`);
+        tt.style.display = 'block';
+    }
+
+    function hideTooltip() {
+        const tt = document.getElementById('tooltip-group');
+        if (tt) tt.style.display = 'none';
+    }
+
+    function getSVGPoint(evt) {
+        const svg = document.getElementById('schematic-svg');
+        const pt = svg.createSVGPoint();
+        pt.x = evt.clientX;
+        pt.y = evt.clientY;
+        return pt.matrixTransform(svg.getScreenCTM().inverse());
+    }
+
+    // Pan and Zoom support
+    let isPanning = false;
+    let startX = 0, startY = 0;
+    let translateX = 0, translateY = 0, scale = 1;
+    const viewport = document.getElementById('viewport');
+
+    window.addEventListener('load', () => {
+        const svg = document.getElementById('schematic-svg');
+        if (!svg) return;
+
+        svg.addEventListener('mousedown', (e) => {
+            if (e.target.closest('.component-box') || e.target.closest('.svg-tool-btn')) return;
+            isPanning = true;
+            startX = e.clientX - translateX;
+            startY = e.clientY - translateY;
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isPanning) return;
+            translateX = e.clientX - startX;
+            translateY = e.clientY - startY;
+            viewport.setAttribute('transform', `translate(${translateX}, ${translateY}) scale(${scale})`);
+        });
+
+        window.addEventListener('mouseup', () => {
+            isPanning = false;
+        });
+
+        svg.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+            const newScale = Math.min(Math.max(scale * zoomFactor, 0.3), 5.0);
+            scale = newScale;
+            viewport.setAttribute('transform', `translate(${translateX}, ${translateY}) scale(${scale})`);
+        });
+    });
+]]></script>
+</svg>

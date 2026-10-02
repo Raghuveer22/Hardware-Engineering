@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-==============================================================================
+=============================================================================
 File: synthesis/synthesize.py
 Description: Centralized Yosys logic synthesis and schematic image generator.
              Synthesizes RTL modules, computes gate/register metrics, and
@@ -16,10 +16,15 @@ from pathlib import Path
 import re
 
 MODULE_SOURCES = {
+    "adder": ["rtl/adder.sv"],
     "multiplier_int8": ["rtl/multiplier_int8.sv"],
     "mac_unit": ["rtl/mac_unit.sv"],
     "pe": ["rtl/mac_unit.sv", "rtl/pe.sv"],
-    "systolic_array": ["rtl/mac_unit.sv", "rtl/pe.sv", "rtl/systolic_array.sv"]
+    "systolic_array": ["rtl/mac_unit.sv", "rtl/pe.sv", "rtl/systolic_array.sv"],
+    "sqrt": ["rtl/sqrt.sv"],
+    "softmax": ["rtl/softmax.sv"],
+    "rsqrt": ["rtl/rsqrt.sv"],
+    "exp2_sfu": ["rtl/exp2_sfu.sv"]
 }
 
 def synthesize_module(module_name, out_dir="schematics"):
@@ -70,13 +75,14 @@ def synthesize_module(module_name, out_dir="schematics"):
         except Exception as e:
             print(f"Warning converting PNG: {e}")
 
-    # Generate Interactive Collapsible SVG
+    # Generate Interactive Collapsible SVG if custom generator exists
     try:
         from synthesis.generate_schematics import (
             generate_multiplier_svg,
             generate_mac_unit_svg,
             generate_pe_svg,
-            generate_systolic_array_svg
+            generate_systolic_array_svg,
+            generate_generic_svg
         )
         if module_name == "multiplier_int8":
             generate_multiplier_svg(svg_file)
@@ -86,7 +92,9 @@ def synthesize_module(module_name, out_dir="schematics"):
             generate_pe_svg(svg_file)
         elif module_name == "systolic_array":
             generate_systolic_array_svg(svg_file)
-        print(f"🎨 Interactive Collapsible SVG: {svg_file}")
+        else:
+            generate_generic_svg(module_name, svg_file)
+        print(f"🎨 Interactive SVG: {svg_file}")
     except Exception as e:
         print(f"Warning generating interactive SVG: {e}")
 
