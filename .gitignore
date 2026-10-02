@@ -37,7 +37,7 @@ obj_dir/
 *.d
 *.so
 *.a
-
+.agents/
 # Temporary generated visualization data
 visualizer/trace.json
 

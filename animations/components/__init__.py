@@ -7,7 +7,12 @@ from components.layout import HardwareConfig, StageLayout
 from components.kinematics import SiliconCameraRig
 from components.signals import KineticClock, LiveOscilloscope, StoryboardTimeline
 from components.dataflow import SiliconWire, LaserPacketStream
-from components.arithmetic import TwosComplementWheel
+from components.arithmetic import (
+    TwosComplementWheel,
+    FullAdderGateSchematic,
+    RippleCarryChain,
+    AccumulatorGauge,
+)
 from components.trace_engine import TracePlayback, SchematicNetlist
 
 __all__ = [
@@ -20,6 +25,10 @@ __all__ = [
     "SiliconWire",
     "LaserPacketStream",
     "TwosComplementWheel",
+    "FullAdderGateSchematic",
+    "RippleCarryChain",
+    "AccumulatorGauge",
     "TracePlayback",
     "SchematicNetlist",
 ]
+

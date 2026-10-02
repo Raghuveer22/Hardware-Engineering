@@ -1,20 +1,26 @@
 #!/usr/bin/env python3
 """
 Master Animation Render Script for Hardware AI Acceleration Curriculum.
-Renders all Manim animation scenes into high-quality MP4 videos.
+Renders all Manim visual-first animation scenes into broadcast-quality MP4 videos.
 
 Usage:
-    python animations/render_all.py          # Render all 10 scenes
-    python animations/render_all.py 04       # Render specific lab (e.g. Lab 04)
-    python animations/render_all.py --high   # Render in 1080p60 high quality
+    python animations/render_all.py          # Render all 10 scenes (720p 30fps)
+    python animations/render_all.py 00       # Render specific lab (e.g. Lab 00)
+    python animations/render_all.py --low    # Fast test render (480p 15fps)
+    python animations/render_all.py --high   # Production YouTube render (1080p 60fps)
 """
 
 import sys
 import subprocess
+import os
 from pathlib import Path
 
 ANIMATIONS_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = ANIMATIONS_DIR.parent
+
+# Detect project virtual environment
+VENV_PYTHON = PROJECT_ROOT / ".venv" / "bin" / "python"
+PYTHON_BIN = str(VENV_PYTHON) if VENV_PYTHON.exists() else sys.executable
 
 SCENES = [
     ("scene_lab00_prep.py", "Lab00PrepPrimer", "Lab 00-Prep: Hardware Primer"),
@@ -29,14 +35,28 @@ SCENES = [
     ("scene_lab08_exp2_sfu.py", "Lab08ExponentialSFU", "Lab 08: Exponential SFU for SwiGLU"),
 ]
 
+def get_video_duration(path):
+    """Returns video duration in seconds via ffprobe, or None if failed."""
+    try:
+        res = subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", str(path)],
+            capture_output=True, text=True, check=True
+        )
+        return float(res.stdout.strip())
+    except Exception:
+        return None
+
 def main():
     args = sys.argv[1:]
     if "--low" in args:
         quality_flag = "-ql"
+        res_folder = "480p15"
     elif "--high" in args:
         quality_flag = "-qh"
+        res_folder = "1080p60"
     else:
         quality_flag = "-qm"
+        res_folder = "720p30"
 
     # Filter target if specified (e.g. '04' or 'systolic')
     target = None
@@ -53,16 +73,18 @@ def main():
             sys.exit(1)
 
     print(f"\n==================================================================")
-    print(f"🎬 Hardware AI Acceleration — Manim Video Generator")
-    print(f"   Quality: {'1080p 60fps' if quality_flag == '-qh' else '720p 30fps'}")
+    print(f"🎬 Hardware AI Acceleration — Visual-First Video Generator")
+    print(f"   Interpreter: {PYTHON_BIN}")
+    print(f"   Quality: {'1080p 60fps' if quality_flag == '-qh' else '480p 15fps' if quality_flag == '-ql' else '720p 30fps'}")
     print(f"   Total scenes to render: {len(to_render)}")
     print(f"==================================================================\n")
 
     for file_name, scene_name, title in to_render:
         script_path = ANIMATIONS_DIR / file_name
+        stem = Path(file_name).stem
         print(f"▶ Rendering: {title} ({file_name} -> {scene_name})...")
         cmd = [
-            sys.executable, "-m", "manim",
+            PYTHON_BIN, "-m", "manim",
             quality_flag,
             str(script_path),
             scene_name
@@ -71,15 +93,18 @@ def main():
         if res.returncode != 0:
             print(f"❌ Failed rendering {title}!")
             sys.exit(res.returncode)
-        print(f"✅ Finished: {title}\n")
+
+        mp4_path = PROJECT_ROOT / "media" / "videos" / stem / res_folder / f"{scene_name}.mp4"
+        if mp4_path.exists():
+            dur = get_video_duration(mp4_path)
+            dur_str = f"{dur:.1f}s ({dur/60:.2f} min)" if dur else "unknown duration"
+            print(f"✅ Finished: {title} ➔ {dur_str}")
+            print(f"   File: {mp4_path}\n")
+        else:
+            print(f"✅ Finished: {title}\n")
 
     print("🎉 All requested animations rendered successfully!")
     print(f"📁 Video files stored under: {PROJECT_ROOT / 'media' / 'videos'}\n")
-
-    if "--narrate" in args:
-        print("🎙 Running automated voiceover generator & video muxer...")
-        narrate_script = ANIMATIONS_DIR / "narrate_video.py"
-        subprocess.run([sys.executable, str(narrate_script)], cwd=str(PROJECT_ROOT), check=True)
 
 if __name__ == "__main__":
     main()
