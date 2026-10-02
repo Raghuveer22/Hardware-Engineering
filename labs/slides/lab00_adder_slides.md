@@ -15,15 +15,89 @@
 
 ---
 
-## 💡 2. Hardware Intuition & Logic Sizing
+## 💡 2. Hardware Intuition: Full Adder, Carry & Overflow at Bit-Level
 
-$$\text{Sum } S = A \oplus B \oplus C_{\text{in}}, \quad C_{\text{out}} = (A \cdot B) + (C_{\text{in}} \cdot (A \oplus B))$$
+For anyone new to digital logic and Verilog, understanding arithmetic at the bit level is essential before building accelerators.
 
-$$\text{Overflow Detection: } \text{ovf} = (A[\text{MSB}] == B[\text{MSB}]) \land (\text{Sum}[\text{MSB}] \ne A[\text{MSB}])$$
+---
 
-* **Gate Complexity:** $O(N)$ Linear ($\approx 5$ logic gates per bit).
-* **Timing & Cycles:** Purely combinational circuit ($0$ clock cycles latency). Critical path is the ripple-carry chain of $N$ full adders.
-* **Waveforms needed?** No sequential clocking — combinational propagation delay only.
+### A. The 1-Bit Full Adder: Anatomy & Intuition
+
+Every single bit addition takes **3 inputs** and produces **2 outputs**:
+* **Inputs:** Operand Bit $A$, Operand Bit $B$, and incoming Carry $C_{in}$.
+* **Outputs:** Local Result $\text{Sum}$ ($S$) and Carry-out ($C_{out}$).
+
+```
+                     ┌────────────────────────┐
+   A  ──────────────►│                        │──────────────► Sum (S) = A ⊕ B ⊕ Cin
+   B  ──────────────►│   1-Bit Full Adder     │
+  Cin ──────────────►│                        │──────────────► Cout = (A·B) + Cin·(A ⊕ B)
+                     └────────────────────────┘
+```
+
+#### 🔍 Why XOR for Sum and Majority for Carry?
+1. **$\text{Sum} = A \oplus B \oplus C_{in}$ (Parity / Odd-1s Detector):**
+   * $\text{XOR}$ outputs `1` when an **odd number of inputs** are `1` ($1$ or $3$ ones).
+   * When two inputs are `1`, $1+1 = 2_{10} = 10_2$. The local bit ($\text{Sum}$) is `0` and a `1` is pushed to the next column.
+2. **$C_{out} = (A \cdot B) + (C_{in} \cdot (A \oplus B))$ (Majority Voter):**
+   * A carry is generated whenever **2 or more inputs** are `1`. If the inputs sum to $\ge 2_{10}$, the value cannot fit in a single 1-bit register and must carry out into the next higher power of 2.
+
+
+### B. Cascading Bits: The Ripple-Carry Adder Chain
+
+In an $N$-bit adder, 1-bit full adders are chained together. Each bit slice passes its $C_{out}$ to the next bit's $C_{in}$:
+
+```
+       A[3] B[3]         A[2] B[2]         A[1] B[1]         A[0] B[0]
+         │   │             │   │             │   │             │   │
+       ┌─▼───▼─┐         ┌─▼───▼─┐         ┌─▼───▼─┐         ┌─▼───▼─┐
+Cout ◄─┤ FA 3  │◄──C[2]──┤ FA 2  │◄──C[1]──┤ FA 1  │◄──C[0]──┤ FA 0  │◄── Cin = 0
+       └───┬───┘         └───┬───┘         └───┬───┘         └───┬───┘
+           ▼                 ▼                 ▼                 ▼
+        Sum[3]            Sum[2]            Sum[1]            Sum[0]
+```
+
+* **Linear Gate Complexity:** $O(N)$ ($\approx 5$ logic gates per bit $\times N$ bits $\approx 40$ gates for INT8).
+* **Propagation Delay:** Notice how $C[2]$ must wait for $C[1]$, which must wait for $C[0]$. The carry ripples down the entire word width.
+
+---
+
+### C. The Big Distinction: Carry vs. Overflow
+
+Beginners frequently confuse **Carry** and **Overflow**:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 1. CARRY (Unsigned Arithmetic)                                              │
+│    Occurs when the result is too large to fit in N bits unsigned [0, 2^N-1].│
+│    Hardware Signal: Cout from the Most Significant Bit (MSB).               │
+│                                                                             │
+│ 2. OVERFLOW (Signed 2's Complement)                                         │
+│    Occurs when arithmetic flips into the WRONG sign bit (+127 + 1 = -128). │
+│    Hardware Signal: (A[MSB] == B[MSB]) && (Sum[MSB] != A[MSB]).             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### 🚨 Visualizing Signed Overflow (The Sign-Bit Flip)
+In 8-bit signed two's complement, valid numbers range from **$-128$ to $+127$**.
+The Most Significant Bit (MSB, bit 7) represents the sign (`0` = Positive, `1` = Negative).
+
+1. **Positive Overflow ($+ \text{ and } + = -$):**
+   ```
+     +100  (8'b0110_0100)  [Sign bit = 0]
+   +  +50  (8'b0011_0010)  [Sign bit = 0]
+   ──────────────────────
+     -106  (8'b1001_0110)  ◄── Sign bit flipped to 1! Result became negative!
+   ```
+2. **Negative Overflow ($- \text{ and } - = +$):**
+   ```
+     -100  (8'b1001_1100)  [Sign bit = 1]
+   +  -50  (8'b1100_1110)  [Sign bit = 1]
+   ──────────────────────
+     +106  (8'b0110_1010)  ◄── Sign bit flipped to 0! Result became positive!
+   ```
+3. **Adding Opposite Signs ($+ \text{ and } -$):**
+   * **Can NEVER overflow**, because adding opposite signs always produces a value with a smaller magnitude than the operands.
 
 ---
 
