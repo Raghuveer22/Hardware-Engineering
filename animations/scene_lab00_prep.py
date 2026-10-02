@@ -13,12 +13,26 @@ Deep-dive structure:
 """
 
 from manim import *
+import numpy as np
+import sys
+from pathlib import Path
+
+ANIM_DIR = Path(__file__).resolve().parent
+if str(ANIM_DIR) not in sys.path:
+    sys.path.insert(0, str(ANIM_DIR))
+
 import theme as th
+from components import (
+    SiliconCameraRig,
+    LaserPacketStream,
+    SiliconWire,
+    StageLayout,
+)
 
 
-class Lab00PrepPrimer(Scene):
+class Lab00PrepPrimer(SiliconCameraRig):
     def construct(self):
-        th.set_dark(self.camera)
+        layout = self.layout
 
         # =================================================================
         # ACT 1 — COLD OPEN: A PROGRAM RUNS LINE BY LINE
@@ -208,6 +222,7 @@ class Lab00PrepPrimer(Scene):
         self.play(Create(ff), FadeIn(ff_lbl), Create(a1), Create(a2), Create(a3),
                   FadeIn(d_in), FadeIn(q_out), FadeIn(clk_lbl), FadeIn(edge),
                   run_time=0.9)
+        self.focus_on(ff, buffer_factor=2.2, run_time=th.RATE_NORMAL)
 
         # Show D=0, then pulse clock: Q follows D.
         d_val = Text("0", font=th.MONO, weight=BOLD, font_size=28, color=th.CYAN)
@@ -217,6 +232,7 @@ class Lab00PrepPrimer(Scene):
         self.play(FadeIn(d_val), FadeIn(q_val), run_time=0.4)
 
         self._pulse_clock(edge)
+        self.screen_shake(intensity=0.03, cycles=2, run_time=0.15)
         self.play(Transform(q_val, Text("0", font=th.MONO, weight=BOLD,
                                         font_size=28, color=th.GREEN).move_to(q_out)),
                   run_time=0.4)
@@ -235,6 +251,7 @@ class Lab00PrepPrimer(Scene):
 
         # Pulse clock again: Q latches the new D.
         self._pulse_clock(edge)
+        self.screen_shake(intensity=0.03, cycles=2, run_time=0.15)
         self.play(Transform(q_val, Text("1", font=th.MONO, weight=BOLD,
                                         font_size=28, color=th.GREEN).move_to(q_out)),
                   run_time=0.4)
@@ -244,6 +261,7 @@ class Lab00PrepPrimer(Scene):
                   FadeOut(a2), FadeOut(a3), FadeOut(d_in), FadeOut(q_out),
                   FadeOut(clk_lbl), FadeOut(edge), FadeOut(d_val), FadeOut(q_val),
                   run_time=0.6)
+        self.reset_camera(run_time=th.RATE_FAST)
 
         # =================================================================
         # CHECKPOINT

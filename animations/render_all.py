@@ -31,7 +31,12 @@ SCENES = [
 
 def main():
     args = sys.argv[1:]
-    quality_flag = "-qh" if "--high" in args else "-qm"
+    if "--low" in args:
+        quality_flag = "-ql"
+    elif "--high" in args:
+        quality_flag = "-qh"
+    else:
+        quality_flag = "-qm"
 
     # Filter target if specified (e.g. '04' or 'systolic')
     target = None
@@ -70,6 +75,11 @@ def main():
 
     print("🎉 All requested animations rendered successfully!")
     print(f"📁 Video files stored under: {PROJECT_ROOT / 'media' / 'videos'}\n")
+
+    if "--narrate" in args:
+        print("🎙 Running automated voiceover generator & video muxer...")
+        narrate_script = ANIMATIONS_DIR / "narrate_video.py"
+        subprocess.run([sys.executable, str(narrate_script)], cwd=str(PROJECT_ROOT), check=True)
 
 if __name__ == "__main__":
     main()

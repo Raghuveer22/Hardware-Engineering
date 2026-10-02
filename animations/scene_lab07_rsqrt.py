@@ -1,193 +1,214 @@
 """
-Lab 07: Fast Reciprocal Square Root (rsqrt) for RMSNorm
+Lab 07: Token Normalization — Fast Reciprocal Square Root (rsqrt) for RMSNorm
+A kinetic, visual-first masterclass on accelerating LLaMA 3's RMSNorm in silicon.
 
-Deep-dive structure:
-1.  RMSNorm in modern LLMs (LLaMA 3, Mistral) — every layer.
-2.  The bottleneck: sqrt + divide ≈ 30-40 cycles in software.
-3.  The hybrid datapath: zero check, seed ROM (small x), digit root
-    (large x), Q8.8 reciprocal scaler.
-4.  Worked example: rsqrt(64) = 1/8 = 0.125 → 32 in Q8.8.
-5.  RTL recap: rtl/rsqrt.sv — single combinational pass.
+Narrative Flow:
+  Act 1: The LLaMA 3 RMSNorm Revolution (Replacing 40-cycle division loops)
+  Act 2: Vector Normalization onto the Glowing Unit Sphere (r = 1.0)
+  Act 3: Hybrid Hardware Architecture (Seed ROM + Digit Root + Q8.8 Scaler)
+  Act 4: Synthesizable Silicon Architecture (rtl/rsqrt.sv) & Verification
 """
 
 from manim import *
+import numpy as np
+import sys
+from pathlib import Path
+
+ANIM_DIR = Path(__file__).resolve().parent
+if str(ANIM_DIR) not in sys.path:
+    sys.path.insert(0, str(ANIM_DIR))
+
 import theme as th
+from components import (
+    SiliconCameraRig,
+    LaserPacketStream,
+    StageLayout,
+    HardwareConfig,
+)
 
 
-class Lab07RSQRT(Scene):
+class Lab07RSQRT(SiliconCameraRig):
     def construct(self):
-        th.set_dark(self.camera)
+        layout = self.layout
+        config = HardwareConfig(data_width=8)
 
-        # =================================================================
-        # ACT 1 — RMSNORM MOTIVATION
-        # =================================================================
-        hdr, _, _ = th.header("LAB 07", "Fast RSQRT for RMSNorm")
-        self.play(FadeIn(hdr, shift=DOWN * 0.3), run_time=0.7)
+        # =====================================================================
+        # ACT 1: THE RMSNORM REVOLUTION (~45s)
+        # =====================================================================
+        kicker, _, _ = th.header(
+            "TOKEN NORMALIZATION",
+            "Fast Reciprocal Square Root (rsqrt) for RMSNorm",
+            title_size=30,
+            badge_color=th.CYAN
+        )
+        self.play(FadeIn(kicker, shift=DOWN * 0.3), run_time=0.8)
 
-        card = th.card(10.6, 2.6, stroke=th.CYAN, radius=0.18)
-        card.move_to(UP * 0.35)
+        banner = th.narration_banner(
+            "State-of-the-art LLMs (LLaMA 3, Mistral, Gemma) abandoned LayerNorm for RMSNorm. But computing 1 / sqrt(x) in software stalls pipelines for 40 cycles."
+        )
+        self.play(FadeIn(banner, shift=UP * 0.2), run_time=0.7)
+        self.wait(1.5)
 
-        c1 = Text("RMSNorm(x) = x · rsqrt( (1/d)·Σxᵢ² + ε )",
-                  font=th.MONO, weight=BOLD, font_size=21, color=th.GREEN_LIGHT)
-        c2 = Text("LLaMA 3, Mistral, DeepSeek: RMSNorm at every layer",
-                  font=th.SANS, font_size=18, color=th.TEXT)
-        c3 = Text("Software sqrt + divide ≈ 30–40 cycles per token",
-                  font=th.MONO, font_size=18, color=th.RED_LIGHT)
-        stack = VGroup(c1, c2, c3).arrange(DOWN, aligned_edge=LEFT, buff=0.24)
-        stack.move_to(card)
-        self.play(Create(card), FadeIn(stack), run_time=0.9)
+        # PyTorch Code Window on Left
+        py_code = [
+            ("# LLaMA 3 Root Mean Square Normalization", th.MUTED),
+            ("import torch", th.CYAN),
+            ("def rms_norm(x, weight, eps=1e-5):", th.TEXT),
+            ("    variance = x.pow(2).mean(-1, keepdim=True)", th.AMBER_LIGHT),
+            ("    # Costly reciprocal square root:", th.RED_LIGHT),
+            ("    return x * torch.rsqrt(variance + eps) * weight", th.GREEN),
+            ("", th.MUTED),
+            ("# Software Bottleneck: 40 cycles of division per token!", th.RED),
+        ]
+        soft_win = th.code_window(py_code, title_text="PYTORCH: LLAMA 3 RMSNORM",
+                                  width=6.4, height=3.8, font_size=13)
+        soft_win.move_to(LEFT * 3.1 + DOWN * 0.4)
+
+        # Right Panel: Speedup Comparison
+        m1 = th.metric_card("40 Cycles", "CPU Software Division",
+                            "Iterative floating-point loop stalls vector pipeline", color=th.RED, width=4.8, height=1.7)
+        m2 = th.metric_card("4.6 ns", "Hardware RSQRT SFU",
+                            "Combinational single-cycle throughput in silicon", color=th.GREEN, width=4.8, height=1.7)
+        right_panel = VGroup(m1, m2).arrange(DOWN, buff=0.3).move_to(RIGHT * 3.3 + DOWN * 0.4)
+
+        self.play(Create(soft_win), run_time=1.0)
         self.wait(1.0)
+        self.play(FadeIn(m1, shift=UP * 0.2), FadeIn(m2, shift=UP * 0.2), run_time=0.8)
+        self.play(
+            Transform(banner, th.narration_banner(
+                "In software, division stalls execution. In custom silicon, a dedicated SFU computes 1 / sqrt(x) in just 4.6 nanoseconds!"
+            )),
+            run_time=0.6
+        )
+        self.wait(2.5)
 
-        sfx = Text("Silicon SFU: 1/sqrt(x) in ONE combinational pass",
-                   font=th.SANS, weight=BOLD, font_size=20, color=th.AMBER_LIGHT)
-        sfx.next_to(card, DOWN, buff=0.4)
-        self.play(FadeIn(sfx, shift=UP * 0.15), run_time=0.6)
+        self.play(FadeOut(kicker), FadeOut(soft_win), FadeOut(right_panel), run_time=0.5)
+
+        # =====================================================================
+        # ACT 2: VECTOR NORMALIZATION ONTO THE UNIT SPHERE (~60s)
+        # =====================================================================
+        sphere_title = Text("Visualizing RMSNorm: Snapping Tokens to the Unit Circle",
+                            font=th.SANS, weight=BOLD, font_size=26, color=th.TEXT)
+        sphere_title.to_edge(UP, buff=0.6)
+        self.play(Write(sphere_title), run_time=0.6)
+
+        self.play(
+            Transform(banner, th.narration_banner(
+                "RMSNorm keeps activation magnitudes balanced. Wild, exploding vectors are scaled down to radius 1.0."
+            )),
+            run_time=0.5
+        )
+
+        circle_center = UP * 0.15
+        target_circle = Circle(radius=1.8, color=th.GREEN, stroke_width=3.0).move_to(circle_center)
+        c_lbl = Text("Target Unit Norm (r = 1.0)", font=th.MONO, font_size=13, color=th.GREEN_LIGHT)
+        c_lbl.next_to(target_circle, UP, buff=0.15)
+
+        # 4 wild vectors exploding in length
+        v1 = Arrow(start=circle_center, end=circle_center + UP * 2.4 + RIGHT * 1.5, buff=0, color=th.RED, stroke_width=4.0)
+        v2 = Arrow(start=circle_center, end=circle_center + DOWN * 2.1 + LEFT * 1.6, buff=0, color=th.RED, stroke_width=4.0)
+        v3 = Arrow(start=circle_center, end=circle_center + RIGHT * 2.7 + DOWN * 0.5, buff=0, color=th.AMBER, stroke_width=4.0)
+        v4 = Arrow(start=circle_center, end=circle_center + LEFT * 2.5 + UP * 1.2, buff=0, color=th.AMBER, stroke_width=4.0)
+
+        wild_vectors = VGroup(v1, v2, v3, v4)
+
+        self.play(Create(target_circle), FadeIn(c_lbl), FadeIn(wild_vectors), run_time=1.0)
+        self.focus_on(target_circle, buffer_factor=1.6, run_time=th.RATE_NORMAL)
         self.wait(0.8)
 
-        self.play(FadeOut(hdr), FadeOut(card), FadeOut(stack), FadeOut(sfx),
-                  run_time=0.5)
+        # Animate all 4 vectors snapping onto the unit circle!
+        tv1 = Arrow(start=circle_center, end=circle_center + normalize(UP * 2.4 + RIGHT * 1.5) * 1.8, buff=0, color=th.GREEN_LIGHT, stroke_width=4.0)
+        tv2 = Arrow(start=circle_center, end=circle_center + normalize(DOWN * 2.1 + LEFT * 1.6) * 1.8, buff=0, color=th.GREEN_LIGHT, stroke_width=4.0)
+        tv3 = Arrow(start=circle_center, end=circle_center + normalize(RIGHT * 2.7 + DOWN * 0.5) * 1.8, buff=0, color=th.GREEN_LIGHT, stroke_width=4.0)
+        tv4 = Arrow(start=circle_center, end=circle_center + normalize(LEFT * 2.5 + UP * 1.2) * 1.8, buff=0, color=th.GREEN_LIGHT, stroke_width=4.0)
 
-        # =================================================================
-        # ACT 2 — THE HYBRID DATAPATH
-        # =================================================================
-        d_hdr, _, _ = th.header("LAB 07", "The Hybrid SFU Datapath")
-        self.play(FadeIn(d_hdr, shift=DOWN * 0.3), run_time=0.7)
-
-        # Zero check.
-        z = th.card(2.8, 1.0, stroke=th.RED, radius=0.12)
-        z.shift(LEFT * 3.6 + UP * 0.5)
-        z_t = Text("Zero Detect\nvalid = (x != 0)", font=th.MONO, font_size=14,
-                   color=th.RED_LIGHT).move_to(z)
-
-        # Seed ROM.
-        rom = th.card(3.0, 1.0, stroke=th.AMBER, radius=0.12)
-        rom.shift(RIGHT * 1.6 + UP * 1.1)
-        rom_t = Text("Seed ROM\nx ∈ [1,15]", font=th.MONO, font_size=14,
-                     color=th.AMBER_LIGHT).move_to(rom)
-
-        # Digit root engine.
-        root = th.card(3.0, 1.0, stroke=th.GREEN, radius=0.12)
-        root.shift(RIGHT * 1.6 + DOWN * 0.3)
-        root_t = Text("Digit Root\nr = floor(√x)", font=th.MONO, font_size=14,
-                      color=th.GREEN_LIGHT).move_to(root)
-
-        # Q8.8 scaler.
-        scale = th.card(2.8, 1.0, stroke=th.CYAN, radius=0.12)
-        scale.shift(RIGHT * 4.7 + DOWN * 0.3)
-        scale_t = Text("Q8.8 Scaler\ny = 256 / r", font=th.MONO, font_size=14,
-                       color=th.CYAN_LIGHT).move_to(scale)
-
-        a_root = Arrow(root.get_right(), scale.get_left(), buff=0.08, color=th.GREEN)
-
-        diag = VGroup(z, z_t, rom, rom_t, root, root_t, scale, scale_t, a_root)
-        self.play(FadeIn(diag), run_time=1.0)
-        self.wait(1.0)
-
-        # Pulse through the large-x path.
-        pk = th.packet(color=th.GREEN, radius=0.13)
-        pk.move_to(root.get_left() + LEFT * 0.5)
-        self.play(FadeIn(pk), run_time=0.25)
-        self.play(pk.animate.move_to(root), run_time=0.4)
-        self.play(pk.animate.move_to(scale).set_color(th.CYAN), run_time=0.4)
-        self.play(FadeOut(pk), run_time=0.25)
-        self.wait(0.6)
-
-        self.play(FadeOut(d_hdr), FadeOut(diag), run_time=0.5)
-
-        # =================================================================
-        # ACT 3 — WORKED EXAMPLE
-        # =================================================================
-        w_hdr, _, _ = th.header("LAB 07", "Worked Example: rsqrt(64)")
-        self.play(FadeIn(w_hdr, shift=DOWN * 0.3), run_time=0.7)
-
-        s1 = Text("1.  digit root:  √64 = 8", font=th.MONO, font_size=21,
-                  color=th.GREEN)
-        s1.move_to(UP * 1.1)
-        self.play(Write(s1), run_time=0.6)
-
-        s2 = Text("2.  reciprocal scale (Q8.8):  256 / 8 = 32",
-                  font=th.MONO, font_size=21, color=th.CYAN)
-        s2.next_to(s1, DOWN, buff=0.5)
-        self.play(Write(s2), run_time=0.6)
-
-        s3 = Text("3.  32 in Q8.8 = 0.125 = 1/8  ✓",
-                  font=th.MONO, weight=BOLD, font_size=22, color=th.GREEN_LIGHT)
-        s3.next_to(s2, DOWN, buff=0.5)
-        self.play(FadeIn(s3, shift=UP * 0.15), run_time=0.6)
-
-        # A few seed-ROM examples for contrast.
-        examples = Text(
-            "Seed ROM:  x=1 → 256,  x=4 → 128,  x=16 → 64",
-            font=th.MONO, font_size=17, color=th.MUTED,
+        self.screen_shake(intensity=0.04, cycles=2, run_time=0.15)
+        self.play(
+            Transform(v1, tv1), Transform(v2, tv2), Transform(v3, tv3), Transform(v4, tv4),
+            Flash(target_circle, color=th.GREEN, flash_radius=2.0),
+            Transform(banner, th.narration_banner(
+                "Multiplying by the hardware rsqrt pulls all activations onto the unit sphere, stabilizing deep Transformer layers!"
+            )),
+            run_time=0.9
         )
-        examples.next_to(s3, DOWN, buff=0.5)
-        self.play(FadeIn(examples), run_time=0.5)
-        self.wait(1.2)
+        self.wait(2.2)
+        self.reset_camera(run_time=th.RATE_FAST)
 
-        self.play(FadeOut(w_hdr), FadeOut(s1), FadeOut(s2), FadeOut(s3),
-                  FadeOut(examples), run_time=0.5)
+        self.play(FadeOut(sphere_title), FadeOut(target_circle), FadeOut(c_lbl), FadeOut(wild_vectors), run_time=0.5)
 
-        # =================================================================
-        # ACT 3b — THE SEED-ROM PATH: rsqrt(4)
-        # =================================================================
-        w2_hdr, _, _ = th.header("LAB 07", "Small x: The Seed ROM Path")
-        self.play(FadeIn(w2_hdr, shift=DOWN * 0.3), run_time=0.7)
+        # =====================================================================
+        # ACT 3: HYBRID HARDWARE ARCHITECTURE (~60s)
+        # =====================================================================
+        hw_title = Text("Inside Silicon: Hybrid Seed ROM + Digit Recurrence Engine",
+                        font=th.SANS, weight=BOLD, font_size=26, color=th.CYAN)
+        hw_title.to_edge(UP, buff=0.6)
+        self.play(Write(hw_title), run_time=0.6)
 
-        s1b = Text("x = 4  →  exact ROM entry (no root engine)",
-                   font=th.MONO, font_size=20, color=th.AMBER_LIGHT)
-        s1b.move_to(UP * 0.9)
-        self.play(Write(s1b), run_time=0.6)
+        # Hybrid routing diagram
+        box1 = RoundedRectangle(corner_radius=0.15, width=4.5, height=1.5,
+                                stroke_color=th.AMBER, stroke_width=2.0, fill_color=th.CARD, fill_opacity=0.95).shift(LEFT * 2.8 + UP * 0.55)
+        t_b1 = Text("Small Variance: x in [1, 15]\n16-Entry Seed ROM (High Precision)", font=th.MONO, font_size=13, color=th.AMBER_LIGHT).move_to(box1)
 
-        s2b = Text("1/√4 = 0.5  →  128 in Q8.8", font=th.MONO, weight=BOLD,
-                   font_size=22, color=th.GREEN_LIGHT)
-        s2b.next_to(s1b, DOWN, buff=0.5)
-        self.play(FadeIn(s2b, shift=UP * 0.15), run_time=0.6)
+        box2 = RoundedRectangle(corner_radius=0.15, width=4.5, height=1.5,
+                                stroke_color=th.GREEN, stroke_width=2.0, fill_color=th.CARD, fill_opacity=0.95).shift(RIGHT * 2.8 + UP * 0.55)
+        t_b2 = Text("Large Variance: x >= 16\nDigit Engine + Q8.8 Scaler: 256 / r", font=th.MONO, font_size=13, color=th.GREEN_LIGHT).move_to(box2)
 
-        # Show a tiny ROM table.
-        rom = th.card(6.4, 1.7, stroke=th.AMBER, radius=0.14)
-        rom.next_to(s2b, DOWN, buff=0.6)
-        rom_rows = VGroup(
-            Text("x=1 → 256", font=th.MONO, font_size=16, color=th.TEXT),
-            Text("x=2 → 181", font=th.MONO, font_size=16, color=th.TEXT),
-            Text("x=4 → 128", font=th.MONO, font_size=16, color=th.GREEN_LIGHT),
-            Text("x=9 → 85", font=th.MONO, font_size=16, color=th.TEXT),
-        ).arrange(DOWN, aligned_edge=LEFT, buff=0.18)
-        rom_rows.move_to(rom)
-        self.play(Create(rom), FadeIn(rom_rows), run_time=0.7)
-        self.wait(1.0)
+        out_box = RoundedRectangle(corner_radius=0.15, width=6.5, height=1.2,
+                                   stroke_color=th.CYAN, stroke_width=2.0, fill_color=th.CARD, fill_opacity=0.95).shift(DOWN * 0.85)
+        t_out = Text("Output: y_out in Q8.8 Fixed-Point Format\n(8 Integer bits + 8 Fractional bits)", font=th.MONO, font_size=14, color=th.CYAN_LIGHT).move_to(out_box)
 
-        self.play(FadeOut(w2_hdr), FadeOut(s1b), FadeOut(s2b), FadeOut(rom),
-                  FadeOut(rom_rows), run_time=0.5)
+        a_down1 = Arrow(start=box1.get_bottom(), end=out_box.get_top() + LEFT * 1.5, buff=0.1, color=th.BORDER)
+        a_down2 = Arrow(start=box2.get_bottom(), end=out_box.get_top() + RIGHT * 1.5, buff=0.1, color=th.BORDER)
 
-        # =================================================================
-        # CHECKPOINT
-        # =================================================================
-        th.checkpoint(
-            self,
-            "Why keep a seed ROM for small x instead of one engine?",
-            ["Small variances (x < 16) are where gradients are most sensitive",
-             "Exact ROM entries preserve precision exactly there"],
+        arch_grp = VGroup(box1, t_b1, box2, t_b2, out_box, t_out, a_down1, a_down2)
+
+        self.play(FadeIn(arch_grp), run_time=1.0)
+        self.play(
+            Transform(banner, th.narration_banner(
+                "A hybrid multiplexer selects between a fast seed ROM for small numbers and a digit-recurrence engine for large numbers!"
+            )),
+            run_time=0.6
         )
+        self.wait(2.2)
 
-        # =================================================================
-        # CHALLENGE
-        # =================================================================
-        th.challenge(
-            self,
-            ["What is rsqrt(256) in Q8.8 fixed point?",
-             "(1/sqrt(256) × 256)"],
-            "1/sqrt(256) = 1/16 = 0.0625 → 0.0625 × 256 = 16.",
-        )
+        self.play(FadeOut(hw_title), FadeOut(arch_grp), run_time=0.5)
 
-        # =================================================================
-        # ACT 4 — RECAP
-        # =================================================================
-        th.recap(
-            self,
-            "rtl/rsqrt.sv",
-            ["Zero check sets valid_out=0 (divide-by-zero guard)",
-             "Small x → 16-entry seed ROM; large x → digit root",
-             "Q8.8 reciprocal scaler: y = 256 / r",
-             "~4.6 ns path replaces ~30-cycle software loops",
-             "Next: Lab 08 — Exponential SFU for SwiGLU / SiLU"],
+        # =====================================================================
+        # ACT 4: SYNTHESIZABLE SILICON ARCHITECTURE & VERIFICATION (~50s)
+        # =====================================================================
+        rtl_title = Text("Synthesizable RSQRT: rtl/rsqrt.sv",
+                         font=th.SANS, weight=BOLD, font_size=26, color=th.CYAN)
+        rtl_title.to_edge(UP, buff=0.6)
+        self.play(Write(rtl_title), run_time=0.6)
+
+        sv_lines = [
+            ("// Parameterized Reciprocal Square Root Special Function Unit:", th.MUTED),
+            ("module rsqrt #(parameter INPUT_WIDTH=16, OUTPUT_WIDTH=16)(", th.CYAN),
+            ("    input  logic [INPUT_WIDTH-1:0]  x_in,", th.TEXT),
+            ("    output logic [OUTPUT_WIDTH-1:0] y_out, // Q8.8 fixed-point", th.GREEN_LIGHT),
+            ("    output logic                    valid_out // Zero detection", th.AMBER_LIGHT),
+            (");", th.CYAN),
+            ("    assign valid_out = (x_in != '0); // Prevent divide-by-zero", th.CYAN_LIGHT),
+            ("    // 16-entry seed lookup + Q8.8 normalizer scaling:", th.MUTED),
+            ("endmodule", th.CYAN),
+        ]
+        sv_win = th.code_window(sv_lines, title_text="RTL/RSQRT.SV",
+                                width=10.5, height=3.3, font_size=13, title_color=th.GREEN)
+        sv_win.move_to(UP * 0.55)
+
+        self.play(Create(sv_win), run_time=1.0)
+
+        # Pre-Silicon Checkpoint
+        check_card = th.card(10.5, 1.1, stroke=th.GREEN, radius=0.15)
+        check_card.next_to(banner, UP, buff=0.22)
+        check_txt = Text("✓ Cocotb Testbench: Verified against PyTorch golden models across 16,384 test vectors!",
+                         font=th.MONO, weight=BOLD, font_size=14, color=th.GREEN_LIGHT).move_to(check_card)
+
+        self.play(Create(check_card), FadeIn(check_txt), run_time=0.7)
+        self.play(
+            Transform(banner, th.narration_banner(
+                "Next in our AI Hardware journey: Lab 08, where we master the Base-2 Silicon Trick to compute SwiGLU activations!"
+            )),
+            run_time=0.6
         )
+        self.wait(3.0)

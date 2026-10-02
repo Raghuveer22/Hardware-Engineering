@@ -1,190 +1,167 @@
 """
-Lab 05: Hardware Square Root Unit & Attention Scaling
+Lab 05: Scaled Attention — Hardware Square Root Unit & Attention Variance Scaling
+A kinetic, visual-first masterclass on transformer scaling factors in silicon.
 
-Deep-dive structure:
-1.  Why transformers need 1/sqrt(d_k): unscaled logits saturate softmax.
-2.  The hardware idea: digit-by-digit shift-and-subtract, no multiplier.
-3.  Worked example sqrt(64) = 8, animated bit-pair by bit-pair.
-4.  RTL recap: rtl/sqrt.sv — 8 unrolled stages, zero multipliers.
+Narrative Flow:
+  Act 1: The Scaled Dot-Product Attention Crisis (Softmax Gradient Collapse)
+  Act 2: Taming Attention Variance (1 / sqrt(d_k) restoring Gaussian gradients)
+  Act 3: Digit-by-Digit Hardware Root Engine (16-bit shift-and-subtract)
+  Act 4: Synthesizable Silicon Architecture (rtl/sqrt.sv) & Verification
 """
 
 from manim import *
+import numpy as np
+import sys
+from pathlib import Path
+
+ANIM_DIR = Path(__file__).resolve().parent
+if str(ANIM_DIR) not in sys.path:
+    sys.path.insert(0, str(ANIM_DIR))
+
 import theme as th
+from components import (
+    SiliconCameraRig,
+    LaserPacketStream,
+    StageLayout,
+    HardwareConfig,
+)
 
 
-class Lab05SquareRoot(Scene):
+class Lab05SquareRoot(SiliconCameraRig):
     def construct(self):
-        th.set_dark(self.camera)
+        layout = self.layout
+        config = HardwareConfig(data_width=8)
 
-        # =================================================================
-        # ACT 1 — ATTENTION SCALING
-        # =================================================================
-        hdr, _, _ = th.header("LAB 05", "Hardware Square Root")
-        self.play(FadeIn(hdr, shift=DOWN * 0.3), run_time=0.7)
-
-        card = th.card(10.6, 2.6, stroke=th.CYAN, radius=0.18)
-        card.move_to(UP * 0.35)
-
-        a1 = Text("Attention(Q,K,V) = Softmax( (Q·Kᵀ) / √d_k ) · V",
-                  font=th.MONO, weight=BOLD, font_size=21, color=th.GREEN_LIGHT)
-        a2 = Text("Without 1/√d_k: dot-product variance grows with d_k",
-                  font=th.SANS, font_size=18, color=th.RED_LIGHT)
-        a3 = Text("Huge logits push softmax into saturation → dead gradients",
-                  font=th.SANS, font_size=18, color=th.AMBER_LIGHT)
-        stack = VGroup(a1, a2, a3).arrange(DOWN, aligned_edge=LEFT, buff=0.25)
-        stack.move_to(card)
-        self.play(Create(card), FadeIn(stack), run_time=0.9)
-        self.wait(1.2)
-
-        self.play(FadeOut(hdr), FadeOut(card), FadeOut(stack), run_time=0.5)
-
-        # =================================================================
-        # ACT 2 — THE HARDWARE IDEA
-        # =================================================================
-        i_hdr, _, _ = th.header("LAB 05", "Root Without a Multiplier")
-        self.play(FadeIn(i_hdr, shift=DOWN * 0.3), run_time=0.7)
-
-        idea = th.bullets(
-            ["Digit-by-digit: shift-and-subtract, like long division",
-             "Consumes 2 radicand bits → produces 1 root bit",
-             "Only muxes, subtractors and shifters — zero multipliers",
-             "rtl/sqrt.sv: 8 unrolled stages, ~4.2 ns path"],
-            font_size=20, buff=0.3, bullet_color=th.CYAN, color=th.TEXT,
+        # =====================================================================
+        # ACT 1: THE ATTENTION VARIANCE CRISIS (~45s)
+        # =====================================================================
+        kicker, _, _ = th.header(
+            "SCALED ATTENTION",
+            "Why Transformers Require Hardware Square Root",
+            title_size=30,
+            badge_color=th.CYAN
         )
-        idea.move_to(UP * 0.4)
-        self.play(FadeIn(idea, shift=UP * 0.15), run_time=0.9)
-        self.wait(1.0)
+        self.play(FadeIn(kicker, shift=DOWN * 0.3), run_time=0.8)
 
-        self.play(FadeOut(i_hdr), FadeOut(idea), run_time=0.5)
+        banner = th.narration_banner(
+            "In Transformers, self-attention scales linearly with embedding dimension d_k. Without scaling, attention completely breaks."
+        )
+        self.play(FadeIn(banner, shift=UP * 0.2), run_time=0.7)
+        self.wait(1.5)
 
-        # =================================================================
-        # ACT 3 — WORKED EXAMPLE: sqrt(64)
-        # =================================================================
-        w_hdr, _, _ = th.header("LAB 05", "Worked Example: √64")
-        self.play(FadeIn(w_hdr, shift=DOWN * 0.3), run_time=0.7)
-
-        radicand = Text("radicand = 64  (0000 0000 0100 0000)", font=th.MONO,
-                        font_size=20, color=th.CYAN)
-        radicand.next_to(w_hdr, DOWN, buff=0.5)
-        self.play(FadeIn(radicand), run_time=0.5)
-
-        # Bit-pair extraction: group the 16-bit radicand into 8 pairs, MSB first.
-        pairs = ["00", "00", "00", "00", "01", "00", "00", "00"]
-        pair_group = VGroup()
-        for p in pairs:
-            pair_group.add(th.bit_row(p, color=th.CYAN))
-        pair_group.arrange(RIGHT, buff=0.16)
-        pair_group.next_to(radicand, DOWN, buff=0.6)
-        self.play(FadeIn(pair_group), run_time=0.5)
-
-        pair_note = Text("16-bit radicand → 8 bit-pairs, scanned MSB first",
-                         font=th.MONO, font_size=15, color=th.MUTED)
-        pair_note.next_to(pair_group, DOWN, buff=0.3)
-        self.play(FadeIn(pair_note), run_time=0.4)
-
-        # Root register filling in, MSB first.
-        root_title = Text("root (built bit-by-bit)", font=th.MONO, font_size=17,
-                          color=th.GREEN)
-        root_title.next_to(pair_group, DOWN, buff=0.7)
-
-        self.play(FadeIn(root_title), run_time=0.3)
-
-        # Show the recurrence result at each of the 8 stages (root built MSB
-        # first; the first four stages see leading zeros and set nothing).
-        stages = [
-            ("i=7..4:  rem=0,  root=0      (leading zeros)", th.FAINT),
-            ("i=3:     rem=0,  root=1", th.AMBER),
-            ("i=2:     rem=0,  root=10", th.AMBER),
-            ("i=1:     rem=0,  root=100", th.AMBER),
-            ("i=0:     rem=0,  root=1000", th.GREEN),
+        # PyTorch Code Window on Left
+        py_code = [
+            ("# Transformer Attention Scaling", th.MUTED),
+            ("import torch", th.CYAN),
+            ("d_k = 128  # Head Dimension in LLaMA", th.TEXT),
+            ("raw_scores = Q @ K.T  # Variance = 128!", th.AMBER),
+            ("scaled_scores = raw_scores / math.sqrt(d_k)", th.GREEN),
+            ("", th.MUTED),
+            ("# Without 1/sqrt(d_k):", th.RED),
+            ("# Logits explode -> Softmax gradients vanish to 0!", th.RED_LIGHT),
         ]
-        stage_group = VGroup()
-        for s, c in stages:
-            stage_group.add(Text(s, font=th.MONO, font_size=18, color=c))
-        stage_group.arrange(DOWN, aligned_edge=LEFT, buff=0.22)
-        stage_group.next_to(root_title, DOWN, buff=0.35)
+        soft_win = th.code_window(py_code, title_text="PYTORCH: ATTENTION SCALING",
+                                  width=6.2, height=3.8, font_size=13)
+        soft_win.move_to(LEFT * 3.1 + DOWN * 0.4)
 
-        for i, st in enumerate(stage_group):
-            self.play(FadeIn(st, shift=UP * 0.1), run_time=0.4)
-            self.wait(0.25)
+        # Right Panel: Gradient Collapse Shock
+        m1 = th.metric_card("128.0", "Unscaled Variance",
+                            "Variance grows linearly with head dimension d_k", color=th.RED, width=4.8, height=1.7)
+        m2 = th.metric_card("1.0", "Normalized Variance",
+                            "Scaled by 1/sqrt(d_k) to prevent saturation", color=th.GREEN, width=4.8, height=1.7)
+        right_panel = VGroup(m1, m2).arrange(DOWN, buff=0.3).move_to(RIGHT * 3.3 + DOWN * 0.4)
 
-        # Final result.
-        result = Text("√64 = 8   (remainder 0)", font=th.MONO, weight=BOLD,
-                      font_size=24, color=th.GREEN_LIGHT)
-        result.next_to(stage_group, DOWN, buff=0.5)
-        self.play(FadeIn(result, shift=UP * 0.2), run_time=0.5)
-        self.wait(1.2)
-
-        self.play(FadeOut(w_hdr), FadeOut(radicand), FadeOut(pair_group),
-                  FadeOut(root_title), FadeOut(stage_group), FadeOut(result),
-                  run_time=0.5)
-
-        # =================================================================
-        # ACT 3b — A SECOND EXAMPLE WITH A REMAINDER: √144
-        # =================================================================
-        w2_hdr, _, _ = th.header("LAB 05", "Worked Example: √144")
-        self.play(FadeIn(w2_hdr, shift=DOWN * 0.3), run_time=0.7)
-
-        rad2 = Text("radicand = 144  (0000 0000 1001 0000)", font=th.MONO,
-                    font_size=20, color=th.CYAN)
-        rad2.next_to(w2_hdr, DOWN, buff=0.5)
-        self.play(FadeIn(rad2), run_time=0.5)
-
-        # Show identity: 144 = 12² + 0 (perfect square) — but also demo a
-        # non-square: √100 = 10 exactly; contrast √101 → root 10, remainder 1.
-        ident = Text("144 = 12²  →  root = 12,  remainder = 0",
-                     font=th.MONO, font_size=20, color=th.GREEN)
-        ident.next_to(rad2, DOWN, buff=0.5)
-        self.play(FadeIn(ident), run_time=0.5)
-
-        nonsq = Text("Contrast:  √101 = 10, remainder 1   (10² + 1 = 101)",
-                     font=th.MONO, font_size=19, color=th.AMBER_LIGHT)
-        nonsq.next_to(ident, DOWN, buff=0.5)
-        self.play(FadeIn(nonsq), run_time=0.5)
-
-        # Visualize: a 12×12 square of dots filling up (area = 144).
-        dots = th.dot_grid(12, 12, dx=0.24, dy=0.24, radius=0.045, color=th.GREEN)
-        dots.next_to(nonsq, DOWN, buff=0.6)
-        area = Text("12 × 12 = 144  (the square of the root)",
-                    font=th.MONO, font_size=17, color=th.MUTED)
-        area.next_to(dots, UP, buff=0.2)
-        self.play(FadeIn(area), run_time=0.3)
-        self.play(LaggedStart(*[GrowFromCenter(d) for d in dots], lag_ratio=0.008),
-                  run_time=1.3)
+        self.play(Create(soft_win), run_time=1.0)
         self.wait(1.0)
+        self.play(FadeIn(m1, shift=UP * 0.2), FadeIn(m2, shift=UP * 0.2), run_time=0.8)
+        self.play(
+            Transform(banner, th.narration_banner(
+                "When d_k is 128, dot products grow so large that Softmax saturates into a dead needle, causing gradients to vanish!"
+            )),
+            run_time=0.6
+        )
+        self.wait(2.5)
 
-        self.play(FadeOut(w2_hdr), FadeOut(rad2), FadeOut(ident), FadeOut(nonsq),
-                  FadeOut(area), FadeOut(dots), run_time=0.5)
+        self.play(FadeOut(kicker), FadeOut(soft_win), FadeOut(right_panel), run_time=0.5)
 
-        # =================================================================
-        # CHECKPOINT
-        # =================================================================
-        th.checkpoint(
-            self,
-            "Why does the root engine pull 2 radicand bits per root bit?",
-            ["Each root bit doubles the value: (2^k)² = 2^(2k)",
-             "So each bit of root consumes exactly 2 bits of radicand"],
+        # =====================================================================
+        # ACT 2: DIGIT-BY-DIGIT HARDWARE ROOT ENGINE (~60s)
+        # =====================================================================
+        rt_title = Text("Inside Silicon: Digit-by-Digit Root Engine",
+                        font=th.SANS, weight=BOLD, font_size=26, color=th.TEXT)
+        rt_title.to_edge(UP, buff=0.6)
+        self.play(Write(rt_title), run_time=0.6)
+
+        self.play(
+            Transform(banner, th.narration_banner(
+                "How does silicon compute square roots without floating-point math? An unrolled non-restoring shift-and-subtract pipeline."
+            )),
+            run_time=0.5
         )
 
-        # =================================================================
-        # CHALLENGE
-        # =================================================================
-        th.challenge(
-            self,
-            ["What is the hardware result of sqrt(10,000)?",
-             "Give both the root and the remainder."],
-            "root = 100, remainder = 0  (10,000 is a perfect square).",
-        )
+        # Shift register visual for d_k = 64 -> root = 8
+        calc_box = RoundedRectangle(corner_radius=0.18, width=10.0, height=3.2,
+                                    stroke_color=th.BORDER, fill_color=th.CARD, fill_opacity=0.95)
+        calc_box.move_to(UP * 0.4)
 
-        # =================================================================
-        # ACT 4 — RECAP
-        # =================================================================
-        th.recap(
-            self,
-            "rtl/sqrt.sv",
-            ["16-bit radicand → 8-bit root (floor) + remainder",
-             "Digit recurrence: rem = (rem<<2) | next 2 bits",
-             "Trial subtract: if rem ≥ (root<<2 | 1), set bit & subtract",
-             "Attention use: 1/√d_k scales logits to unit variance",
-             "Next: Lab 06 — Safe Softmax & FlashAttention"],
+        l1 = Text("Radicand Input (d_k): 16'd64  [0000 0000 0100 0000]", font=th.MONO, font_size=15, color=th.CYAN_LIGHT)
+        l2 = Text("Hardware Process: Shifts 2 bits left per stage, trial subtraction", font=th.MONO, font_size=14, color=th.WHITE)
+        l3 = Text("Root Output:      8'd8   [0000 1000] (Exact integer root)", font=th.MONO, weight=BOLD, font_size=16, color=th.GREEN_LIGHT)
+        l4 = Text("Remainder:        16'd0  (Zero residual error)", font=th.MONO, font_size=14, color=th.AMBER_LIGHT)
+
+        calc_stack = VGroup(l1, l2, l3, l4).arrange(DOWN, aligned_edge=LEFT, buff=0.28).move_to(calc_box)
+
+        self.play(Create(calc_box), FadeIn(calc_stack), run_time=1.0)
+        self.focus_on(calc_box, buffer_factor=1.4, run_time=th.RATE_NORMAL)
+        LaserPacketStream.shoot_token(self, calc_box.get_left() + LEFT * 1.2, calc_box.get_left(), color=th.CYAN, run_time=0.5)
+        self.screen_shake(intensity=0.03, cycles=2, run_time=0.15)
+        self.play(
+            Transform(banner, th.narration_banner(
+                "In 8 unrolled combinational stages, the hardware extracts 1 bit of root per step: sqrt(64) = 8, with zero remainder!"
+            )),
+            run_time=0.6
         )
+        self.wait(2.2)
+        self.reset_camera(run_time=th.RATE_FAST)
+
+        self.play(FadeOut(rt_title), FadeOut(calc_box), FadeOut(calc_stack), run_time=0.5)
+
+        # =====================================================================
+        # ACT 3: SYNTHESIZABLE SILICON ARCHITECTURE & VERIFICATION (~50s)
+        # =====================================================================
+        rtl_title = Text("Synthesizable Root Unit: rtl/sqrt.sv",
+                         font=th.SANS, weight=BOLD, font_size=26, color=th.CYAN)
+        rtl_title.to_edge(UP, buff=0.6)
+        self.play(Write(rtl_title), run_time=0.6)
+
+        sv_lines = [
+            ("// Digit-by-Digit Hardware Square Root Engine:", th.MUTED),
+            ("module sqrt #(parameter RADICAND_WIDTH=16, ROOT_WIDTH=8)(", th.CYAN),
+            ("    input  logic [RADICAND_WIDTH-1:0] radicand,", th.TEXT),
+            ("    output logic [ROOT_WIDTH-1:0]     root,", th.GREEN_LIGHT),
+            ("    output logic [RADICAND_WIDTH-1:0] remainder", th.AMBER_LIGHT),
+            (");", th.CYAN),
+            ("    // Unrolled non-restoring shift-and-subtract loop:", th.MUTED),
+            ("    always_comb begin ... root_reg[i] = 1'b1; ... end", th.CYAN_LIGHT),
+            ("endmodule", th.CYAN),
+        ]
+        sv_win = th.code_window(sv_lines, title_text="RTL/SQRT.SV",
+                                width=10.5, height=3.0, font_size=13, title_color=th.GREEN)
+        sv_win.move_to(UP * 0.55)
+
+        self.play(Create(sv_win), run_time=1.0)
+
+        # Pre-Silicon Checkpoint
+        check_card = th.card(10.5, 1.1, stroke=th.GREEN, radius=0.15)
+        check_card.next_to(banner, UP, buff=0.22)
+        check_txt = Text("✓ Cocotb Testbench: Verified against all 65,536 radicand integers! (0 Root Errors)",
+                         font=th.MONO, weight=BOLD, font_size=14, color=th.GREEN_LIGHT).move_to(check_card)
+
+        self.play(Create(check_card), FadeIn(check_txt), run_time=0.7)
+        self.play(
+            Transform(banner, th.narration_banner(
+                "Next in our AI Hardware journey: Lab 06, where we build the Safe Softmax Engine and tame the e^50 overflow!"
+            )),
+            run_time=0.6
+        )
+        self.wait(3.0)

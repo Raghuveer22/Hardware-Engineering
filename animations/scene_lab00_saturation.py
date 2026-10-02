@@ -1,292 +1,247 @@
 """
-Lab 00: Signed Adder & Saturation Arithmetic
-
-Deep-dive structure:
-1.  The bug: +100 + +50 should be +150, but 8-bit wrap-around yields -106.
-    A real 8-bit adder bit-row is shown flipping as the carry corrupts the sign.
-2.  The 2's-complement number wheel: a pointer physically rotates past +127
-    and wraps to -106 — the "overflow cliff".
-3.  The fix: saturation. The same wheel now has a clamp that stops the pointer
-    at +127. The overflow-detection formula is animated on the adder.
-4.  RTL recap: rtl/adder.sv — always_comb, overflow flag, saturation mux.
+Lab 00: The Number Crisis — Signed Integer Overflow & Saturation Clamping
+A kinetic, visual-first masterclass on fixed-point arithmetic in AI silicon.
+Refactored using the modular, parameter-driven Standard Cell Animation Library.
 """
 
 from manim import *
+import numpy as np
+import sys
+from pathlib import Path
+
+# Ensure animations directory is in sys.path
+ANIM_DIR = Path(__file__).resolve().parent
+if str(ANIM_DIR) not in sys.path:
+    sys.path.insert(0, str(ANIM_DIR))
+
 import theme as th
+from components import (
+    SiliconCameraRig,
+    TwosComplementWheel,
+    HardwareConfig,
+    StageLayout,
+)
 
 
-class Lab00SaturationIntro(Scene):
+class Lab00SaturationIntro(SiliconCameraRig):
     def construct(self):
-        th.set_dark(self.camera)
+        layout = self.layout
+        config = HardwareConfig(data_width=8)
 
-        # =================================================================
-        # ACT 1 — THE BUG: WRAP-AROUND CORRUPTION
-        # =================================================================
-        hdr, _, _ = th.header("LAB 00", "The 8-Bit Wrap-Around Bug")
-        self.play(FadeIn(hdr, shift=DOWN * 0.3), run_time=0.7)
-
-        # Math expectation row.
-        math_card = th.card(9.0, 1.9, stroke=th.BORDER, radius=0.18)
-        math_card.move_to(UP * 0.75)
-        op1 = Text("+100", font=th.MONO, weight=BOLD, font_size=34, color=th.CYAN)
-        plus = Text("+", font=th.MONO, weight=BOLD, font_size=34, color=th.TEXT)
-        op2 = Text("+50", font=th.MONO, weight=BOLD, font_size=34, color=th.AMBER)
-        eq = Text("=", font=th.MONO, weight=BOLD, font_size=34, color=th.TEXT)
-        expect = Text("+150", font=th.MONO, weight=BOLD, font_size=36, color=th.GREEN)
-        row = VGroup(op1, plus, op2, eq, expect).arrange(RIGHT, buff=0.35)
-        row.move_to(math_card)
-        self.play(Create(math_card), FadeIn(row), run_time=0.8)
-        self.wait(0.6)
-
-        # Reveal the signed 8-bit range.
-        rng = Text("8-bit signed range: [-128, +127]",
-                   font=th.MONO, font_size=20, color=th.MUTED)
-        rng.next_to(math_card, DOWN, buff=0.3)
-        self.play(FadeIn(rng), run_time=0.5)
-        self.wait(0.7)
-
-        # Cross out +150 and slam in -106.
-        strike = Line(expect.get_left() + LEFT * 0.1,
-                      expect.get_right() + RIGHT * 0.1,
-                      color=th.RED, stroke_width=5)
-        self.play(Create(strike), run_time=0.35)
-        bug = Text("-106", font=th.MONO, weight=BOLD, font_size=40, color=th.RED)
-        bug.move_to(expect)
-        self.play(Transform(expect, bug), FadeOut(strike), run_time=0.5)
-
-        banner = Text("SIGN BIT CORRUPTED!", font=th.SANS, weight=BOLD,
-                      font_size=26, color=th.RED_LIGHT)
-        banner.next_to(rng, DOWN, buff=0.4)
-        self.play(FadeIn(banner, shift=UP * 0.2), run_time=0.5)
-        self.wait(0.9)
-
-        # Animate the bit-level cause: an 8-bit adder with carry rippling
-        # into the sign bit. Show both operands and the (wrong) result.
-        self.play(FadeOut(banner), FadeOut(rng), FadeOut(math_card),
-                  FadeOut(row), run_time=0.5)
-
-        # =================================================================
-        # ACT 1b — WHY? BIT-LEVEL VIEW OF THE OVERFLOW
-        # =================================================================
-        sub = Text("Why? Carry ripples into the sign bit.",
-                   font=th.SANS, font_size=22, color=th.MUTED)
-        sub.next_to(hdr, DOWN, buff=0.3)
-        self.play(FadeIn(sub), run_time=0.4)
-
-        # Operand A = +100 -> 01100100 ; B = +50 -> 00110010
-        a_bits = th.bit_row("01100100")
-        b_bits = th.bit_row("00110010")
-        s_bits = th.bit_row("10010110")  # -106 in 8-bit
-        for br, c in [(a_bits, th.CYAN), (b_bits, th.AMBER), (s_bits, th.RED)]:
-            for cell in br:
-                cell[0].set_stroke(c, width=1.5)
-                cell[1].set_color(c)
-
-        a_lbl = Text("A = +100", font=th.MONO, font_size=17, color=th.CYAN)
-        b_lbl = Text("B = +50", font=th.MONO, font_size=17, color=th.AMBER)
-        s_lbl = Text("SUM", font=th.MONO, font_size=17, color=th.RED)
-
-        a_grp = VGroup(a_lbl, a_bits).arrange(RIGHT, buff=0.4)
-        b_grp = VGroup(b_lbl, b_bits).arrange(RIGHT, buff=0.4)
-        s_grp = VGroup(s_lbl, s_bits).arrange(RIGHT, buff=0.4)
-        stack = VGroup(a_grp, b_grp).arrange(DOWN, buff=0.4)
-        s_grp.next_to(stack, DOWN, buff=0.7)
-
-        # Align columns: center the bit rows.
-        group = VGroup(a_grp, b_grp, s_grp).move_to(DOWN * 0.8)
-        self.play(FadeIn(a_grp, b_grp), run_time=0.6)
-        self.play(FadeIn(s_grp), run_time=0.5)
-
-        # Highlight the sign bit corruption: MSB is 1 -> negative!
-        msb = s_bits[0]
-        box = SurroundingRectangle(msb, color=th.RED, buff=0.06, stroke_width=3)
-        self.play(Create(box), run_time=0.4)
-        note = Text("MSB = 1  →  interpreted as NEGATIVE",
-                    font=th.MONO, font_size=17, color=th.RED_LIGHT)
-        note.next_to(group, DOWN, buff=0.5)
-        self.play(FadeIn(note), run_time=0.4)
-        self.wait(1.2)
-
-        self.play(FadeOut(hdr), FadeOut(sub), FadeOut(group), FadeOut(box),
-                  FadeOut(note), run_time=0.5)
-
-        # =================================================================
-        # ACT 2 — THE NUMBER WHEEL
-        # =================================================================
-        w_hdr, _, _ = th.header("LAB 00", "The 2's Complement Number Wheel")
-        self.play(FadeIn(w_hdr, shift=DOWN * 0.3), run_time=0.7)
-
-        center = DOWN * 0.4
-        radius = 2.3
-        outer = Circle(radius=radius, color=th.BORDER, stroke_width=4)
-        outer.move_to(center)
-
-        # The overflow cliff between +127 and -128 at the bottom.
-        cliff_start = center + DOWN * radius
-        cliff = Line(cliff_start, cliff_start + DOWN * 1.1, color=th.RED,
-                     stroke_width=5)
-        cliff_lbl = Text("OVERFLOW CLIFF", font=th.SANS, weight=BOLD,
-                         font_size=16, color=th.RED)
-        cliff_lbl.next_to(cliff, DOWN, buff=0.12)
-
-        # Tick labels at cardinal points.
-        lab_0 = Text("0", font=th.MONO, font_size=17, color=th.CYAN)
-        lab_0.next_to(center + UP * radius, UP, buff=0.1)
-        lab_pos = Text("+127", font=th.MONO, font_size=17, color=th.GREEN)
-        lab_pos.next_to(center + DOWN * radius * 0.85 + RIGHT * radius * 0.6,
-                        RIGHT, buff=0.1)
-        lab_neg = Text("-128", font=th.MONO, font_size=17, color=th.RED)
-        lab_neg.next_to(center + DOWN * radius * 0.85 + LEFT * radius * 0.6,
-                        LEFT, buff=0.1)
-
-        self.play(Create(outer), Create(cliff), FadeIn(cliff_lbl),
-                  FadeIn(lab_0), FadeIn(lab_pos), FadeIn(lab_neg), run_time=0.9)
-
-        # Pointer.
-        pointer = Arrow(start=center, end=center + UP * radius * 0.82,
-                        buff=0, color=th.AMBER, stroke_width=6, max_tip_length_to_length_ratio=0.2)
-        readout = Text("+100", font=th.MONO, weight=BOLD, font_size=24,
-                       color=th.AMBER).move_to(center)
-        self.play(GrowArrow(pointer), FadeIn(readout), run_time=0.6)
-
-        # +100 is at angle -0.75π from the top; +50 adds -0.45π more.
-        self.play(Rotate(pointer, angle=-PI * 0.75, about_point=center),
-                  run_time=1.2)
-        self.wait(0.4)
-
-        # Adding +50: normal rotation would pass the cliff. We rotate through
-        # it so the viewer sees the pointer sweep into -106 territory.
-        self.play(Rotate(pointer, angle=-PI * 0.45, about_point=center),
-                  Transform(readout, Text("-106", font=th.MONO, weight=BOLD,
-                                          font_size=24, color=th.RED).move_to(center)),
-                  pointer.animate.set_color(th.RED), run_time=1.6)
-        self.wait(0.8)
-
-        # Wrap note.
-        wrap = Text("No barrier: the number wraps around.",
-                    font=th.SANS, font_size=20, color=th.MUTED)
-        wrap.next_to(cliff_lbl, DOWN, buff=0.35)
-        self.play(FadeIn(wrap), run_time=0.5)
-        self.wait(1.0)
-        self.play(FadeOut(wrap), run_time=0.3)
-
-        # =================================================================
-        # ACT 3 — SATURATION: THE CLAMP
-        # =================================================================
-        # Rewind the pointer back to +100 to replay with saturation.
-        self.play(Rotate(pointer, angle=+PI * 0.45, about_point=center),
-                  Transform(readout, Text("+100", font=th.MONO, weight=BOLD,
-                                          font_size=24, color=th.AMBER).move_to(center)),
-                  pointer.animate.set_color(th.AMBER), run_time=1.2)
-        self.wait(0.3)
-
-        clamp = th.card(2.6, 0.75, stroke=th.GREEN, radius=0.12, fill=th.GREEN_DARK)
-        clamp.next_to(cliff, DOWN, buff=0.1)
-        clamp_t = Text("CLAMP", font=th.SANS, weight=BOLD, font_size=18,
-                       color=th.GREEN_LIGHT).move_to(clamp)
-        self.play(Create(clamp), Write(clamp_t), run_time=0.5)
-
-        # Pointer now tries to add +50 but gets stopped at +127.
-        target = center + DOWN * radius * 0.82 + RIGHT * radius * 0.25
-        self.play(pointer.animate.put_start_and_end_on(center, target),
-                  Transform(readout, Text("+127", font=th.MONO, weight=BOLD,
-                                          font_size=26, color=th.GREEN).move_to(center)),
-                  run_time=1.0)
-        self.wait(0.3)
-
-        sat_note = Text("Saturation clamps to MAX_POS = +127",
-                        font=th.SANS, weight=BOLD, font_size=22, color=th.GREEN_LIGHT)
-        sat_note.to_edge(DOWN, buff=0.5)
-        self.play(FadeIn(sat_note, shift=UP * 0.2), run_time=0.6)
-        self.wait(1.2)
-
-        self.play(FadeOut(w_hdr), FadeOut(outer), FadeOut(cliff), FadeOut(cliff_lbl),
-                  FadeOut(lab_0), FadeOut(lab_pos), FadeOut(lab_neg),
-                  FadeOut(pointer), FadeOut(readout), FadeOut(clamp), FadeOut(clamp_t),
-                  FadeOut(sat_note), run_time=0.5)
-
-        # =================================================================
-        # ACT 4 — THE OVERFLOW DETECTOR + SATURATION MUX
-        # =================================================================
-        f_hdr, _, _ = th.header("LAB 00", "How the Hardware Detects Overflow")
-        self.play(FadeIn(f_hdr, shift=DOWN * 0.3), run_time=0.7)
-
-        formula = Text(
-            "overflow = (A[7] == B[7])  &  (SUM[7] != A[7])",
-            font=th.MONO, weight=BOLD, font_size=22, color=th.AMBER_LIGHT,
+        # =====================================================================
+        # ACT 1: THE PYTORCH HOOK & THE SILICON BUG
+        # =====================================================================
+        kicker, _, _ = th.header(
+            "THE NUMBER CRISIS",
+            "Why AI Accelerators Need Saturation Arithmetic",
+            title_size=th.FONT_TITLE,
+            badge_color=th.CYAN
         )
-        formula.next_to(f_hdr, DOWN, buff=0.5)
-        self.play(Write(formula), run_time=0.9)
+        self.play(FadeIn(kicker, shift=DOWN * 0.3), run_time=th.RATE_NORMAL)
+
+        banner = th.narration_banner(
+            "In modern AI chips, INT8 quantization makes models 4x faster. But in silicon, standard addition hides a dangerous trap."
+        )
+        self.play(FadeIn(banner, shift=UP * 0.2), run_time=th.RATE_FAST)
+        self.wait(1.5)
+
+        # PyTorch Code Window on Left
+        py_code = [
+            ("# PyTorch INT8 Quantized Layer", th.MUTED),
+            ("import torch", th.CYAN),
+            ("a = torch.tensor([100], dtype=torch.int8)", th.TEXT),
+            ("b = torch.tensor([50],  dtype=torch.int8)", th.TEXT),
+            ("c = a + b  # Expected: +150", th.GREEN),
+            ("", th.MUTED),
+            ("print(c)   # Reality in Silicon:", th.AMBER),
+            (">>> tensor([-106])  # 🚨 CATASTROPHIC WRAP!", th.RED),
+        ]
+        soft_win = th.code_window(
+            py_code,
+            title_text="PYTORCH: INT8 OVERFLOW BUG",
+            width=5.8,
+            height=3.8,
+            font_size=th.FONT_TINY
+        )
+
+        # Right Panel: Metric Cards
+        m1 = th.metric_card(
+            "-106",
+            "Corrupted Activation",
+            "Sign bit flipped: positive became negative!",
+            color=th.RED,
+            width=4.8,
+            height=1.7
+        )
+        m2 = th.metric_card(
+            f"{config.min_val} to +{config.max_val}",
+            "8-Bit Dynamic Range",
+            "Signed two's complement closed boundary",
+            color=th.AMBER,
+            width=4.8,
+            height=1.7
+        )
+        right_panel = VGroup(m1, m2).arrange(DOWN, buff=th.SPACE_MD)
+
+        stage_split = layout.split_columns(soft_win, right_panel, buff=th.SPACE_LG)
+        self.play(Create(soft_win), FadeIn(right_panel, shift=UP * 0.2), run_time=th.RATE_NORMAL)
+
+        self.play(
+            Transform(banner, th.narration_banner(
+                "A large positive neural activation suddenly wraps around into a massive negative value, corrupting attention scores!"
+            )),
+            run_time=th.RATE_FAST
+        )
+        self.wait(2.2)
+
+        self.play(
+            FadeOut(kicker),
+            FadeOut(stage_split),
+            run_time=th.RATE_FAST
+        )
+
+        # =====================================================================
+        # ACT 2 & 3: THE TWO'S COMPLEMENT SPEEDOMETER WHEEL & CLAMP
+        # =====================================================================
+        act2_title = Text(
+            "Inside the Silicon: The Two's Complement Speedometer",
+            font=th.SANS, weight=BOLD, font_size=th.FONT_SUBHEAD, color=th.TEXT
+        ).move_to(layout.hud_anchor(buff=0.6))
+        self.play(Write(act2_title), run_time=th.RATE_FAST)
+
+        # Create our parameter-driven modular TwosComplementWheel
+        wheel = TwosComplementWheel(bits=8, radius=2.1).move_to(layout.center + DOWN * 0.1)
+        self.play(Create(wheel), run_time=th.RATE_SLOW)
+
+        # Smooth camera dive into the wheel for cinematic focus
+        self.focus_on(wheel, buffer_factor=1.45, run_time=th.RATE_NORMAL)
+
+        # Start at +100
+        wheel.set_value_instant(100)
+        self.play(
+            Transform(banner, th.narration_banner(
+                "Two's complement behaves like a circular speedometer. We start at +100 in the green positive zone."
+            )),
+            run_time=th.RATE_FAST
+        )
+        self.wait(1.5)
+
+        # Scenario A: Standard Unclamped Addition (+100 + 50) -> Catastrophic Overflow!
+        self.play(
+            Transform(banner, th.narration_banner(
+                "Add +50 without saturation: watch the needle cross the +127 boundary and violently snap into the red negative zone!"
+            )),
+            run_time=th.RATE_FAST
+        )
+
+        # Animate sweep across the boundary to -106
+        wheel.animate_sweep(self, 150, run_time=1.4, clamp=False)
+        
+        # Tactile screen vibration indicating arithmetic corruption!
+        self.screen_shake(intensity=0.09, cycles=4, run_time=0.3)
+
+        overflow_badge = Text(
+            "🚨 OVERFLOW CORRUPTION: +100 + 50 = -106!",
+            font=th.MONO, weight=BOLD, font_size=th.FONT_CAPTION, color=th.RED
+        ).next_to(wheel, UP, buff=th.SPACE_MD)
+        self.play(FadeIn(overflow_badge, shift=UP * 0.2), run_time=th.RATE_FAST)
+        self.wait(2.0)
+
+        # Scenario B: Engaging Hardware Saturation Clamping
+        self.play(
+            FadeOut(overflow_badge),
+            Transform(banner, th.narration_banner(
+                "The Architectural Fix: Hardware Saturation. A mechanical clamp drops at +127 to prevent wraparound."
+            )),
+            run_time=th.RATE_FAST
+        )
+
+        # Reset needle to +100
+        wheel.set_value_instant(100)
         self.wait(0.5)
 
-        expl = th.bullets(
-            ["Both inputs share the same sign bit",
-             "But the sum's sign bit flipped",
-             "→ impossible result: a positive overflow!"],
-            font_size=19, buff=0.25, bullet_color=th.RED, color=th.TEXT,
+        # Deploy the spring-loaded saturation clamp barrier!
+        wheel.deploy_clamp_barrier(self)
+        self.wait(0.8)
+
+        # Sweep again from +100 toward +150: hits the clamp at +127!
+        self.play(
+            Transform(banner, th.narration_banner(
+                "Now add +50 again: the needle advances toward +150, SLAMS into the clamp, and holds safely at +127!"
+            )),
+            run_time=th.RATE_FAST
         )
-        expl.next_to(formula, DOWN, buff=0.5, aligned_edge=LEFT)
-        self.play(FadeIn(expl, shift=UP * 0.15), run_time=0.8)
-        self.wait(1.0)
+        wheel.animate_sweep(self, 150, run_time=1.2, clamp=True)
+        
+        # Clamp contact impact
+        self.screen_shake(intensity=0.05, cycles=2, run_time=0.18)
 
-        # The saturation mux: overflow selects the clamp value.
-        mux_card = th.card(9.4, 2.2, stroke=th.GREEN, radius=0.16)
-        mux_card.to_edge(DOWN, buff=0.5)
-        mux_t = Text("Saturation Mux", font=th.SANS, weight=BOLD, font_size=20,
-                     color=th.GREEN_LIGHT).next_to(mux_card.get_top(), DOWN, buff=0.25)
+        clamped_badge = Text(
+            "✓ CLAMPED SAFELY AT +127 (MAX_POS)",
+            font=th.MONO, weight=BOLD, font_size=th.FONT_CAPTION, color=th.GREEN_LIGHT
+        ).next_to(wheel, UP, buff=th.SPACE_MD)
+        self.play(FadeIn(clamped_badge, shift=UP * 0.2), run_time=th.RATE_FAST)
+        self.wait(2.2)
 
-        in1 = Text("wrap sum  -106", font=th.MONO, font_size=17, color=th.RED)
-        in2 = Text("clamp  +127", font=th.MONO, font_size=17, color=th.GREEN)
-        sel = Text("overflow flag", font=th.MONO, font_size=16, color=th.AMBER)
-        out = Text("+127", font=th.MONO, weight=BOLD, font_size=22, color=th.GREEN)
-
-        mux_rows = VGroup(in1, in2).arrange(RIGHT, buff=1.2)
-        mux_rows.move_to(mux_card.get_center() + UP * 0.25)
-        sel.next_to(mux_rows, DOWN, buff=0.35)
-        out.next_to(mux_card, RIGHT, buff=0.7)
-
-        self.play(Create(mux_card), FadeIn(mux_t), FadeIn(mux_rows), FadeIn(sel),
-                  run_time=0.7)
-        # Select clamp.
-        self.play(FadeIn(out), run_time=0.3)
-        arrow_out = Arrow(mux_card.get_right(), out.get_left(), buff=0.05,
-                          color=th.GREEN)
-        self.play(Create(arrow_out), run_time=0.4)
-        self.wait(1.0)
-
-        self.play(FadeOut(f_hdr), FadeOut(formula), FadeOut(expl), FadeOut(mux_card),
-                  FadeOut(mux_t), FadeOut(mux_rows), FadeOut(sel), FadeOut(out),
-                  FadeOut(arrow_out), run_time=0.5)
-
-        # =================================================================
-        # CHECKPOINT
-        # =================================================================
-        th.checkpoint(
-            self,
-            "Adding two negatives overflows — does it clamp to +127 or -128?",
-            ["Two negatives overflow negative → clamp to MIN_NEG = -128",
-             "Positive overflow (+ sign) clamps to +127 (MAX_POS)"],
+        # Reset camera back to full wide-angle view
+        self.play(
+            FadeOut(act2_title),
+            FadeOut(wheel),
+            FadeOut(clamped_badge),
+            run_time=th.RATE_FAST
         )
+        self.reset_camera(run_time=th.RATE_FAST)
 
-        # =================================================================
-        # CHALLENGE
-        # =================================================================
-        th.challenge(
-            self,
-            ["Add -100 + -50 in 8-bit signed with saturate = 1.",
-             "What does the hardware output, and is the overflow flag set?"],
-            "sum = -128 (clamped), overflow = 1.  -150 < -128, so it clamps down.",
+        # =====================================================================
+        # ACT 4: SYNTHESIZABLE SILICON GATES & PRE-SILICON VERIFICATION
+        # =====================================================================
+        rtl_title = Text(
+            "Synthesizable SystemVerilog: rtl/adder.sv",
+            font=th.SANS, weight=BOLD, font_size=th.FONT_SUBHEAD, color=th.CYAN
+        ).move_to(layout.hud_anchor(buff=0.6))
+        self.play(Write(rtl_title), run_time=th.RATE_FAST)
+
+        self.play(
+            Transform(banner, th.narration_banner(
+                "Here is the synthesizable logic. An XOR gate detects sign mismatch, and a multiplexer clamps the output in 1 cycle!"
+            )),
+            run_time=th.RATE_FAST
         )
 
-        # =================================================================
-        # ACT 5 — RECAP
-        # =================================================================
-        th.recap(
-            self,
-            "Lab 00 Takeaway",
-            ["Plain addition wraps: +100 + +50 → -106 (sign corrupted)",
-             "Overflow detector: A[7]==B[7] & SUM[7]!=A[7]",
-             "Saturation mux clamps to +127 / -128 (rtl/adder.sv)",
-             "Next: Lab 01 — The INT8 Multiplier & O(N²) Silicon"],
-            stroke=th.CYAN, title_color=th.CYAN, font_size=19,
+        sv_lines = [
+            ("// Overflow occurs when two same-sign inputs produce opposite sign:", th.MUTED),
+            ("assign pos_overflow = (~a[7] & ~b[7]) &  sum_raw[7];", th.CYAN_LIGHT),
+            ("assign neg_overflow = ( a[7] &  b[7]) & ~sum_raw[7];", th.RED_LIGHT),
+            ("", th.MUTED),
+            ("// 3-Way Hardware Saturation Multiplexer:", th.AMBER),
+            ("assign sum_out = (pos_overflow) ? 8'sd127 :", th.GREEN),
+            ("                 (neg_overflow) ? -8'sd128 : sum_raw[7:0];", th.GREEN),
+        ]
+        sv_win = th.code_window(
+            sv_lines,
+            title_text="RTL/ADDER.SV: COMBINATIONAL SATURATION",
+            width=9.8,
+            height=3.0,
+            font_size=th.FONT_TINY,
+            title_color=th.GREEN
+        ).move_to(layout.center + UP * 0.4)
+
+        self.play(Create(sv_win), run_time=th.RATE_NORMAL)
+        self.wait(1.2)
+
+        # Pre-Silicon Checkpoint
+        check_card = th.card(9.8, 1.1, stroke=th.GREEN, radius=0.15)
+        check_card.move_to(layout.center + DOWN * 1.8)
+        pass_txt = Text(
+            "✓ Cocotb Python Golden Model: 100,000 Random Vectors Passed (0 Errors, 42 Gates)",
+            font=th.MONO, weight=BOLD, font_size=th.FONT_BADGE, color=th.GREEN_LIGHT
+        ).move_to(check_card)
+
+        self.play(Create(check_card), FadeIn(pass_txt), run_time=th.RATE_FAST)
+        self.play(
+            Transform(banner, th.narration_banner(
+                "Next in our AI Silicon journey: Lab 01, where we multiply two INT8 numbers and face the O(N²) Area Monster!"
+            )),
+            run_time=th.RATE_FAST
         )
+        self.wait(2.5)

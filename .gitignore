@@ -20,6 +20,8 @@ __pycache__/
 *.dot
 
 media/
+media_test/
+animations/temp_audio/
 
 # Cocotb Simulator Build Artifacts & Test Logs
 sim/sim_build_*/

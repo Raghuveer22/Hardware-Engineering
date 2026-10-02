@@ -1,253 +1,231 @@
 """
-Lab 02: Multiply-Accumulate (MAC) Unit & Accumulator Headroom
+Lab 02: Accumulator Headroom — The MAC Unit & Sign Extension
+A kinetic, visual-first masterclass on accumulator sizing and sign-bit replication.
 
-Deep-dive structure:
-1.  The dot product: sum_out = sum_in + (a × b) — the backbone of AI compute.
-2.  Accumulator headroom math: K=4096 terms → 16 + 12 = 28 bits → use 32.
-3.  The zero-extension disaster: -5 widened with zeros becomes +65,531.
-    Animated bit-by-bit.
-4.  Sign-extension fixes it: replicate the MSB.
-5.  The datapath: multiplier → sign-extender → 32-bit adder, with a packet
-    flowing through, plus the RTL recap.
+Narrative Flow:
+  Act 1: The Dot-Product Accumulation Crisis (K = 4096 terms in LLaMA)
+  Act 2: The Bursting 16-Bit Liquid Tank (Overspill on the 3rd addition!)
+  Act 3: Sizing the 32-Bit Tank & The Zero-Extension Disaster (-5 -> +65,531)
+  Act 4: Synthesizable Silicon Architecture (rtl/mac_unit.sv) & Verification
 """
 
 from manim import *
+import numpy as np
+import sys
+from pathlib import Path
+
+ANIM_DIR = Path(__file__).resolve().parent
+if str(ANIM_DIR) not in sys.path:
+    sys.path.insert(0, str(ANIM_DIR))
+
 import theme as th
+from components import (
+    SiliconCameraRig,
+    StageLayout,
+    HardwareConfig,
+)
 
 
-class Lab02MACUnit(Scene):
+class Lab02MACUnit(SiliconCameraRig):
     def construct(self):
-        th.set_dark(self.camera)
+        layout = self.layout
+        config = HardwareConfig(data_width=8, vector_k=4096)
 
-        # =================================================================
-        # ACT 1 — THE DOT PRODUCT
-        # =================================================================
-        hdr, _, _ = th.header("LAB 02", "The MAC Unit")
-        self.play(FadeIn(hdr, shift=DOWN * 0.3), run_time=0.7)
-
-        eq = Text("sum_out  =  sum_in  +  (a × b)",
-                  font=th.MONO, weight=BOLD, font_size=26, color=th.GREEN_LIGHT)
-        eq.next_to(hdr, DOWN, buff=0.45)
-        self.play(Write(eq), run_time=0.8)
-
-        sub = Text(
-            "The fundamental building block of 99% of AI compute",
-            font=th.SANS, font_size=20, color=th.MUTED,
+        # =====================================================================
+        # ACT 1: THE DOT-PRODUCT ACCUMULATION CRISIS (~45s)
+        # =====================================================================
+        kicker, _, _ = th.header(
+            "ACCUMULATOR HEADROOM",
+            "The MAC Unit & The Zero-Extension Disaster",
+            title_size=30,
+            badge_color=th.CYAN
         )
-        sub.next_to(eq, DOWN, buff=0.4)
-        self.play(FadeIn(sub), run_time=0.5)
+        self.play(FadeIn(kicker, shift=DOWN * 0.3), run_time=0.8)
 
-        # A small animated MAC chain: a packet multiplies and accumulates.
-        dot = th.packet(color=th.AMBER, radius=0.16)
-        dot.next_to(eq, DOWN, buff=1.0)
-        self.play(FadeIn(dot), run_time=0.3)
-        self.play(dot.animate.shift(RIGHT * 4), run_time=0.8)
-        self.play(dot.animate.shift(LEFT * 4), run_time=0.8)
-        self.play(FadeOut(dot), run_time=0.3)
-        self.wait(0.4)
+        banner = th.narration_banner(
+            "In AI accelerators, multiplying numbers is only half the battle. Every neuron must accumulate thousands of products into a running sum."
+        )
+        self.play(FadeIn(banner, shift=UP * 0.2), run_time=0.7)
+        self.wait(1.5)
 
-        self.play(FadeOut(hdr), FadeOut(eq), FadeOut(sub), run_time=0.5)
+        # PyTorch Code Window on Left
+        py_code = [
+            ("# PyTorch Dot-Product Accumulation", th.MUTED),
+            ("import torch", th.CYAN),
+            ("# Hidden Dimension K = 4096 dot-product terms", th.TEXT),
+            ("a = torch.randint(-128, 127, (4096,), dtype=torch.int8)", th.TEXT),
+            ("b = torch.randint(-128, 127, (4096,), dtype=torch.int8)", th.TEXT),
+            ("running_sum = torch.dot(a, b)", th.GREEN),
+            ("", th.MUTED),
+            ("# Architectural Question:", th.AMBER),
+            ("# Can a 16-bit register hold the accumulated sum?", th.RED_LIGHT),
+        ]
+        soft_win = th.code_window(py_code, title_text="PYTORCH: DOT PRODUCT REDUCTION",
+                                  width=6.4, height=3.8, font_size=13)
+        soft_win.move_to(LEFT * 3.1 + DOWN * 0.4)
 
-        # =================================================================
-        # ACT 2 — ACCUMULATOR HEADROOM
-        # =================================================================
-        a_hdr, _, _ = th.header("LAB 02", "How Wide Must the Accumulator Be?")
-        self.play(FadeIn(a_hdr, shift=DOWN * 0.3), run_time=0.7)
+        # Right Panel: Scale Math
+        m1 = th.metric_card("16,129", "Single INT8 Product",
+                            "127 × 127 = 16,129 (Takes 15 bits)", color=th.AMBER, width=4.8, height=1.7)
+        m2 = th.metric_card("4,096", "Dot-Product Length (K)",
+                            "Accumulating 4096 products in one go!", color=th.CYAN, width=4.8, height=1.7)
+        right_panel = VGroup(m1, m2).arrange(DOWN, buff=0.3).move_to(RIGHT * 3.3 + DOWN * 0.4)
 
-        card = th.card(10.4, 3.0, stroke=th.BORDER, radius=0.18)
-        card.move_to(UP * 0.3)
-
-        m1 = Text("LLM hidden dimension K = 4096 terms in the dot product",
-                  font=th.SANS, font_size=20, color=th.TEXT)
-        m2 = Text("1 INT8 product = 16 bits (max +16,129)",
-                  font=th.MONO, font_size=18, color=th.CYAN)
-        m3 = Text("bits needed = 16 + log2(4096) = 16 + 12 = 28",
-                  font=th.MONO, weight=BOLD, font_size=19, color=th.AMBER_LIGHT)
-        m4 = Text("→ a 32-bit accumulator overflows only after 65,536 terms",
-                  font=th.SANS, weight=BOLD, font_size=18, color=th.GREEN_LIGHT)
-        stack = VGroup(m1, m2, m3, m4).arrange(DOWN, aligned_edge=LEFT, buff=0.24)
-        stack.move_to(card)
-        self.play(Create(card), FadeIn(stack), run_time=0.9)
-        self.wait(1.2)
-
-        self.play(FadeOut(a_hdr), FadeOut(card), FadeOut(stack), run_time=0.5)
-
-        # =================================================================
-        # ACT 2b — ACCUMULATION DEMO: 3 TERMS
-        # =================================================================
-        d2_hdr, _, _ = th.header("LAB 02", "Accumulation in Action")
-        self.play(FadeIn(d2_hdr, shift=DOWN * 0.3), run_time=0.7)
-
-        # A running accumulator counter.
-        acc_tracker = ValueTracker(0)
-        acc = th.make_counter(acc_tracker, prefix="sum = ", font_size=30,
-                              color=th.GREEN)
-        acc.move_to(UP * 0.7)
-        self.play(FadeIn(acc), run_time=0.4)
-
-        terms = [("+ 12 × 5", 60), ("+ 3 × -7", 39), ("+ -2 × 10", 19)]
-        term_group = VGroup()
-        for label, val in terms:
-            term_group.add(Text(label, font=th.MONO, font_size=20, color=th.AMBER))
-        term_group.arrange(RIGHT, buff=0.8)
-        term_group.next_to(acc, DOWN, buff=0.6)
-
-        for i, (tg, (label, val)) in enumerate(zip(term_group, terms)):
-            self.play(FadeIn(tg), run_time=0.3)
-            self.play(acc_tracker.animate.set_value(val), run_time=0.7)
-            self.wait(0.2)
-
-        result_t = Text("sum_out = 19", font=th.MONO, weight=BOLD,
-                        font_size=22, color=th.GREEN_LIGHT)
-        result_t.next_to(term_group, DOWN, buff=0.5)
-        self.play(FadeIn(result_t), run_time=0.4)
+        self.play(Create(soft_win), run_time=1.0)
         self.wait(1.0)
+        self.play(FadeIn(m1, shift=UP * 0.2), FadeIn(m2, shift=UP * 0.2), run_time=0.8)
+        self.play(
+            Transform(banner, th.narration_banner(
+                "A single INT8 product is 16,129. If we accumulate thousands of these terms, what happens to our register?"
+            )),
+            run_time=0.6
+        )
+        self.wait(2.5)
 
-        self.play(FadeOut(d2_hdr), FadeOut(acc), FadeOut(term_group),
-                  FadeOut(result_t), run_time=0.6)
+        self.play(FadeOut(kicker), FadeOut(soft_win), FadeOut(right_panel), run_time=0.5)
 
-        # =================================================================
-        # ACT 3 — THE ZERO-EXTENSION DISASTER
-        # =================================================================
-        d_hdr, _, _ = th.header("LAB 02", "The Zero-Extension Disaster")
-        self.play(FadeIn(d_hdr, shift=DOWN * 0.3), run_time=0.7)
+        # =====================================================================
+        # ACT 2: THE BURSTING 16-BIT LIQUID TANK (~60s)
+        # =====================================================================
+        tank_title = Text("The 16-Bit Register Capacity Crisis",
+                          font=th.SANS, weight=BOLD, font_size=26, color=th.RED_LIGHT)
+        tank_title.to_edge(UP, buff=0.6)
+        self.play(Write(tank_title), run_time=0.6)
 
-        intro = Text("Widening a 16-bit product (-5) into a 32-bit accumulator",
-                     font=th.SANS, font_size=20, color=th.MUTED)
-        intro.next_to(d_hdr, DOWN, buff=0.35)
-        self.play(FadeIn(intro), run_time=0.5)
+        self.play(
+            Transform(banner, th.narration_banner(
+                "Let's visualize a 16-bit register as a graduated beaker with a maximum capacity of +32,767."
+            )),
+            run_time=0.5
+        )
 
-        # Wrong: zero-extension.
-        bad = th.card(11.2, 1.9, stroke=th.RED, fill=th.RED_DARK, radius=0.16)
-        bad.move_to(UP * 0.15)
-        b_label = Text("ZERO-EXTEND (pad 16 zeros)", font=th.SANS, weight=BOLD,
-                       font_size=17, color=th.RED_LIGHT)
-        b_label.next_to(bad.get_top(), DOWN, buff=0.2)
+        # Left: 16-bit Tank
+        tank16 = th.LiquidTankWidget(capacity=32767, width=3.0, height=3.4, title="16-BIT ACCUMULATOR",
+                                    tank_color=th.BORDER, fluid_color=th.CYAN)
+        tank16.move_to(LEFT * 2.8 + UP * 0.15)
 
-        zeros = th.bit_row("0000000000000000", color=th.RED)
-        for cell in zeros:
-            cell[1].set_color(th.RED_LIGHT)
-        mag = th.bit_row("1111111111111011", color=th.RED)  # -5 in 16-bit
-        for cell in mag:
-            cell[1].set_color(th.RED_LIGHT)
-        b_row = VGroup(zeros, mag).arrange(RIGHT, buff=0.3)
-        b_val = Text("→ +65,531 !", font=th.MONO, weight=BOLD, font_size=22,
-                     color=th.RED)
-        b_content = VGroup(b_row, b_val).arrange(RIGHT, buff=0.4).move_to(bad)
-        self.play(Create(bad), FadeIn(b_label), FadeIn(b_content), run_time=0.8)
-        self.wait(1.0)
+        # Right: Pour Counter
+        counter_card = th.card(5.6, 3.4, stroke=th.BORDER, radius=0.18)
+        counter_card.move_to(RIGHT * 2.8 + UP * 0.15)
+        c_title = Text("Product Accumulation Sequence", font=th.SANS, weight=BOLD, font_size=15, color=th.TEXT)
+        c_title.next_to(counter_card.get_top(), DOWN, buff=0.2)
 
-        # Good: sign-extension.
-        good = th.card(11.2, 1.9, stroke=th.GREEN, fill=th.GREEN_DARK, radius=0.16)
-        good.next_to(bad, DOWN, buff=0.45)
-        g_label = Text("SIGN-EXTEND (replicate MSB)", font=th.SANS, weight=BOLD,
-                       font_size=17, color=th.GREEN_LIGHT)
-        g_label.next_to(good.get_top(), DOWN, buff=0.2)
+        t1 = Text("Drop 1: +16,129  (Fill: 49%)", font=th.MONO, font_size=14, color=th.CYAN_LIGHT)
+        t2 = Text("Drop 2: +16,129  (Fill: 98% -> DANGER!)", font=th.MONO, font_size=14, color=th.AMBER_LIGHT)
+        t3 = Text("Drop 3: +16,129  (OVERFLOW SPILL!)", font=th.MONO, weight=BOLD, font_size=14, color=th.RED)
+        t_seq = VGroup(t1, t2, t3).arrange(DOWN, aligned_edge=LEFT, buff=0.28).next_to(c_title, DOWN, buff=0.35)
 
-        ones = th.bit_row("1111111111111111", color=th.GREEN)
-        for cell in ones:
-            cell[1].set_color(th.GREEN_LIGHT)
-        mag2 = th.bit_row("1111111111111011", color=th.GREEN)  # -5 preserved
-        for cell in mag2:
-            cell[1].set_color(th.GREEN_LIGHT)
-        g_row = VGroup(ones, mag2).arrange(RIGHT, buff=0.3)
-        g_val = Text("→ -5  (preserved!)", font=th.MONO, weight=BOLD, font_size=22,
-                     color=th.GREEN)
-        g_content = VGroup(g_row, g_val).arrange(RIGHT, buff=0.4).move_to(good)
-        self.play(Create(good), FadeIn(g_label), FadeIn(g_content), run_time=0.8)
-        self.wait(1.3)
-
-        # Highlight the difference: zeros vs ones in the top 16 bits.
-        for cell in zeros:
-            self.play(Flash(cell, color=th.RED, line_length=0.25), run_time=0.02)
-        for cell in ones:
-            self.play(Flash(cell, color=th.GREEN, line_length=0.25), run_time=0.02)
+        self.play(Create(tank16), Create(counter_card), FadeIn(c_title), run_time=0.8)
         self.wait(0.5)
 
-        self.play(FadeOut(d_hdr), FadeOut(intro), FadeOut(bad), FadeOut(b_label),
-                  FadeOut(b_content), FadeOut(good), FadeOut(g_label),
-                  FadeOut(g_content), run_time=0.5)
-
-        # =================================================================
-        # ACT 4 — THE DATAPATH
-        # =================================================================
-        p_hdr, _, _ = th.header("LAB 02", "The MAC Datapath")
-        self.play(FadeIn(p_hdr, shift=DOWN * 0.3), run_time=0.7)
-
-        mult = th.card(2.6, 1.1, stroke=th.AMBER, radius=0.14)
-        mult.shift(LEFT * 3.6 + UP * 0.2)
-        mult_t = Text("8×8\nMultiplier", font=th.SANS, font_size=15,
-                      color=th.AMBER_LIGHT).move_to(mult)
-
-        ext = th.card(2.6, 1.1, stroke=th.CYAN, radius=0.14)
-        ext.move_to(UP * 0.2)
-        ext_t = Text("Sign-Extend\n16b → 32b", font=th.SANS, font_size=15,
-                     color=th.CYAN_LIGHT).move_to(ext)
-
-        add = th.card(2.6, 1.1, stroke=th.GREEN, radius=0.14)
-        add.shift(RIGHT * 3.6 + UP * 0.2)
-        add_t = Text("32-bit\nAdder", font=th.SANS, font_size=15,
-                     color=th.GREEN_LIGHT).move_to(add)
-
-        a1 = Arrow(mult.get_right(), ext.get_left(), buff=0.08, color=th.AMBER)
-        a2 = Arrow(ext.get_right(), add.get_left(), buff=0.08, color=th.CYAN)
-        out = Arrow(add.get_right(), add.get_right() + RIGHT * 1.3, buff=0.08,
-                    color=th.GREEN)
-        out_l = Text("sum_out [31:0]", font=th.MONO, font_size=15, color=th.GREEN)
-        out_l.next_to(out, UP, buff=0.08)
-
-        sum_in = Arrow(add.get_top() + UP * 0.4, add.get_top(), buff=0.05,
-                       color=th.GREEN)
-        sum_in_l = Text("sum_in", font=th.MONO, font_size=14, color=th.GREEN)
-        sum_in_l.next_to(sum_in, UP, buff=0.05)
-
-        nodes = VGroup(mult, mult_t, ext, ext_t, add, add_t, a1, a2, out, out_l,
-                       sum_in, sum_in_l)
-        self.play(FadeIn(nodes), run_time=1.0)
-
-        # Packet flowing through the pipeline.
-        p = th.packet(color=th.AMBER, radius=0.16)
-        p.move_to(mult.get_left() + LEFT * 0.7)
-        self.play(FadeIn(p), run_time=0.25)
-        self.play(p.animate.move_to(mult), run_time=0.45)
-        self.play(p.animate.move_to(ext).set_color(th.CYAN), run_time=0.45)
-        self.play(p.animate.move_to(add).set_color(th.GREEN), run_time=0.45)
-        self.play(p.animate.move_to(out.get_end()), run_time=0.45)
-        self.play(FadeOut(p), run_time=0.25)
+        # Drop 1 pours in -> 49%
+        self.play(tank16.set_fluid_fraction(0.49), FadeIn(t1, shift=LEFT * 0.2), run_time=0.8)
         self.wait(0.6)
 
-        self.play(FadeOut(p_hdr), FadeOut(nodes), run_time=0.5)
+        # Drop 2 pours in -> 98%
+        self.play(tank16.set_fluid_fraction(0.98), FadeIn(t2, shift=LEFT * 0.2), run_time=0.8)
+        self.wait(0.6)
 
-        # =================================================================
-        # CHECKPOINT
-        # =================================================================
-        th.checkpoint(
-            self,
-            "What happens if you zero-extend -5 into a 32-bit accumulator?",
-            ["-5 (16-bit) padded with 16 zeros becomes +65,531",
-             "Sign-extension (replicate MSB) keeps it -5"],
+        # Drop 3 pours in -> 120% OVERFLOW!
+        self.play(
+            tank16.set_fluid_fraction(1.2),
+            tank16.fluid.animate.set_color(th.RED),
+            Flash(tank16.max_line, color=th.RED, flash_radius=0.7),
+            FadeIn(t3, shift=LEFT * 0.2),
+            Transform(banner, th.narration_banner(
+                "On just the THIRD product, the 16-bit register overflows and corrupts! A 16-bit accumulator is completely useless!"
+            )),
+            run_time=0.9
+        )
+        self.screen_shake(intensity=0.08, cycles=3, run_time=0.25)
+        self.wait(2.2)
+
+        self.play(FadeOut(tank_title), FadeOut(tank16), FadeOut(counter_card), FadeOut(c_title), FadeOut(t_seq), run_time=0.5)
+
+        # =====================================================================
+        # ACT 3: SIZING THE 32-BIT TANK & ZERO-EXTENSION DISASTER (~70s)
+        # =====================================================================
+        ext_title = Text("Accumulator Sizing & The Zero-Extension Disaster",
+                         font=th.SANS, weight=BOLD, font_size=26, color=th.TEXT)
+        ext_title.to_edge(UP, buff=0.6)
+        self.play(Write(ext_title), run_time=0.6)
+
+        self.play(
+            Transform(banner, th.narration_banner(
+                "Sizing formula: Required Bits = 16 + log2(K). For K=4096, we need 28 bits. A 32-bit tank holds 65,536 terms with zero overflow!"
+            )),
+            run_time=0.5
         )
 
-        # =================================================================
-        # CHALLENGE
-        # =================================================================
-        th.challenge(
-            self,
-            ["A model's hidden dimension doubles to K = 8192.",
-             "How many bits does the accumulator need now?",
-             "(Recall: 16 product bits + log2(K))"],
-            "16 + log2(8192) = 16 + 13 = 29 bits.  32 bits still has headroom.",
-        )
+        # Compare Wrong Zero Extension vs Correct Sign Extension
+        bad_box = RoundedRectangle(corner_radius=0.18, width=10.5, height=1.5,
+                                   stroke_color=th.RED, stroke_width=2.0, fill_color=th.CARD, fill_opacity=0.95)
+        bad_box.move_to(UP * 0.75)
+        lbl_bad = Text("❌ WRONG: Zero-Extension of Negative Product (-5):",
+                       font=th.SANS, weight=BOLD, font_size=14, color=th.RED_LIGHT)
+        bits_bad = Text("32'b 0000 0000 0000 0000 | 1111 1111 1111 1011  ===>  +65,531 !",
+                        font=th.MONO, weight=BOLD, font_size=15, color=th.RED)
+        grp_bad = VGroup(lbl_bad, bits_bad).arrange(DOWN, aligned_edge=LEFT, buff=0.15).move_to(bad_box)
 
-        # =================================================================
-        # ACT 5 — RTL RECAP
-        # =================================================================
-        th.recap(
-            self,
-            "rtl/mac_unit.sv",
-            ["assign mult_product = a * b",
-             "Sign-extend: {{(ACC-16){MSB}}, product}",
-             "assign sum_out = sum_in + extended product",
-             "32-bit accumulator → zero overflow up to 65,536 terms",
-             "Next: Lab 03 — The Weight-Stationary PE"],
+        good_box = RoundedRectangle(corner_radius=0.18, width=10.5, height=1.5,
+                                    stroke_color=th.GREEN, stroke_width=2.0, fill_color=th.CARD, fill_opacity=0.95)
+        good_box.next_to(bad_box, DOWN, buff=0.3)
+        lbl_good = Text("✅ CORRECT: Hardware Sign-Extension (Replicate MSB bit 15):",
+                        font=th.SANS, weight=BOLD, font_size=14, color=th.GREEN_LIGHT)
+        bits_good = Text("32'b 1111 1111 1111 1111 | 1111 1111 1111 1011  ===>  -5  (PRESERVED!)",
+                         font=th.MONO, weight=BOLD, font_size=15, color=th.GREEN_LIGHT)
+        grp_good = VGroup(lbl_good, bits_good).arrange(DOWN, aligned_edge=LEFT, buff=0.15).move_to(good_box)
+
+        self.play(Create(bad_box), FadeIn(grp_bad), run_time=0.8)
+        self.wait(1.0)
+        self.play(Create(good_box), FadeIn(grp_good), run_time=0.8)
+        self.play(
+            Transform(banner, th.narration_banner(
+                "If you zero-extend -5, it becomes +65,531! We must replicate the MSB across all upper 16 bits to preserve the negative value."
+            )),
+            run_time=0.6
         )
+        self.wait(2.5)
+
+        self.play(FadeOut(ext_title), FadeOut(bad_box), FadeOut(grp_bad), FadeOut(good_box), FadeOut(grp_good), run_time=0.5)
+
+        # =====================================================================
+        # ACT 4: SYNTHESIZABLE SILICON ARCHITECTURE & VERIFICATION (~50s)
+        # =====================================================================
+        rtl_title = Text("Synthesizable MAC Unit: rtl/mac_unit.sv",
+                         font=th.SANS, weight=BOLD, font_size=26, color=th.CYAN)
+        rtl_title.to_edge(UP, buff=0.6)
+        self.play(Write(rtl_title), run_time=0.6)
+
+        sv_lines = [
+            ("// Multiply-Accumulate Combinational Datapath:", th.MUTED),
+            ("module mac_unit #(parameter DATA_WIDTH=8, ACC_WIDTH=32)(", th.CYAN),
+            ("    input  logic signed [DATA_WIDTH-1:0] a, b,", th.TEXT),
+            ("    input  logic signed [ACC_WIDTH-1:0]  sum_in,", th.TEXT),
+            ("    output logic signed [ACC_WIDTH-1:0]  sum_out", th.GREEN_LIGHT),
+            (");", th.CYAN),
+            ("    // 1. Compute 16-bit Product & Automatically Sign-Extend:", th.AMBER),
+            ("    logic signed [15:0] prod = a * b;", th.TEXT),
+            ("    assign sum_out = sum_in + {{16{prod[15]}}, prod};", th.GREEN),
+            ("endmodule", th.CYAN),
+        ]
+        sv_win = th.code_window(sv_lines, title_text="RTL/MAC_UNIT.SV",
+                                width=10.5, height=3.0, font_size=13, title_color=th.GREEN)
+        sv_win.move_to(UP * 0.55)
+
+        self.play(Create(sv_win), run_time=1.0)
+
+        # Pre-Silicon Checkpoint
+        check_card = th.card(10.5, 1.1, stroke=th.GREEN, radius=0.15)
+        check_card.next_to(banner, UP, buff=0.22)
+        check_txt = Text("✓ Cocotb Testbench: Verified against 4096-step cumulative vectors! (0 Overflow Errors)",
+                         font=th.MONO, weight=BOLD, font_size=14, color=th.GREEN_LIGHT).move_to(check_card)
+
+        self.play(Create(check_card), FadeIn(check_txt), run_time=0.7)
+        self.play(
+            Transform(banner, th.narration_banner(
+                "Next in our AI Hardware journey: Lab 03, where we lock weights inside local registers to escape the 1,000x Memory Wall!"
+            )),
+            run_time=0.6
+        )
+        self.wait(3.0)
