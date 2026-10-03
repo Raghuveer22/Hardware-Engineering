@@ -1,13 +1,18 @@
 """
 Lab 00-Prep: Hardware Thinking Primer for Software & AI Engineers
-Bridging the Gap from Python & PyTorch to Synthesizable Silicon Gates.
 
-Tailored for Software Engineers (3Blue1Brown Visual Standard):
-- Act 0: The Trinity — Program, Gate, and Clock Wave
-- Act 1: The Death of the Program Counter (Sequential Software vs 100% Concurrent Silicon)
-- Act 2: The Pre-Silicon Memory Energy Wall (200 pJ DRAM vs 0.2 pJ MAC)
-- Act 3: The Golden Rule: Blocking (=) vs Non-Blocking (<=) Shift Register Pipeline
-- Act 4: Host-to-Device Interconnect: From PyTorch to PCIe DMA & MMIO Doorbells
+Goal: give a Python/PyTorch engineer a working mental model of silicon
+*before* Lab 00 arithmetic. Each act maps one software habit onto one
+hardware constraint, then proves it with a small visual experiment.
+
+Act map:
+  0  Recipe vs machine     — a function is a script; a chip is a factory
+  1  No program counter    — CPU walks a list; silicon is a live dataflow graph
+  2  Memory energy wall    — `a*b` looks as cheap as `arr[i]`. It is not.
+  3  Wires vs registers    — spreadsheet formulas vs a snapshot on a metronome
+  4  = vs <=               — sequential assign vs Python tuple-unpack
+  5  Host to device        — torch.matmul is a doorbell + DMA, not CPU math
+  6  Simulate before fab   — cocotb is pytest for wires
 """
 
 from manim import *
@@ -23,409 +28,636 @@ import theme as th
 from components import (
     KineticSiliconScene,
     KineticClock,
+    VoiceoverTracker,
     MemoryEnergyBar,
-    HardwareConfig,
-    TextRole,
-    SemanticText,
-    SemanticMath,
+    DFlipFlopNode,
     HStack,
     VStack,
-    ConstraintAnchor,
-    PinProbe,
     fit_to_bounds,
 )
 
 
 class Lab00PrepPrimer(KineticSiliconScene):
+    """Software-first hardware primer. Beat-paced, layout-driven, no LaTeX."""
+
     def construct(self):
-        clock = KineticClock(initial_cycle=0)
+        self.clock = KineticClock(initial_cycle=0)
+        self.ticker = self.clock.create_ticker_badge(prefix="CLK T=", color=th.CYAN_LIGHT)
+        self.ticker.scale(0.82)
+        self.ticker.to_corner(UR, buff=0.22)
+        self.add(self.ticker)
 
-        # Ambient Clock HUD at top right (compact)
-        ticker = clock.create_ticker_badge(prefix="CLK: T = ", color=th.CYAN_LIGHT)
-        ticker.to_corner(UR, buff=0.25)
-        self.add(ticker)
+        self.play_title()
+        self.play_act0_recipe_vs_machine()
+        self.play_act1_no_program_counter()
+        self.play_act2_memory_energy_wall()
+        self.play_act3_wires_vs_registers()
+        self.play_act4_assign_vs_unpack()
+        self.play_act5_host_to_device()
+        self.play_act6_simulate_before_fab()
 
-        # =====================================================================
-        # ACT 0: PRELORE — THE TRINITY: PROGRAM, GATE, CLOCK
-        # =====================================================================
-        prelore_narration = (
-            "Before we open the silicon, let's name three ideas every software engineer already knows. "
-            "A program is just an ordered list of instructions. A logic gate is a tiny switch that does exactly one "
-            "arithmetic operation, like add or multiply. And a clock is the heartbeat that advances the whole circuit one step at a time."
+    # ------------------------------------------------------------------
+    # Scene helpers: register-then-reveal, banner beats, compact nodes
+    # ------------------------------------------------------------------
+    def _enter(self, st, *mobs, shift=UP * 0.12, run_time=0.7):
+        """Register for stage cleanup, then FadeIn (never scene.add first)."""
+        st.register(*mobs)
+        self.play(*[FadeIn(m, shift=shift) for m in mobs if m is not None], run_time=run_time)
+        return run_time
+
+    def _say(self, st, line, anim_time=0.0):
+        """Swap the bottom banner and wait out the spoken line."""
+        if st.narration != line:
+            st.update_narration(line, run_time=0.35)
+            anim_time += 0.35
+        dur = VoiceoverTracker(line).duration
+        self.wait(max(0.25, dur - anim_time))
+
+    def _op_node(self, symbol, title, color, radius=0.52):
+        """Logic-op bubble that does not depend on LaTeX/MathTex."""
+        circle = Circle(
+            radius=radius, color=color, stroke_width=2.5,
+            fill_color="#072213", fill_opacity=0.92,
         )
-        with self.stage("PRIMER", "The Foundations of Silicon", "Program · Gate · Clock", narration=prelore_narration) as st:
-            with self.voiceover(prelore_narration) as trk:
-                # 3b1b style: visual representations rather than corporate cards!
-                # 1. Program: An instruction tape with a glowing pointer
-                prog_label = Text("PROGRAM", font=th.SANS, weight=BOLD, font_size=16, color=th.CYAN)
-                tape_rects = VGroup(*[
-                    RoundedRectangle(corner_radius=0.06, width=2.4, height=0.5, stroke_color=th.BORDER, stroke_width=1.5, fill_color="#0d1525", fill_opacity=0.9)
-                    for _ in range(3)
-                ]).arrange(DOWN, buff=0.1)
-                tape_code = VGroup(
-                    Text("1: a = x + y", font=th.MONO, font_size=12, color=th.TEXT),
-                    Text("2: b = z * w", font=th.MONO, font_size=12, color=th.MUTED),
-                    Text("3: out = a + b", font=th.MONO, font_size=12, color=th.MUTED),
-                )
-                for r, c in zip(tape_rects, tape_code):
-                    c.move_to(r)
-                pointer = Triangle(color=th.CYAN_LIGHT, fill_opacity=1.0).scale(0.09).rotate(-PI/2)
-                pointer.next_to(tape_rects[0], LEFT, buff=0.12)
-                prog_group = VGroup(prog_label, tape_rects, tape_code, pointer).arrange(DOWN, buff=0.18)
-
-                # 2. Gate: A stylized arithmetic operator with glowing inputs and output
-                gate_label = Text("LOGIC GATE", font=th.SANS, weight=BOLD, font_size=16, color=th.GREEN)
-                gate_circle = Circle(radius=0.7, color=th.GREEN, stroke_width=2.5, fill_color="#072213", fill_opacity=0.85)
-                gate_sym = MathTex(r"\mathbf{\times}", color=th.GREEN_LIGHT).scale(1.1).move_to(gate_circle)
-                in_wire1 = Line(LEFT * 1.4 + UP * 0.4, LEFT * 0.7 + UP * 0.4, color=th.CYAN_LIGHT, stroke_width=2.5)
-                in_wire2 = Line(LEFT * 1.4 + DOWN * 0.4, LEFT * 0.7 + DOWN * 0.4, color=th.CYAN_LIGHT, stroke_width=2.5)
-                out_wire = Line(RIGHT * 0.7, RIGHT * 1.4, color=th.AMBER_LIGHT, stroke_width=2.5)
-                gate_in1_lbl = Text("A", font=th.MONO, font_size=12, color=th.CYAN_LIGHT).next_to(in_wire1, LEFT, buff=0.08)
-                gate_in2_lbl = Text("B", font=th.MONO, font_size=12, color=th.CYAN_LIGHT).next_to(in_wire2, LEFT, buff=0.08)
-                gate_out_lbl = Text("Y", font=th.MONO, font_size=12, color=th.AMBER_LIGHT).next_to(out_wire, RIGHT, buff=0.08)
-                gate_wires = VGroup(in_wire1, in_wire2, out_wire, gate_in1_lbl, gate_in2_lbl, gate_out_lbl)
-                gate_group = VGroup(gate_label, VGroup(gate_circle, gate_sym, gate_wires)).arrange(DOWN, buff=0.25)
-
-                # 3. Clock: A continuous living square wave
-                clock_label = Text("CLOCK", font=th.SANS, weight=BOLD, font_size=16, color=th.AMBER)
-                wave_path = VGroup()
-                for i in range(4):
-                    x0 = i * 0.65
-                    wave_path.add(
-                        Line(np.array([x0, 0, 0]), np.array([x0 + 0.32, 0, 0]), color=th.AMBER, stroke_width=2.5),
-                        Line(np.array([x0 + 0.32, 0, 0]), np.array([x0 + 0.32, 0.7, 0]), color=th.AMBER_LIGHT, stroke_width=3.0),
-                        Line(np.array([x0 + 0.32, 0.7, 0]), np.array([x0 + 0.65, 0.7, 0]), color=th.AMBER, stroke_width=2.5),
-                        Line(np.array([x0 + 0.65, 0.7, 0]), np.array([x0 + 0.65, 0, 0]), color=th.AMBER, stroke_width=2.5),
-                    )
-                wave_path.center()
-                pulse_dot = Dot(wave_path[0].get_start(), radius=0.08, color=th.AMBER_LIGHT)
-                clock_sub = Text("Advances 1 step per tick", font=th.MONO, font_size=11, color=th.MUTED)
-                clock_group = VGroup(clock_label, wave_path, clock_sub).arrange(DOWN, buff=0.2)
-
-                trinity = HStack(prog_group, gate_group, clock_group, gap=th.SPACE_LG).move_to(self.layout.main_stage_center())
-                st.add(trinity)
-
-                # Flowing choreography
-                self.play(FadeIn(prog_group, shift=UP * 0.2), run_time=0.6)
-                self.play(FadeIn(gate_group, shift=UP * 0.2), run_time=0.6)
-                self.play(FadeIn(clock_group, shift=UP * 0.2), run_time=0.6)
-
-                # Pulse and step the tape
-                self.play(
-                    pointer.animate.next_to(tape_rects[1], LEFT, buff=0.12),
-                    tape_code[1].animate.set_color(th.CYAN_LIGHT),
-                    tape_code[0].animate.set_color(th.MUTED),
-                    gate_circle.animate.set_stroke(color=th.WHITE, width=4.0),
-                    run_time=0.8
-                )
-                self.play(
-                    pointer.animate.next_to(tape_rects[2], LEFT, buff=0.12),
-                    tape_code[2].animate.set_color(th.CYAN_LIGHT),
-                    tape_code[1].animate.set_color(th.MUTED),
-                    gate_circle.animate.set_stroke(color=th.GREEN, width=2.5),
-                    run_time=0.8
-                )
-                self.wait(max(0.3, trk.duration - 2.8))
-                st.takeaway("Program + Gate + Clock = everything you are about to see.", wait=1.2)
-
-        # =====================================================================
-        # ACT 1: THE DEATH OF THE PROGRAM COUNTER
-        # =====================================================================
-        act1_narration = (
-            "In software, one instruction runs at a time, stepped by the Program Counter—a pointer that moves line by line. "
-            "Silicon has no Program Counter. Every gate fires the instant its inputs are ready, all at once. "
-            "For y equals (a+b) times (c+d), both adders and the multiplier light up in the same picosecond."
+        sym = Text(symbol, font=th.MONO, weight=BOLD, font_size=26, color=th.WHITE)
+        sym.move_to(circle)
+        title_lbl = Text(title, font=th.MONO, font_size=11, color=color)
+        title_lbl.next_to(circle, UP, buff=0.08)
+        in1 = Line(
+            circle.get_left() + UP * 0.26 + LEFT * 0.62,
+            circle.get_left() + UP * 0.26,
+            color=th.CYAN, stroke_width=2.2,
         )
-        with self.stage("ACT 1", "The Death of the Program Counter", "Sequential Software vs 100% Concurrent Silicon", narration=act1_narration) as st:
-            with self.voiceover(act1_narration) as trk:
-                # Top equation with color-matched terms
-                math_eq = MathTex(
-                    r"y", r"=", r"(a + b)", r"\times", r"(c + d)",
-                    font_size=38
-                ).to_edge(UP, buff=1.2)
-                math_eq[0].set_color(th.GREEN_LIGHT)
-                math_eq[2].set_color(th.CYAN)
-                math_eq[3].set_color(th.WHITE)
-                math_eq[4].set_color(th.AMBER)
-                st.add(math_eq)
-                self.play(Write(math_eq), run_time=0.8)
-
-                # Left side: Sequential CPU Execution Pipeline
-                cpu_title = Text("SOFTWARE: SEQUENTIAL CPU", font=th.MONO, weight=BOLD, font_size=15, color=th.AMBER)
-                instr_lines = [
-                    "0x00:  t1 = a + b    # Cycle 1",
-                    "0x04:  t2 = c + d    # Cycle 2",
-                    "0x08:  y  = t1 * t2  # Cycle 3",
-                ]
-                cpu_boxes = VGroup()
-                for il in instr_lines:
-                    b_rect = RoundedRectangle(corner_radius=0.08, width=4.8, height=0.58, stroke_color=th.BORDER, stroke_width=1.5, fill_color="#0e1526", fill_opacity=0.95)
-                    b_txt = Text(il, font=th.MONO, font_size=12, color=th.TEXT)
-                    b_txt.move_to(b_rect)
-                    cpu_boxes.add(VGroup(b_rect, b_txt))
-                cpu_boxes.arrange(DOWN, buff=0.15)
-                
-                pc_ptr = Arrow(LEFT * 0.6, ORIGIN, color=th.AMBER_LIGHT, stroke_width=3.5, max_tip_length_to_length_ratio=0.3)
-                pc_lbl = Text("PC", font=th.MONO, weight=BOLD, font_size=12, color=th.AMBER_LIGHT).next_to(pc_ptr, LEFT, buff=0.06)
-                pc_marker = VGroup(pc_ptr, pc_lbl).next_to(cpu_boxes[0], LEFT, buff=0.1)
-
-                cpu_panel = VGroup(cpu_title, VGroup(cpu_boxes, pc_marker)).arrange(DOWN, buff=0.25)
-                cpu_panel.move_to(LEFT * 3.4 + DOWN * 0.5)
-
-                # Right side: Concurrent Hardware Dataflow Graph
-                hw_title = Text("SILICON: CONCURRENT DATAFLOW", font=th.MONO, weight=BOLD, font_size=15, color=th.CYAN)
-                
-                # Two adders side-by-side
-                add1 = VGroup(
-                    Circle(radius=0.55, color=th.CYAN, stroke_width=2.5, fill_color="#091b2e", fill_opacity=0.9),
-                    MathTex(r"+", color=th.CYAN_LIGHT, font_size=32)
-                )
-                add1[1].move_to(add1[0])
-                add1_lbl = Text("ADDER 1", font=th.MONO, font_size=11, color=th.CYAN).next_to(add1, UP, buff=0.08)
-                add1_unit = VGroup(add1, add1_lbl).move_to(UP * 0.8 + LEFT * 1.3)
-
-                add2 = VGroup(
-                    Circle(radius=0.55, color=th.AMBER, stroke_width=2.5, fill_color="#1d1506", fill_opacity=0.9),
-                    MathTex(r"+", color=th.AMBER_LIGHT, font_size=32)
-                )
-                add2[1].move_to(add2[0])
-                add2_lbl = Text("ADDER 2", font=th.MONO, font_size=11, color=th.AMBER).next_to(add2, UP, buff=0.08)
-                add2_unit = VGroup(add2, add2_lbl).move_to(UP * 0.8 + RIGHT * 1.3)
-
-                # Multiplier below
-                mult = VGroup(
-                    Circle(radius=0.6, color=th.GREEN, stroke_width=2.5, fill_color="#072213", fill_opacity=0.9),
-                    MathTex(r"\times", color=th.GREEN_LIGHT, font_size=34)
-                )
-                mult[1].move_to(mult[0])
-                mult_lbl = Text("MULTIPLIER", font=th.MONO, font_size=11, color=th.GREEN).next_to(mult, DOWN, buff=0.08)
-                mult_unit = VGroup(mult, mult_lbl).move_to(DOWN * 1.1)
-
-                w_a1_m = Arrow(add1[0].get_bottom(), mult[0].get_top() + LEFT * 0.3, color=th.CYAN, stroke_width=2.5, buff=0.08)
-                w_a2_m = Arrow(add2[0].get_bottom(), mult[0].get_top() + RIGHT * 0.3, color=th.AMBER, stroke_width=2.5, buff=0.08)
-
-                hw_circuit = VGroup(add1_unit, add2_unit, mult_unit, w_a1_m, w_a2_m)
-                hw_panel = VGroup(hw_title, hw_circuit).arrange(DOWN, buff=0.25)
-                hw_panel.move_to(RIGHT * 3.4 + DOWN * 0.5)
-
-                st.add(cpu_panel, hw_panel)
-                self.play(FadeIn(cpu_panel, shift=LEFT * 0.2), FadeIn(hw_panel, shift=RIGHT * 0.2), run_time=0.9)
-
-                # Visual Execution Contrast:
-                # Step 1: In CPU, only Line 1 executes. In Silicon, BOTH Adders light up simultaneously!
-                pulse1 = Dot(radius=0.1, color=th.CYAN_LIGHT).move_to(add1[0])
-                pulse2 = Dot(radius=0.1, color=th.AMBER_LIGHT).move_to(add2[0])
-                
-                self.play(
-                    pc_marker.animate.next_to(cpu_boxes[0], LEFT, buff=0.1),
-                    cpu_boxes[0][0].animate.set_stroke(color=th.AMBER, width=2.5),
-                    add1[0].animate.set_stroke(color=th.WHITE, width=4.0),
-                    add2[0].animate.set_stroke(color=th.WHITE, width=4.0),
-                    run_time=0.7
-                )
-                clock.advance(self, delta_cycles=1, run_time=0.3)
-
-                # Step 2: CPU moves to Line 2 (Cycle 2). Silicon streams both sums directly into Multiplier!
-                self.play(
-                    pc_marker.animate.next_to(cpu_boxes[1], LEFT, buff=0.1),
-                    cpu_boxes[0][0].animate.set_stroke(color=th.BORDER, width=1.5),
-                    cpu_boxes[1][0].animate.set_stroke(color=th.AMBER, width=2.5),
-                    add1[0].animate.set_stroke(color=th.CYAN, width=2.5),
-                    add2[0].animate.set_stroke(color=th.AMBER, width=2.5),
-                    mult[0].animate.set_stroke(color=th.GREEN_LIGHT, width=4.0),
-                    run_time=0.7
-                )
-                clock.advance(self, delta_cycles=1, run_time=0.3)
-
-                # Step 3: CPU finishes Line 3 (Cycle 3).
-                self.play(
-                    pc_marker.animate.next_to(cpu_boxes[2], LEFT, buff=0.1),
-                    cpu_boxes[1][0].animate.set_stroke(color=th.BORDER, width=1.5),
-                    cpu_boxes[2][0].animate.set_stroke(color=th.GREEN, width=2.5),
-                    run_time=0.6
-                )
-                clock.advance(self, delta_cycles=1, run_time=0.3)
-                self.wait(max(0.3, trk.duration - 3.5))
-                st.takeaway("Software waits in line. Silicon runs every gate at once.", wait=1.2)
-
-        # =====================================================================
-        # ACT 2: PRE-SILICON MEMORY ENERGY HIERARCHY
-        # =====================================================================
-        act2_narration = (
-            "Now the catch: moving data is far more expensive than computing it. "
-            "An INT8 multiply-accumulate burns just 0.2 picojoules, but fetching one byte from off-chip DRAM costs 200 picojoules—"
-            "a thousand times more. That energy wall is why accelerators pin weights inside the chip, right next to the math."
+        in2 = Line(
+            circle.get_left() + DOWN * 0.26 + LEFT * 0.62,
+            circle.get_left() + DOWN * 0.26,
+            color=th.CYAN, stroke_width=2.2,
         )
-        with self.stage("ACT 2", "Memory Energy Hierarchy", "The Physical 1,000× Cost of Data Movement", narration=act2_narration) as st:
-            with self.voiceover(act2_narration) as trk:
-                # 3b1b style: Dynamic visual scale comparison with physical sparks and towers
-                # Left: ALU MAC spark
-                mac_box = RoundedRectangle(corner_radius=0.12, width=3.4, height=4.2, stroke_color=th.GREEN, stroke_width=2.0, fill_color="#071b11", fill_opacity=0.9)
-                mac_title = Text("ON-CHIP COMPUTE", font=th.MONO, weight=BOLD, font_size=14, color=th.GREEN)
-                mac_energy = Text("0.2 pJ", font=th.SANS, weight=BOLD, font_size=32, color=th.GREEN_LIGHT)
-                mac_op = Text("INT8 MAC Operation", font=th.MONO, font_size=12, color=th.TEXT)
-                mac_spark = Dot(radius=0.12, color=th.GREEN_LIGHT)
-                mac_spark_halo = Circle(radius=0.28, color=th.GREEN, stroke_width=1.5, fill_opacity=0.2)
-                mac_visual = VGroup(mac_spark_halo, mac_spark)
-                mac_content = VStack(mac_title, mac_energy, mac_op, mac_visual, gap=th.SPACE_SM).move_to(mac_box)
-                mac_group = VGroup(mac_box, mac_content).move_to(LEFT * 4.2 + DOWN * 0.2)
-
-                # Center: On-chip SRAM Buffer
-                sram_box = RoundedRectangle(corner_radius=0.12, width=3.4, height=4.2, stroke_color=th.CYAN, stroke_width=2.0, fill_color="#091b2e", fill_opacity=0.9)
-                sram_title = Text("ON-CHIP SRAM", font=th.MONO, weight=BOLD, font_size=14, color=th.CYAN)
-                sram_energy = Text("1.0 pJ", font=th.SANS, weight=BOLD, font_size=32, color=th.CYAN_LIGHT)
-                sram_op = Text("SRAM Cache Fetch", font=th.MONO, font_size=12, color=th.TEXT)
-                sram_rel = Text("5× Compute Energy", font=th.MONO, font_size=11, color=th.CYAN)
-                sram_content = VStack(sram_title, sram_energy, sram_op, sram_rel, gap=th.SPACE_SM).move_to(sram_box)
-                sram_group = VGroup(sram_box, sram_content).move_to(DOWN * 0.2)
-
-                # Right: Off-Chip DRAM Monster
-                dram_box = RoundedRectangle(corner_radius=0.12, width=3.8, height=4.2, stroke_color=th.RED, stroke_width=2.0, fill_color="#200a0a", fill_opacity=0.9)
-                dram_title = Text("OFF-CHIP DRAM", font=th.MONO, weight=BOLD, font_size=14, color=th.RED)
-                dram_energy = Text("200.0 pJ", font=th.SANS, weight=BOLD, font_size=32, color=th.RED_LIGHT)
-                dram_op = Text("DDR / HBM Bus Read", font=th.MONO, font_size=12, color=th.TEXT)
-                dram_factor = Text("1,000× ENERGY WALL!", font=th.MONO, weight=BOLD, font_size=13, color=th.AMBER_LIGHT)
-                dram_content = VStack(dram_title, dram_energy, dram_op, dram_factor, gap=th.SPACE_SM).move_to(dram_box)
-                dram_group = VGroup(dram_box, dram_content).move_to(RIGHT * 4.2 + DOWN * 0.2)
-
-                st.add(mac_group, sram_group, dram_group)
-
-                self.play(FadeIn(mac_group, shift=UP * 0.2), run_time=0.6)
-                self.play(FadeIn(sram_group, shift=UP * 0.2), run_time=0.6)
-                self.play(FadeIn(dram_group, shift=UP * 0.2), run_time=0.6)
-
-                # Dramatic 1000x explosion visual
-                arrow_1000x = CurvedArrow(mac_box.get_top() + UP * 0.1, dram_box.get_top() + UP * 0.1, color=th.AMBER, angle=-TAU/6)
-                tag_1000x = Text("1,000× Energy Disparity", font=th.SANS, weight=BOLD, font_size=16, color=th.AMBER_LIGHT).next_to(arrow_1000x, UP, buff=0.1)
-                st.add(arrow_1000x, tag_1000x)
-
-                self.play(Create(arrow_1000x), Write(tag_1000x), dram_box.animate.set_stroke(color=th.RED_LIGHT, width=3.5), run_time=0.9)
-                self.screen_shake(intensity=0.03, cycles=2, run_time=0.25)
-                self.wait(max(0.3, trk.duration - 2.9))
-                st.takeaway("Compute is nearly free. Moving data is the real cost.", wait=1.2)
-
-        # =====================================================================
-        # ACT 3: THE GOLDEN RULE: BLOCKING (=) VS NON-BLOCKING (<=)
-        # =====================================================================
-        act3_narration = (
-            "Here is the number one bug software engineers write when they first touch RTL. "
-            "Blocking equals executes one statement after another, like C++, so a pipeline collapses into a single register. "
-            "Non-blocking samples every right-hand side at once, exactly like Python tuple unpacking, "
-            "and commits them all in parallel."
+        out = Line(
+            circle.get_right(),
+            circle.get_right() + RIGHT * 0.62,
+            color=th.AMBER, stroke_width=2.2,
         )
-        with self.stage("ACT 3", "The Golden Rule: = vs <=", "Blocking vs Non-Blocking Shift Register Pipeline", narration=act3_narration) as st:
-            with self.voiceover(act3_narration) as trk:
-                # Left: Broken Blocking (=) with collapsed wire visualization
-                block_title = Text("BLOCKING (=): COLLAPSED WIRE", font=th.MONO, weight=BOLD, font_size=13, color=th.RED)
-                b_code = VGroup(
-                    Text("always_ff @(posedge clk) begin", font=th.MONO, font_size=11, color=th.MUTED),
-                    Text("    b = a;  // B gets A immediately", font=th.MONO, font_size=11, color=th.TEXT),
-                    Text("    c = b;  // C gets NEW B (=A)!", font=th.MONO, font_size=11, color=th.RED_LIGHT),
-                    Text("end", font=th.MONO, font_size=11, color=th.MUTED),
-                ).arrange(DOWN, aligned_edge=LEFT, buff=0.08)
+        node = VGroup(circle, sym, title_lbl, in1, in2, out)
+        node.circle = circle
+        return node
 
-                # Visual register cells: A single collapsed register
-                reg_b1 = RoundedRectangle(corner_radius=0.08, width=1.6, height=1.0, stroke_color=th.RED, stroke_width=2.0, fill_color="#180b0b", fill_opacity=0.9)
-                reg_b1_lbl = Text("Reg B\n(val=A)", font=th.MONO, font_size=11, color=th.RED_LIGHT).move_to(reg_b1)
-                reg_c1 = RoundedRectangle(corner_radius=0.08, width=1.6, height=1.0, stroke_color=th.RED, stroke_width=2.0, fill_color="#180b0b", fill_opacity=0.9)
-                reg_c1_lbl = Text("Reg C\n(val=A!)", font=th.MONO, font_size=11, color=th.RED_LIGHT).move_to(reg_c1)
-                reg_collapse_wire = Arrow(reg_b1.get_right(), reg_c1.get_left(), buff=0.06, color=th.RED, stroke_width=3.0)
-                tag_broken = Text("1 CYCLE COLLAPSE: Both get A!", font=th.MONO, weight=BOLD, font_size=11, color=th.RED)
-                
-                left_schem = VGroup(HStack(VGroup(reg_b1, reg_b1_lbl), reg_collapse_wire, VGroup(reg_c1, reg_c1_lbl), gap=0.1), tag_broken).arrange(DOWN, buff=0.15)
-                left_panel = VGroup(block_title, b_code, left_schem).arrange(DOWN, buff=0.25).move_to(LEFT * 3.4 + DOWN * 0.2)
+    def _label(self, text, color=th.MUTED, size=12, weight=NORMAL):
+        return Text(text, font=th.MONO, weight=weight, font_size=size, color=color)
 
-                # Right: Non-Blocking (<=): True 2-Stage Shift Register
-                nonblock_title = Text("NON-BLOCKING (<=): PARALLEL LATCH", font=th.MONO, weight=BOLD, font_size=13, color=th.GREEN)
-                nb_code = VGroup(
-                    Text("always_ff @(posedge clk) begin", font=th.MONO, font_size=11, color=th.MUTED),
-                    Text("    b <= a; // B samples old A", font=th.MONO, font_size=11, color=th.TEXT),
-                    Text("    c <= b; // C samples old B!", font=th.MONO, font_size=11, color=th.GREEN_LIGHT),
-                    Text("end", font=th.MONO, font_size=11, color=th.MUTED),
-                ).arrange(DOWN, aligned_edge=LEFT, buff=0.08)
+    # =====================================================================
+    # TITLE
+    # =====================================================================
+    def play_title(self):
+        line = "You think in time: one line, then the next. A chip thinks in space: the circuit is always there."
+        with self.stage(
+            "LAB 00-PREP",
+            "Hardware thinking for software engineers",
+            "A Python dictionary for silicon",
+            narration=line,
+        ) as st:
+            cards = HStack(
+                th.metric_card("TIME", "Software", "PC walks a script", color=th.AMBER, width=3.5, height=1.7),
+                th.metric_card("SPACE", "Hardware", "Gates wired in place", color=th.CYAN, width=3.5, height=1.7),
+                th.metric_card("COST", "Why it matters", "Data movement >> math", color=th.GREEN, width=3.5, height=1.7),
+                gap=th.SPACE_MD,
+            )
+            cards.move_to(self.layout.main_stage_center() + DOWN * 0.15)
+            t = self._enter(st, cards, run_time=0.9)
+            self._say(st, line, anim_time=t)
+            st.takeaway("This primer is the map from Python habits to chip constraints.", wait=1.2)
 
-                reg_b2 = RoundedRectangle(corner_radius=0.08, width=1.6, height=1.0, stroke_color=th.GREEN, stroke_width=2.0, fill_color="#071b11", fill_opacity=0.9)
-                reg_b2_lbl = Text("DFF 1\n(B <= A)", font=th.MONO, font_size=11, color=th.GREEN_LIGHT).move_to(reg_b2)
-                reg_c2 = RoundedRectangle(corner_radius=0.08, width=1.6, height=1.0, stroke_color=th.GREEN, stroke_width=2.0, fill_color="#071b11", fill_opacity=0.9)
-                reg_c2_lbl = Text("DFF 2\n(C <= old B)", font=th.MONO, font_size=11, color=th.GREEN_LIGHT).move_to(reg_c2)
-                reg_pipe_wire = Arrow(reg_b2.get_right(), reg_c2.get_left(), buff=0.06, color=th.GREEN, stroke_width=2.0)
-                tag_pipeline = Text("TRUE 2-STAGE DELAY PIPELINE", font=th.MONO, weight=BOLD, font_size=11, color=th.GREEN)
-                
-                right_schem = VGroup(HStack(VGroup(reg_b2, reg_b2_lbl), reg_pipe_wire, VGroup(reg_c2, reg_c2_lbl), gap=0.1), tag_pipeline).arrange(DOWN, buff=0.15)
-                right_panel = VGroup(nonblock_title, nb_code, right_schem).arrange(DOWN, buff=0.25).move_to(RIGHT * 3.4 + DOWN * 0.2)
+    # =====================================================================
+    # ACT 0: RECIPE VS MACHINE
+    # =====================================================================
+    def play_act0_recipe_vs_machine(self):
+        n0 = "In Python, a function is a recipe: the CPU fetches one instruction, does it, then fetches the next."
+        n1 = "A chip is not a recipe. The adders and the multiplier are physical objects sitting on the die at the same time."
+        n2 = "Same math. Two machines. One walks a list. The other is the list, wired in metal."
+        with self.stage(
+            "ACT 0",
+            "Recipe vs machine",
+            "A function is a script. A chip is a factory.",
+            narration=n0,
+        ) as st:
+            py = th.code_window(
+                [
+                    ("def y(a, b, c, d):", th.MUTED),
+                    ("    t1 = a + b      # step 1", th.TEXT),
+                    ("    t2 = c + d      # step 2", th.MUTED),
+                    ("    return t1 * t2  # step 3", th.MUTED),
+                ],
+                title_text="PYTHON  —  RECIPE",
+                width=5.2, height=2.8, font_size=14, title_color=th.AMBER,
+            )
+            pointer = Triangle(color=th.AMBER_LIGHT, fill_opacity=1.0).scale(0.1).rotate(-PI / 2)
 
-                st.add(left_panel, right_panel)
-                self.play(FadeIn(left_panel, shift=LEFT * 0.2), FadeIn(right_panel, shift=RIGHT * 0.2), run_time=0.9)
+            add1 = self._op_node("+", "ADDER", th.CYAN, radius=0.42)
+            add2 = self._op_node("+", "ADDER", th.AMBER, radius=0.42)
+            mul = self._op_node("×", "MUL", th.GREEN, radius=0.46)
+            add1.move_to(UP * 0.55 + LEFT * 0.85)
+            add2.move_to(UP * 0.55 + RIGHT * 0.85)
+            mul.move_to(DOWN * 0.85)
+            w1 = Arrow(add1.circle.get_bottom(), mul.circle.get_top() + LEFT * 0.22, buff=0.06, color=th.CYAN, stroke_width=2.2)
+            w2 = Arrow(add2.circle.get_bottom(), mul.circle.get_top() + RIGHT * 0.22, buff=0.06, color=th.AMBER, stroke_width=2.2)
+            hw_title = self._label("SILICON  —  MACHINE", th.CYAN, 13, BOLD)
+            hw = VGroup(hw_title, VGroup(add1, add2, mul, w1, w2)).arrange(DOWN, buff=0.18)
+            hw_box = th.card(5.2, 3.4, stroke=th.CYAN)
+            hw.move_to(hw_box)
+            hw_panel = VGroup(hw_box, hw)
 
-                # Animate token shift: in blocking, token flies all the way through; in non-blocking, two tokens shift together!
-                clock.advance(self, delta_cycles=1, run_time=0.35)
-                self.play(
-                    reg_b1.animate.set_stroke(color=th.RED_LIGHT, width=3.5),
-                    reg_c1.animate.set_stroke(color=th.RED_LIGHT, width=3.5),
-                    reg_b2.animate.set_stroke(color=th.WHITE, width=3.5),
-                    reg_c2.animate.set_stroke(color=th.WHITE, width=3.5),
-                    run_time=0.6
+            pair = HStack(py, hw_panel, gap=th.SPACE_LG)
+            pair.move_to(self.layout.main_stage_center() + DOWN * 0.1)
+            fit_to_bounds(pair, max_width=12.2, max_height=4.4)
+
+            # Re-attach pointer after layout (py is now in place)
+            pointer.next_to(py, LEFT, buff=0.12)
+            pointer.align_to(py, UP).shift(DOWN * 1.05)
+
+            t = self._enter(st, pair, run_time=0.8)
+            st.register(pointer)
+            self.play(FadeIn(pointer), run_time=0.3)
+            self._say(st, n0, anim_time=t + 0.3)
+
+            t = 0.7
+            self.play(
+                pointer.animate.shift(DOWN * 0.42),
+                run_time=t,
+            )
+            self._say(st, n1, anim_time=t)
+
+            self.play(
+                add1.circle.animate.set_stroke(color=th.WHITE, width=4.0),
+                add2.circle.animate.set_stroke(color=th.WHITE, width=4.0),
+                run_time=0.5,
+            )
+            tok_a = Dot(radius=0.09, color=th.CYAN_LIGHT).move_to(add1.circle)
+            tok_b = Dot(radius=0.09, color=th.AMBER_LIGHT).move_to(add2.circle)
+            st.register(tok_a, tok_b)
+            self.play(
+                tok_a.animate.move_to(mul.circle.get_center() + LEFT * 0.15),
+                tok_b.animate.move_to(mul.circle.get_center() + RIGHT * 0.15),
+                mul.circle.animate.set_stroke(color=th.WHITE, width=4.0),
+                run_time=0.7,
+            )
+            self.play(FadeOut(tok_a), FadeOut(tok_b), run_time=0.2)
+            self._say(st, n2, anim_time=1.4)
+            st.takeaway("Software describes steps. Hardware is the steps, sitting in space.", wait=1.2)
+
+    # =====================================================================
+    # ACT 1: NO PROGRAM COUNTER
+    # =====================================================================
+    def play_act1_no_program_counter(self):
+        n0 = "To compute y = (a+b) times (c+d), a CPU spends three sequential cycles. A program counter points at one line."
+        n1 = "Silicon has no program counter. Both adders exist, so both adds happen in the same moment of physics."
+        n2 = "This is not threading. You did not spawn workers. You placed two adders on the die, the way you would instantiate two objects."
+        with self.stage(
+            "ACT 1",
+            "There is no program counter",
+            "A CPU walks a list. A chip is a live graph.",
+            narration=n0,
+        ) as st:
+            eq = Text("y  =  (a + b)  ×  (c + d)", font=th.MONO, weight=BOLD, font_size=26, color=th.WHITE)
+            eq.move_to(self.layout.main_stage_center() + UP * 1.55)
+            fit_to_bounds(eq, max_width=10.5)
+            t0 = self._enter(st, eq, shift=DOWN * 0.1, run_time=0.5)
+
+            cpu_title = self._label("CPU  ·  3 CYCLES", th.AMBER, 12, BOLD)
+            lines = [
+                "t1 = a + b     # cycle 1",
+                "t2 = c + d     # cycle 2",
+                "y  = t1 * t2   # cycle 3",
+            ]
+            cpu_rows = VGroup()
+            for src in lines:
+                box = RoundedRectangle(
+                    corner_radius=0.08, width=4.4, height=0.48,
+                    stroke_color=th.BORDER, stroke_width=1.4,
+                    fill_color="#0e1526", fill_opacity=0.94,
                 )
-                self.wait(max(0.3, trk.duration - 2.2))
-                st.takeaway("Blocking collapses a pipeline. Non-blocking preserves it.", wait=1.2)
+                txt = Text(src, font=th.MONO, font_size=13, color=th.TEXT).move_to(box)
+                cpu_rows.add(VGroup(box, txt))
+            cpu_rows.arrange(DOWN, buff=0.1)
+            pc = self._label("PC →", th.AMBER_LIGHT, 12, BOLD)
+            pc.next_to(cpu_rows[0], LEFT, buff=0.08)
+            cpu_body = VGroup(cpu_rows, pc)
+            cpu_panel = VGroup(cpu_title, cpu_body).arrange(DOWN, buff=0.16)
 
-        # =====================================================================
-        # ACT 4: HOST-TO-DEVICE INTERCONNECT (PYTORCH TO SILICON)
-        # =====================================================================
-        act4_narration = (
-            "Finally, how does your PyTorch tensor reach the silicon? The CPU writes a small memory-mapped doorbell register. "
-            "That wakes dedicated DMA engines, which stream tensors across the PCIe bus straight into the accelerator's on-chip "
-            "SRAM buffer—while the CPU goes back to doing other work."
-        )
-        with self.stage("ACT 4", "Host to Device Interconnect", "PCIe DMA Engines, MMIO Doorbells & PyTorch Dispatch", narration=act4_narration) as st:
-            with self.voiceover(act4_narration) as trk:
-                # 3-Stage Connected Hardware Pipeline
-                host_node = RoundedRectangle(corner_radius=0.12, width=3.2, height=3.4, stroke_color=th.AMBER, stroke_width=2.0, fill_color="#181106", fill_opacity=0.92)
-                h_title = Text("HOST CPU", font=th.MONO, weight=BOLD, font_size=15, color=th.AMBER)
-                h_py = Text("torch.matmul(A, B)", font=th.MONO, font_size=12, color=th.AMBER_LIGHT)
-                h_door = Text("1. Write Descriptor\n2. Ring MMIO Doorbell", font=th.MONO, font_size=11, color=th.TEXT, line_spacing=1.3)
-                h_content = VStack(h_title, h_py, h_door, gap=th.SPACE_SM).move_to(host_node)
-                host_group = VGroup(host_node, h_content).move_to(LEFT * 4.2 + DOWN * 0.2)
+            hw_title = self._label("SILICON  ·  ONE GRAPH", th.CYAN, 12, BOLD)
+            add1 = self._op_node("+", "a+b", th.CYAN, radius=0.4)
+            add2 = self._op_node("+", "c+d", th.AMBER, radius=0.4)
+            mul = self._op_node("×", "y", th.GREEN, radius=0.44)
+            add1.move_to(LEFT * 1.05 + UP * 0.45)
+            add2.move_to(RIGHT * 1.05 + UP * 0.45)
+            mul.move_to(DOWN * 0.95)
+            w1 = Arrow(add1.circle.get_bottom(), mul.circle.get_top() + LEFT * 0.2, buff=0.05, color=th.CYAN, stroke_width=2.0)
+            w2 = Arrow(add2.circle.get_bottom(), mul.circle.get_top() + RIGHT * 0.2, buff=0.05, color=th.AMBER, stroke_width=2.0)
+            nums = self._label("a=3  b=2     c=4  d=1", th.MUTED, 11)
+            hw_g = VGroup(add1, add2, mul, w1, w2)
+            hw_panel = VGroup(hw_title, hw_g, nums).arrange(DOWN, buff=0.14)
 
-                pcie_bus = RoundedRectangle(corner_radius=0.12, width=3.2, height=3.4, stroke_color=th.CYAN, stroke_width=2.0, fill_color="#09182a", fill_opacity=0.92)
-                p_title = Text("PCIe GEN5 x16", font=th.MONO, weight=BOLD, font_size=15, color=th.CYAN)
-                p_stat = Text("64 GB/s Bandwidth\nAsync DMA Burst\nHost Unblocked", font=th.MONO, font_size=11, color=th.CYAN_LIGHT, line_spacing=1.3)
-                p_content = VStack(p_title, p_stat, gap=th.SPACE_SM).move_to(pcie_bus)
-                pcie_group = VGroup(pcie_bus, p_content).move_to(DOWN * 0.2)
+            pair = HStack(cpu_panel, hw_panel, gap=th.SPACE_XL)
+            pair.move_to(self.layout.main_stage_center() + DOWN * 0.25)
+            fit_to_bounds(pair, max_width=12.4, max_height=4.2)
 
-                acc_node = RoundedRectangle(corner_radius=0.12, width=3.2, height=3.4, stroke_color=th.GREEN, stroke_width=2.0, fill_color="#071b11", fill_opacity=0.92)
-                a_title = Text("AI ACCELERATOR", font=th.MONO, weight=BOLD, font_size=15, color=th.GREEN)
-                a_stat = Text("SRAM Tile Buffers\nWeight Double-Buffer\nSystolic Engine", font=th.MONO, font_size=11, color=th.GREEN_LIGHT, line_spacing=1.3)
-                a_content = VStack(a_title, a_stat, gap=th.SPACE_SM).move_to(acc_node)
-                acc_group = VGroup(acc_node, a_content).move_to(RIGHT * 4.2 + DOWN * 0.2)
+            t1 = self._enter(st, pair, run_time=0.8)
+            self._say(st, n0, anim_time=t0 + t1)
 
-                wire_h_p = Arrow(host_node.get_right(), pcie_bus.get_left(), buff=0.08, color=th.AMBER_LIGHT, stroke_width=3.0)
-                wire_p_a = Arrow(pcie_bus.get_right(), acc_node.get_left(), buff=0.08, color=th.CYAN_LIGHT, stroke_width=3.0)
+            # Cycle 1: CPU line 0, BOTH adders live
+            self.play(
+                cpu_rows[0][0].animate.set_stroke(color=th.AMBER, width=2.6),
+                add1.circle.animate.set_stroke(color=th.WHITE, width=4.0),
+                add2.circle.animate.set_stroke(color=th.WHITE, width=4.0),
+                run_time=0.55,
+            )
+            self.clock.advance(self, delta_cycles=1, run_time=0.25)
+            self._say(st, n1, anim_time=0.8)
 
-                st.add(host_group, pcie_group, acc_group, wire_h_p, wire_p_a)
-                self.play(FadeIn(host_group), FadeIn(pcie_group), FadeIn(acc_group), Create(wire_h_p), Create(wire_p_a), run_time=1.0)
+            tok_l = Dot(radius=0.1, color=th.CYAN_LIGHT).move_to(add1.circle)
+            tok_r = Dot(radius=0.1, color=th.AMBER_LIGHT).move_to(add2.circle)
+            st.register(tok_l, tok_r)
+            self.play(
+                pc.animate.next_to(cpu_rows[1], LEFT, buff=0.08),
+                cpu_rows[0][0].animate.set_stroke(color=th.BORDER, width=1.4),
+                cpu_rows[1][0].animate.set_stroke(color=th.AMBER, width=2.6),
+                tok_l.animate.move_to(mul.circle.get_center() + LEFT * 0.16),
+                tok_r.animate.move_to(mul.circle.get_center() + RIGHT * 0.16),
+                add1.circle.animate.set_stroke(color=th.CYAN, width=2.5),
+                add2.circle.animate.set_stroke(color=th.AMBER, width=2.5),
+                mul.circle.animate.set_stroke(color=th.WHITE, width=4.0),
+                run_time=0.85,
+            )
+            self.play(FadeOut(tok_l), FadeOut(tok_r), run_time=0.15)
+            self.clock.advance(self, delta_cycles=1, run_time=0.25)
 
-                # Animate the Doorbell Ring spark and continuous DMA tensor stream
-                doorbell_spark = Dot(host_node.get_right(), radius=0.14, color=th.AMBER)
-                self.play(Indicate(doorbell_spark, color=th.WHITE, scale_factor=1.8), run_time=0.4)
+            y_txt = self._label("y = 25", th.GREEN_LIGHT, 16, BOLD)
+            y_txt.next_to(mul, DOWN, buff=0.12)
+            st.register(y_txt)
+            self.play(
+                pc.animate.next_to(cpu_rows[2], LEFT, buff=0.08),
+                cpu_rows[1][0].animate.set_stroke(color=th.BORDER, width=1.4),
+                cpu_rows[2][0].animate.set_stroke(color=th.GREEN, width=2.6),
+                FadeIn(y_txt, shift=UP * 0.08),
+                run_time=0.7,
+            )
+            self.clock.advance(self, delta_cycles=1, run_time=0.25)
+            self._say(st, n2, anim_time=1.2)
+            st.takeaway("The CPU is an interpreter. The chip is the program, already built.", wait=1.2)
 
-                # Continuous tensor packet train streaming into accelerator
-                packets = VGroup(*[
-                    Dot(radius=0.10, color=col)
-                    for col in [th.AMBER_LIGHT, th.CYAN_LIGHT, th.GREEN_LIGHT, th.AMBER_LIGHT]
-                ])
-                for i, pkt in enumerate(packets):
-                    pkt.move_to(host_node.get_right() + LEFT * (i * 0.25))
-                    st.add(pkt)
+    # =====================================================================
+    # ACT 2: MEMORY ENERGY WALL
+    # =====================================================================
+    def play_act2_memory_energy_wall(self):
+        n0 = "In Python, a times b and arr of i look equally cheap. In silicon they are not even the same sport."
+        n1 = "An eight-bit multiply-accumulate is about 0.2 picojoules. Fetching that byte from off-chip DRAM is about 200 picojoules — a thousand times more."
+        n2 = "Longer wires hold more charge. Moving data is a physics bill. That is why AI chips hoard weights next to the math units."
+        with self.stage(
+            "ACT 2",
+            "The memory energy wall",
+            "Compute is cheap. Fetching is the invoice.",
+            narration=n0,
+        ) as st:
+            py = th.code_window(
+                [
+                    ("acc += w * x          # looks free", th.GREEN_LIGHT),
+                    ("w = weights[i]        # looks free", th.AMBER_LIGHT),
+                    ("# hardware: fetch >> multiply", th.MUTED),
+                ],
+                title_text="PYTHON  —  BOTH LOOK O(1)",
+                width=5.4, height=2.4, font_size=14, title_color=th.AMBER,
+            )
+            cards = VStack(
+                th.metric_card("0.2 pJ", "INT8 MAC", "local math", color=th.GREEN, width=3.6, height=1.55),
+                th.metric_card("200 pJ", "DRAM byte", "off-chip fetch", color=th.RED, width=3.6, height=1.55),
+                gap=th.SPACE_SM,
+            )
+            top = HStack(py, cards, gap=th.SPACE_LG)
+            top.move_to(self.layout.main_stage_center() + UP * 0.55)
+            fit_to_bounds(top, max_width=12.2, max_height=3.2)
+            t = self._enter(st, top, run_time=0.8)
+            self._say(st, n0, anim_time=t)
 
-                self.play(
-                    LaggedStart(*[
-                        pkt.animate.move_to(acc_node.get_center())
-                        for pkt in packets
-                    ], lag_ratio=0.25),
-                    acc_node.animate.set_stroke(color=th.GREEN_LIGHT, width=3.5),
-                    run_time=1.4
+            bar = MemoryEnergyBar(total_width=11.0)
+            bar.scale(0.82)
+            bar.next_to(top, DOWN, buff=0.22)
+            t = self._enter(st, bar, shift=UP * 0.08, run_time=0.8)
+            self.screen_shake(intensity=0.025, cycles=2, run_time=0.2)
+            self._say(st, n1, anim_time=t + 0.2)
+
+            note = self._label(
+                "analogy:  multiply = a local function call     fetch = a network round-trip",
+                th.MUTED, 13,
+            )
+            note.next_to(bar, DOWN, buff=0.12)
+            fit_to_bounds(note, max_width=11.5)
+            t = self._enter(st, note, run_time=0.5)
+            self._say(st, n2, anim_time=t)
+            st.takeaway("Do not first optimize MACs. First stop moving the same bytes.", wait=1.3)
+
+    # =====================================================================
+    # ACT 3: WIRES VS REGISTERS
+    # =====================================================================
+    def play_act3_wires_vs_registers(self):
+        n0 = "A combinational gate is an Excel formula: change an input, the output updates immediately. It has no memory."
+        n1 = "A D flip-flop is a snapshot. On the rising clock edge it samples D and freezes it at Q until the next tick."
+        n2 = "Data must be stable just before the edge, and stay stable just after. If it is still changing, you capture garbage — like reading a dict while another thread writes it."
+        with self.stage(
+            "ACT 3",
+            "Wires compute. Registers remember.",
+            "Spreadsheet formulas vs a metronome snapshot",
+            narration=n0,
+        ) as st:
+            dff = DFlipFlopNode(name="D FLIP-FLOP", val="0", width=2.2, height=2.9, color=th.CYAN)
+            analog = VGroup(
+                self._label("SOFTWARE ANALOG", th.MUTED, 11, BOLD),
+                self._label("wire  = live formula", th.TEXT, 12),
+                self._label("flop  = photo on a tick", th.TEXT, 12),
+            ).arrange(DOWN, aligned_edge=LEFT, buff=0.1)
+            left = VGroup(dff, analog).arrange(DOWN, buff=0.22)
+
+            chart_bg = RoundedRectangle(
+                corner_radius=0.1, width=6.2, height=3.35,
+                stroke_color=th.BORDER, stroke_width=1.5,
+                fill_color="#090e17", fill_opacity=0.95,
+            )
+            chart_title = self._label("WHEN THE CLOCK IS ALLOWED TO SAMPLE", th.MUTED, 12, BOLD)
+            chart_title.next_to(chart_bg.get_top(), DOWN, buff=0.12)
+
+            # In-card square wave (no side label — ClockWaveform would overflow the panel)
+            wave_w, wave_h = 4.4, 0.55
+            cx, cy = chart_bg.get_center()[0] + 0.15, chart_bg.get_center()[1] + 0.7
+            x0 = cx - wave_w / 2
+            pts = [
+                np.array([x0, cy - wave_h / 2, 0]),
+                np.array([x0 + wave_w * 0.25, cy - wave_h / 2, 0]),
+                np.array([x0 + wave_w * 0.25, cy + wave_h / 2, 0]),
+                np.array([x0 + wave_w * 0.5, cy + wave_h / 2, 0]),
+                np.array([x0 + wave_w * 0.5, cy - wave_h / 2, 0]),
+                np.array([x0 + wave_w * 0.75, cy - wave_h / 2, 0]),
+                np.array([x0 + wave_w * 0.75, cy + wave_h / 2, 0]),
+                np.array([x0 + wave_w, cy + wave_h / 2, 0]),
+            ]
+            clk = VMobject(color=th.AMBER, stroke_width=2.6)
+            clk.set_points_as_corners(pts)
+            clk_tag = self._label("CLK", th.AMBER, 11, BOLD)
+            clk_tag.move_to(np.array([x0 - 0.38, cy, 0]))
+            edge_mark = Dot(np.array([x0 + wave_w * 0.25, cy, 0]), radius=0.001, fill_opacity=0)
+            setup_box = Rectangle(
+                width=0.85, height=1.55, stroke_color=th.GREEN, stroke_width=1.0,
+                fill_color=th.GREEN, fill_opacity=0.18,
+            ).move_to(np.array([x0 + wave_w * 0.25 - 0.42, cy - 1.05, 0]))
+            hold_box = Rectangle(
+                width=0.55, height=1.55, stroke_color=th.CYAN, stroke_width=1.0,
+                fill_color=th.CYAN, fill_opacity=0.18,
+            ).move_to(np.array([x0 + wave_w * 0.25 + 0.28, cy - 1.05, 0]))
+            setup_lbl = self._label("stable BEFORE  (setup)", th.GREEN_LIGHT, 10)
+            hold_lbl = self._label("stable AFTER  (hold)", th.CYAN_LIGHT, 10)
+            setup_lbl.next_to(setup_box, DOWN, buff=0.04)
+            hold_lbl.next_to(hold_box, DOWN, buff=0.04)
+            timing = VGroup(
+                chart_bg, chart_title, clk, clk_tag, edge_mark,
+                setup_box, hold_box, setup_lbl, hold_lbl,
+            )
+
+            pair = HStack(left, timing, gap=th.SPACE_LG)
+            pair.move_to(self.layout.main_stage_center() + DOWN * 0.15)
+            fit_to_bounds(pair, max_width=12.4, max_height=4.5)
+
+            t = self._enter(st, pair, run_time=0.9)
+            self._say(st, n0, anim_time=t)
+
+            self.clock.advance(self, delta_cycles=1, run_time=0.3)
+            ex = edge_mark.get_x()
+            scan = Line(
+                np.array([ex, chart_bg.get_top()[1] - 0.25, 0]),
+                np.array([ex, chart_bg.get_bottom()[1] + 0.25, 0]),
+                color=th.WHITE, stroke_width=3.0,
+            )
+            self.play(ShowPassingFlash(scan, time_width=0.3, run_time=0.55))
+            self.play(dff.set_value("1", color=th.GREEN_LIGHT), run_time=0.35)
+            self._say(st, n1, anim_time=1.2)
+
+            warn = self._label("BAD SAMPLE: value still changing at the edge", th.RED, 13, BOLD)
+            warn.next_to(pair, DOWN, buff=0.12)
+            fit_to_bounds(warn, max_width=11.0)
+            st.register(warn)
+            self.play(
+                Write(warn),
+                setup_box.animate.set_fill(color=th.RED, opacity=0.4).set_stroke(color=th.RED, width=2.4),
+                run_time=0.7,
+            )
+            self.screen_shake(intensity=0.035, cycles=3, run_time=0.22)
+            self.play(dff.set_value("X?", color=th.RED_LIGHT), run_time=0.35)
+            self._say(st, n2, anim_time=1.3)
+            st.takeaway("Respect the sample window, or the register stores a coin-flip.", wait=1.2)
+
+    # =====================================================================
+    # ACT 4: = VS <=  (Python unpack analog)
+    # =====================================================================
+    def play_act4_assign_vs_unpack(self):
+        n0 = "The number-one RTL bug for software people: blocking equals versus non-blocking less-than-equals."
+        n1 = "Blocking assignment is ordinary Python: b equals a, then c equals b. C sees the new B. A two-stage pipeline collapses into a wire."
+        n2 = "Non-blocking is tuple unpack: b, c equals a, b. Both right-hand sides are the old values. The pipeline survives the clock tick."
+        with self.stage(
+            "ACT 4",
+            "Assignment vs unpack",
+            "b = a; c = b    vs    b, c = a, b",
+            narration=n0,
+        ) as st:
+            left_code = th.code_window(
+                [
+                    ("# Python analog", th.MUTED),
+                    ("b = a", th.TEXT),
+                    ("c = b          # sees NEW b", th.RED_LIGHT),
+                    ("# RTL: b = a; c = b;", th.MUTED),
+                ],
+                title_text="BLOCKING  =   COLLAPSE",
+                width=5.3, height=2.35, font_size=13, title_color=th.RED,
+            )
+            right_code = th.code_window(
+                [
+                    ("# Python analog", th.MUTED),
+                    ("b, c = a, b    # old values", th.GREEN_LIGHT),
+                    ("# RTL:", th.MUTED),
+                    ("b <= a;  c <= b;", th.TEXT),
+                ],
+                title_text="NON-BLOCKING  <=   PIPELINE",
+                width=5.3, height=2.35, font_size=13, title_color=th.GREEN,
+            )
+            codes = HStack(left_code, right_code, gap=th.SPACE_LG)
+            codes.move_to(self.layout.main_stage_center() + UP * 0.95)
+            fit_to_bounds(codes, max_width=12.2, max_height=2.5)
+            t = self._enter(st, codes, run_time=0.8)
+            self._say(st, n0, anim_time=t)
+
+            def _mini_chain(vals, color):
+                nodes = []
+                for name, val in vals:
+                    n = DFlipFlopNode(name=name, val=val, width=1.15, height=1.45, color=color, has_leads=False)
+                    nodes.append(n)
+                row = HStack(*nodes, gap=0.35)
+                arrows = VGroup()
+                for i in range(len(nodes) - 1):
+                    arrows.add(Arrow(
+                        nodes[i].chassis.get_right(),
+                        nodes[i + 1].chassis.get_left(),
+                        buff=0.04, color=color, stroke_width=2.2,
+                    ))
+                return VGroup(row, arrows), nodes
+
+            broken, b_nodes = _mini_chain([("A", "10"), ("B", "20"), ("C", "30")], th.RED)
+            good, g_nodes = _mini_chain([("A", "10"), ("B", "20"), ("C", "30")], th.GREEN)
+            b_tag = self._label("after 1 tick: 10, 10, 10", th.RED_LIGHT, 11, BOLD)
+            g_tag = self._label("after 1 tick: 10, 10, 20", th.GREEN_LIGHT, 11, BOLD)
+            left_s = VGroup(broken, b_tag).arrange(DOWN, buff=0.12)
+            right_s = VGroup(good, g_tag).arrange(DOWN, buff=0.12)
+            schem = HStack(left_s, right_s, gap=th.SPACE_XL)
+            schem.next_to(codes, DOWN, buff=0.22)
+            fit_to_bounds(schem, max_width=12.2, max_height=2.4)
+            t = self._enter(st, schem, run_time=0.7)
+            self._say(st, n1, anim_time=t)
+
+            self.clock.advance(self, delta_cycles=1, run_time=0.3)
+            tok_b = Dot(radius=0.09, color=th.RED_LIGHT).move_to(b_nodes[0].val_box)
+            tok_g1 = Dot(radius=0.09, color=th.CYAN_LIGHT).move_to(g_nodes[0].val_box)
+            tok_g2 = Dot(radius=0.09, color=th.GREEN_LIGHT).move_to(g_nodes[1].val_box)
+            st.register(tok_b, tok_g1, tok_g2)
+            self.play(
+                tok_b.animate.move_to(b_nodes[2].val_box),
+                b_nodes[1].set_value("10", color=th.RED_LIGHT),
+                b_nodes[2].set_value("10", color=th.RED_LIGHT),
+                tok_g1.animate.move_to(g_nodes[1].val_box),
+                tok_g2.animate.move_to(g_nodes[2].val_box),
+                g_nodes[1].set_value("10", color=th.GREEN_LIGHT),
+                g_nodes[2].set_value("20", color=th.GREEN_LIGHT),
+                run_time=1.1,
+            )
+            self.play(FadeOut(tok_b), FadeOut(tok_g1), FadeOut(tok_g2), run_time=0.2)
+            self._say(st, n2, anim_time=1.6)
+            st.takeaway("always_comb uses '='. always_ff uses '<='. Think: sequential vs unpack.", wait=1.3)
+
+    # =====================================================================
+    # ACT 5: HOST TO DEVICE
+    # =====================================================================
+    def play_act5_host_to_device(self):
+        n0 = "When you call torch.matmul, the CPU is not doing the multiply. It writes a small descriptor, then rings one memory-mapped register: a doorbell."
+        n1 = "That write wakes a DMA engine. Tensors stream over PCIe into on-chip SRAM while Python keeps running."
+        n2 = "Double buffering is the hardware version of ping-pong queues: one SRAM bank feeds the array while the other fills from the bus."
+        with self.stage(
+            "ACT 5",
+            "How a tensor actually reaches the chip",
+            "Python writes a doorbell. DMA owns the copy.",
+            narration=n0,
+        ) as st:
+            def _box(title, lines, color, fill):
+                frame = RoundedRectangle(
+                    corner_radius=0.12, width=3.35, height=3.15,
+                    stroke_color=color, stroke_width=2.0,
+                    fill_color=fill, fill_opacity=0.93,
                 )
-                clock.advance(self, delta_cycles=1, run_time=0.3)
-                self.wait(max(0.3, trk.duration - 3.1))
-                st.takeaway("A doorbell ring is all it takes to move a tensor.", wait=1.2)
+                head = self._label(title, color, 13, BOLD)
+                body = VGroup(*[self._label(ln, th.TEXT, 11) for ln in lines]).arrange(DOWN, aligned_edge=LEFT, buff=0.12)
+                inner = VStack(head, body, gap=th.SPACE_SM, alignment="left")
+                inner.move_to(frame)
+                return VGroup(frame, inner), frame
+
+            host, host_f = _box(
+                "HOST  CPU",
+                ["1. write descriptor", "2. ring doorbell MMIO", "3. return to Python"],
+                th.AMBER, "#181106",
+            )
+            pcie, pcie_f = _box(
+                "PCIe  LINK",
+                ["bulk DMA copy", "CPU does not wait", "bandwidth >> doorbell"],
+                th.CYAN, "#09182a",
+            )
+            acc, acc_f = _box(
+                "ACCELERATOR",
+                ["SRAM ping / pong", "math array eats SRAM", "weights stay local"],
+                th.GREEN, "#071b11",
+            )
+            trio = HStack(host, pcie, acc, gap=th.SPACE_MD)
+            trio.move_to(self.layout.main_stage_center() + UP * 0.05)
+            fit_to_bounds(trio, max_width=12.2, max_height=3.5)
+
+            a1 = Arrow(host_f.get_right(), pcie_f.get_left(), buff=0.06, color=th.AMBER_LIGHT, stroke_width=2.8)
+            a2 = Arrow(pcie_f.get_right(), acc_f.get_left(), buff=0.06, color=th.CYAN_LIGHT, stroke_width=2.8)
+
+            t = self._enter(st, trio, a1, a2, run_time=0.9)
+            self._say(st, n0, anim_time=t)
+
+            spark = Dot(host_f.get_right(), radius=0.11, color=th.AMBER)
+            st.register(spark)
+            self.play(Indicate(spark, color=th.WHITE, scale_factor=1.8), run_time=0.45)
+
+            packets = VGroup(*[
+                Dot(radius=0.09, color=c)
+                for c in (th.AMBER_LIGHT, th.CYAN_LIGHT, th.GREEN_LIGHT, th.CYAN_LIGHT)
+            ])
+            for i, pkt in enumerate(packets):
+                pkt.move_to(host_f.get_right() + LEFT * (0.15 + i * 0.22))
+            st.register(packets)
+            self.play(
+                LaggedStart(*[pkt.animate.move_to(acc_f.get_left() + RIGHT * 0.25) for pkt in packets], lag_ratio=0.2),
+                acc_f.animate.set_stroke(color=th.GREEN_LIGHT, width=3.4),
+                run_time=1.25,
+            )
+            self.clock.advance(self, delta_cycles=1, run_time=0.25)
+            self._say(st, n1, anim_time=2.0)
+
+            note = self._label("software analog:  submit a job to a queue, do not join() the copy", th.MUTED, 13)
+            note.next_to(trio, DOWN, buff=0.22)
+            fit_to_bounds(note, max_width=11.5)
+            t = self._enter(st, note, run_time=0.45)
+            self._say(st, n2, anim_time=t)
+            st.takeaway("One register write can launch a bulk copy. After that, the chip owns the data.", wait=1.2)
+
+    # =====================================================================
+    # ACT 6: SIMULATE BEFORE FAB
+    # =====================================================================
+    def play_act6_simulate_before_fab(self):
+        n0 = "You cannot git revert a chip. A tape-out is tens of millions of dollars. So we test the design as software first."
+        n1 = "Cocotb is pytest for wires: your Python testbench drives SystemVerilog, waits on a clock edge, and asserts the result."
+        n2 = "Carry three rules into every lab: the circuit is a live graph, clocked state uses less-than-equals, and moving data costs more than math."
+        with self.stage(
+            "ACT 6",
+            "Pytest for silicon",
+            "Simulate the wires before you pay the foundry",
+            narration=n0,
+        ) as st:
+            py = th.code_window(
+                [
+                    ("@cocotb.test()", th.MUTED),
+                    ("async def test_add(dut):", th.TEXT),
+                    ("    dut.a.value = 10", th.TEXT),
+                    ("    dut.b.value = 20", th.TEXT),
+                    ("    await RisingEdge(dut.clk)", th.CYAN_LIGHT),
+                    ("    assert dut.sum.value == 30", th.GREEN_LIGHT),
+                ],
+                title_text="PYTHON  COCOTB  (pytest for RTL)",
+                width=5.6, height=3.2, font_size=13, title_color=th.CYAN,
+            )
+            rules = VGroup(
+                th.metric_card("1", "Live graph", "gates exist together", color=th.CYAN, width=4.6, height=1.05),
+                th.metric_card("2", "Clocked unpack", "always_ff uses <=", color=th.AMBER, width=4.6, height=1.05),
+                th.metric_card("3", "Move last", "fetch >> compute", color=th.GREEN, width=4.6, height=1.05),
+            ).arrange(DOWN, buff=0.14)
+            pair = HStack(py, rules, gap=th.SPACE_LG)
+            pair.move_to(self.layout.main_stage_center() + DOWN * 0.05)
+            fit_to_bounds(pair, max_width=12.2, max_height=4.4)
+
+            t = self._enter(st, pair, run_time=0.9)
+            self._say(st, n0, anim_time=t)
+            self._say(st, n1, anim_time=0.2)
+
+            badge_bg = RoundedRectangle(
+                corner_radius=0.08, width=3.4, height=0.42,
+                stroke_color=th.GREEN, fill_color="#072213", fill_opacity=0.92,
+            )
+            badge_t = self._label("tests passed  ·  safe to synthesize", th.GREEN_LIGHT, 12, BOLD)
+            badge = VGroup(badge_bg, badge_t)
+            badge_t.move_to(badge_bg)
+            badge.next_to(pair, DOWN, buff=0.18)
+            t = self._enter(st, badge, run_time=0.45)
+            self._say(st, n2, anim_time=t)
+            st.takeaway("Treat RTL like unreleased production code: test it before it becomes physics.", wait=1.5)
