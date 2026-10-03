@@ -455,12 +455,35 @@ def narration_banner(text, font_size=15, width=12.2, height=1.05, color=TEXT,
     wrapped = textwrap.fill(text, width=76)
     t = Text(wrapped, font=SANS, font_size=font_size, color=color, line_spacing=1.15)
     max_w = width - 1.2
+    max_h = height - 0.35
     if t.width > max_w:
         t.scale_to_fit_width(max_w)
+    if t.height > max_h:
+        t.scale_to_fit_height(max_h)
     t.next_to(pip, RIGHT, buff=0.25)
     t.match_y(bg)
 
     return VGroup(bg, pip, t)
+
+
+def takeaway_callout(text, color=CYAN, font_size=17, width=11.4, height=1.15):
+    """
+    Transition "takeaway" bar shown at the END of an act, before moving to the
+    next stage: a one-line "so the point is..." summary that bridges acts and
+    gives the viewer time to absorb the concept before the next depth jump.
+    """
+    c = card(width, height, stroke=color, radius=0.15)
+    pip = Dot(point=c.get_left() + RIGHT * 0.32, radius=0.06, color=color)
+    pip.match_y(c)
+
+    t = Text(text, font=SANS, weight=BOLD, font_size=font_size, color=TEXT)
+    max_w = width - 1.1
+    if t.width > max_w:
+        t.scale_to_fit_width(max_w)
+    t.next_to(pip, RIGHT, buff=0.25)
+    t.match_y(c)
+
+    return VGroup(c, pip, t)
 
 
 def code_window(code_lines, title_text="PYTORCH / SOFTWARE", width=5.6, height=3.6,
@@ -742,7 +765,7 @@ class LiquidTankWidget(VGroup):
             width=width - 0.15, height=0.05,
             stroke_width=0, fill_color=fluid_color, fill_opacity=0.75
         )
-        self.fluid.move_to(np.array([0, -height/2 + 0.05, 0]))
+        self.fluid.move_to(tank_walls.get_bottom() + UP * (0.05 / 2 + 0.02))
 
         # Max capacity line
         max_line = DashedLine(
@@ -766,7 +789,9 @@ class LiquidTankWidget(VGroup):
             width=self._tank_width - 0.15, height=new_h,
             stroke_width=0, fill_color=fill_col, fill_opacity=0.85
         )
-        new_fluid.move_to(np.array([0, -self._tank_height/2 + new_h/2 + 0.05, 0]))
+        cx = self.tank_walls.get_center()[0]
+        bot_y = self.tank_walls.get_bottom()[1]
+        new_fluid.move_to(np.array([cx, bot_y + new_h / 2 + 0.05, 0]))
         return Transform(self.fluid, new_fluid)
 
 

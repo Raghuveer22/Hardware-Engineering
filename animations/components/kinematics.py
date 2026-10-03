@@ -15,7 +15,7 @@ if str(ANIM_DIR) not in sys.path:
     sys.path.insert(0, str(ANIM_DIR))
 
 import theme as th
-from components.layout import StageLayout, TextRole, SemanticText, ConstraintAnchor
+from components.layout import StageLayout, TextRole, SemanticText, ConstraintAnchor, fit_to_bounds
 
 
 class VoiceoverTracker:
@@ -73,11 +73,13 @@ class StageContext:
         
         if self.subtitle:
             self.sub_t = SemanticText(self.subtitle, role=TextRole.STAGE_TITLE, color=th.WHITE)
-            self.header_group = VGroup(self.kicker, self.sub_t).arrange(DOWN, buff=0.12)
+            fit_to_bounds(self.sub_t, max_width=8.0)
+            self.header_group = VGroup(self.kicker, self.sub_t).arrange(DOWN, buff=0.10)
         else:
             self.header_group = VGroup(self.kicker)
 
-        self.header_group.to_edge(UP, buff=0.45)
+        fit_to_bounds(self.header_group, max_width=8.2)
+        self.header_group.to_edge(UP, buff=0.35)
         self.scene.play(FadeIn(self.header_group, shift=DOWN * 0.2), run_time=0.5)
 
         # Build bottom narration banner if provided
@@ -111,6 +113,18 @@ class StageContext:
         else:
             self.banner = new_banner
             self.scene.play(FadeIn(self.banner, shift=UP * 0.2), run_time=run_time)
+
+    def takeaway(self, text: str, wait: float = 1.4, color=th.CYAN, run_time=0.6):
+        """
+        Shows a one-line "so the point is..." transition bar at the end of an act,
+        giving the viewer time to absorb the concept before the next depth jump.
+        The bar is registered into the stage pool so it cleans up with the act.
+        """
+        bar = th.takeaway_callout(text, color=color)
+        bar.move_to(self.scene.layout.main_stage_center())
+        self.scene.play(FadeIn(bar, shift=UP * 0.15), run_time=run_time)
+        self.scene.wait(wait)
+        self.scene.play(FadeOut(bar), run_time=0.35)
 
     def morph_to(self, target_mobjects, run_time=th.RATE_NORMAL):
         """

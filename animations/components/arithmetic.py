@@ -66,13 +66,13 @@ class TwosComplementWheel(VGroup):
 
         # Danger zone marker at the 6 o'clock boundary
         discontinuity_line = DashedLine(
-            DOWN * (radius - 0.3),
-            DOWN * (radius + 0.3),
+            DOWN * (radius - 0.25),
+            DOWN * (radius + 0.25),
             color=th.AMBER,
             stroke_width=2.5
         )
-        disc_label = Text("OVERFLOW DISCONTINUITY", font=th.MONO, font_size=th.FONT_MICRO, color=th.AMBER)
-        disc_label.next_to(discontinuity_line, DOWN, buff=0.15)
+        disc_label = Text("OVERFLOW BOUNDARY", font=th.MONO, font_size=th.FONT_MICRO, color=th.AMBER)
+        disc_label.next_to(discontinuity_line, DOWN, buff=0.45)
         self.discontinuity_marker = VGroup(discontinuity_line, disc_label)
 
         # Needle pointer
@@ -94,7 +94,7 @@ class TwosComplementWheel(VGroup):
         self.readout_group = VGroup(self.readout_dec, self.readout_bin).arrange(DOWN, buff=0.1)
         self.readout_group.move_to(DOWN * (radius * 0.4))
 
-        # Clamp barrier (hidden by default)
+        # Clamp barrier (hidden by default, registered as child so it auto-cleans on exit)
         self.clamp_bar = Rectangle(
             width=0.6,
             height=0.15,
@@ -108,12 +108,13 @@ class TwosComplementWheel(VGroup):
                                 font_size=th.FONT_MICRO, color=th.AMBER)
         self.clamp_label.next_to(self.clamp_bar, RIGHT, buff=0.15)
         self.clamp_unit = VGroup(self.clamp_bar, self.clamp_label)
+        self.clamp_unit.set_opacity(0)
         self.clamp_active = False
 
         self.add(
             self.dial_frame, self.positive_arc, self.negative_arc,
             self.center_hub, self.ticks, self.discontinuity_marker,
-            self.needle, self.readout_group
+            self.needle, self.readout_group, self.clamp_unit
         )
 
     def val_to_angle(self, val):
@@ -182,7 +183,7 @@ class TwosComplementWheel(VGroup):
         """Drops the mechanical saturation clamp barrier into place."""
         self.clamp_active = True
         scene.play(
-            FadeIn(self.clamp_unit, shift=DOWN * 0.4),
+            self.clamp_unit.animate.set_opacity(1.0),
             run_time=th.RATE_FAST,
             rate_func=rate_functions.ease_out_bounce
         )

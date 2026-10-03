@@ -204,10 +204,10 @@ class ProcessingElementCell(VGroup):
         # Sub-blocks:
         # 1. Weight Register (locked local)
         self.w_box = RoundedRectangle(
-            corner_radius=0.08, width=1.8, height=0.8,
+            corner_radius=0.08, width=1.8, height=0.7,
             stroke_color=th.AMBER, stroke_width=1.5,
             fill_color="#2b1a05", fill_opacity=0.9
-        ).move_to(self.chassis.get_center() + UP * 0.45 + LEFT * 1.3)
+        ).move_to(self.chassis.get_center() + UP * 0.55 + LEFT * 1.3)
         self.w_lbl = SemanticText("W_REG [8b]", role=TextRole.PROBE_LABEL, color=th.AMBER_LIGHT)
         self.w_val = SemanticText("0x00", role=TextRole.BUS_VALUE, color=th.WHITE)
         w_sub = VStack(self.w_lbl, self.w_val, gap=th.SPACE_XS).move_to(self.w_box)
@@ -215,20 +215,20 @@ class ProcessingElementCell(VGroup):
 
         # 2. East Activation Forwarding Register
         self.east_box = RoundedRectangle(
-            corner_radius=0.08, width=1.6, height=0.7,
+            corner_radius=0.08, width=1.6, height=0.65,
             stroke_color=th.CYAN, stroke_width=1.5,
             fill_color="#091d2d", fill_opacity=0.9
-        ).move_to(self.chassis.get_right() + LEFT * 1.0 + UP * 0.45)
+        ).move_to(self.chassis.get_right() + LEFT * 1.1 + UP * 0.55)
         self.east_lbl = SemanticText("ACT_EAST", role=TextRole.PROBE_LABEL, color=th.CYAN_LIGHT)
         self.east_lbl.move_to(self.east_box)
         self.add(self.east_box, self.east_lbl)
 
         # 3. MAC Engine (Multiplier + Adder)
         self.mac_box = RoundedRectangle(
-            corner_radius=0.1, width=2.4, height=1.1,
+            corner_radius=0.08, width=2.4, height=0.85,
             stroke_color=th.GREEN, stroke_width=1.8,
             fill_color="#072213", fill_opacity=0.92
-        ).move_to(self.chassis.get_center() + DOWN * 0.4)
+        ).move_to(self.chassis.get_center() + DOWN * 0.15)
         self.mac_lbl = SemanticText("MAC ENGINE", role=TextRole.PROBE_LABEL, color=th.GREEN_LIGHT)
         self.mac_eq = SemanticText("sum += a·w", role=TextRole.BUS_VALUE, color=th.WHITE)
         mac_sub = VStack(self.mac_lbl, self.mac_eq, gap=th.SPACE_XS).move_to(self.mac_box)
@@ -236,13 +236,24 @@ class ProcessingElementCell(VGroup):
 
         # 4. South Sum Forwarding Register
         self.south_box = RoundedRectangle(
-            corner_radius=0.08, width=1.8, height=0.65,
+            corner_radius=0.08, width=1.8, height=0.55,
             stroke_color=th.GREEN, stroke_width=1.5,
             fill_color="#061e11", fill_opacity=0.9
-        ).move_to(self.chassis.get_bottom() + UP * 0.5)
+        ).move_to(self.chassis.get_bottom() + UP * 0.45)
         self.south_lbl = SemanticText("SUM_SOUTH [32b]", role=TextRole.PROBE_LABEL, color=th.GREEN_LIGHT)
         self.south_lbl.move_to(self.south_box)
         self.add(self.south_box, self.south_lbl)
+
+        # 5. Internal Datapath Wires (connecting ports and registers)
+        w_in_act = Line(self.west_port, self.east_box.get_left(), color=th.CYAN_DARK, stroke_width=1.5)
+        w_act_mac = Arrow(self.west_port + RIGHT * 0.6, self.mac_box.get_left() + UP * 0.15, buff=0, color=th.CYAN_DARK, stroke_width=1.5, max_tip_length_to_length_ratio=0.2)
+        w_w_mac = Arrow(self.w_box.get_bottom(), self.mac_box.get_top() + LEFT * 0.5, buff=0, color=th.AMBER_DARK, stroke_width=1.5, max_tip_length_to_length_ratio=0.2)
+        w_sum_in = Arrow(self.north_port, self.mac_box.get_top() + RIGHT * 0.5, buff=0, color=th.GREEN_DARK, stroke_width=1.5, max_tip_length_to_length_ratio=0.2)
+        w_mac_south = Arrow(self.mac_box.get_bottom(), self.south_box.get_top(), buff=0, color=th.GREEN_DARK, stroke_width=1.5, max_tip_length_to_length_ratio=0.2)
+        w_act_out = Line(self.east_box.get_right(), self.east_port, color=th.CYAN_DARK, stroke_width=1.5)
+        w_sum_out = Line(self.south_box.get_bottom(), self.south_port, color=th.GREEN_DARK, stroke_width=1.5)
+        self.internal_wires = VGroup(w_in_act, w_act_mac, w_w_mac, w_sum_in, w_mac_south, w_act_out, w_sum_out)
+        self.add(self.internal_wires)
 
     @property
     def west_port(self):
