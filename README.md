@@ -87,7 +87,7 @@ This platform supports **macOS (Apple Silicon & Intel)** and **Windows (WSL2 & N
 ### 🔍 Quick Environment Check
 Run the built-in diagnostic tool at any time to verify your system readiness:
 ```bash
-python check_env.py
+python setup/check_env.py
 ```
 
 ---
@@ -103,8 +103,8 @@ python check_env.py
 2. **Automated Setup:**
    Run the setup script to create `.venv` and install Python dependencies:
    ```bash
-   chmod +x setup.sh
-   ./setup.sh
+   chmod +x setup/setup.sh
+   ./setup/setup.sh
    ```
 
 3. **Run Full Verification & Emulation:**
@@ -133,8 +133,8 @@ WSL2 provides a native Linux kernel with full compatibility for open-source EDA 
    sudo apt update && sudo apt install -y build-essential clang iverilog verilator yosys graphviz gtkwave python3-venv python3-pip
 
    # Clone and setup
-   chmod +x setup.sh
-   ./setup.sh
+   chmod +x setup/setup.sh
+   ./setup/setup.sh
 
    # Run tests and C++ emulator
    ./build_and_run.sh
@@ -160,9 +160,9 @@ WSL2 provides a native Linux kernel with full compatibility for open-source EDA 
 
 2. **Automated Setup in PowerShell:**
    ```powershell
-   powershell -ExecutionPolicy Bypass -File .\setup.ps1
+   powershell -ExecutionPolicy Bypass -File .\setup\setup.ps1
    ```
-   *(Or in Command Prompt: `setup.bat`)*
+   *(Or in Command Prompt: `setup\setup.bat`)*
 
 3. **Run Full Verification & Emulation:**
    ```powershell
@@ -182,9 +182,11 @@ WSL2 provides a native Linux kernel with full compatibility for open-source EDA 
 | **Run All Labs (00 - 08)** | `python labs/run_lab.py --lab all` | `python labs\run_lab.py --lab all` | `python labs\run_lab.py --lab all` | `python run_all.py --run-labs` |
 | **Build & Run C++ Emulator** | `python cpp_emulation/build_emulator.py --run` | `python cpp_emulation\build_emulator.py --run` | `python cpp_emulation\build_emulator.py --run` | `python cpp_emulation/build_emulator.py --run` |
 | **Logic Synthesis & Schematics** | `python synthesis/synthesize.py --top all` | `python synthesis\synthesize.py --top all` | `python synthesis\synthesize.py --top all` | `python synthesis/synthesize.py --top all` |
+| **Verilog file → SVG** | `python synthesis/generate_synthesis.py labs/lab0/adder.sv` | `python synthesis\generate_synthesis.py labs\lab0\adder.sv` | `python synthesis\generate_synthesis.py labs\lab0\adder.sv` | `python synthesis/generate_synthesis.py labs/lab0/adder.sv` |
+| **Verilog → gate schematic (browser)** | `python synthesis/playground_server.py` | `python synthesis\playground_server.py` | `python synthesis\playground_server.py` | `python synthesis/playground_server.py` |
 | **Launch Live 2D Visualizer** | `python visualizer/serve.py` | `python visualizer\serve.py` | `python visualizer\serve.py` | `python visualizer/serve.py` |
 | **Open Schematics Explorer** | `open schematics/index.html` | `Start-Process schematics\index.html` | `start schematics\index.html` | `python -m webbrowser schematics/index.html` |
-| **Check System Readiness** | `python check_env.py` | `python check_env.py` | `python check_env.py` | `python check_env.py` |
+| **Check System Readiness** | `python setup/check_env.py` | `python setup\check_env.py` | `python setup\check_env.py` | `python setup/check_env.py` |
 
 ---
 
