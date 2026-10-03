@@ -332,7 +332,7 @@ class DFlipFlopNode(VGroup):
         p2 = np.array([self.chassis.get_left()[0] + tri_size, clk_y, 0])
         p3 = np.array([self.chassis.get_left()[0], clk_y - tri_size/2, 0])
         self.clk_tri = Polygon(p1, p2, p3, stroke_color=th.AMBER, fill_color=th.AMBER, fill_opacity=0.85, stroke_width=1.5)
-        self.clk_lbl = Text("clk", font=th.MONO, font_size=9, color=th.AMBER).next_to(self.clk_tri, RIGHT, buff=0.06)
+        self.clk_lbl = Text("clk", font=th.MONO, font_size=9, color=th.AMBER).next_to(self.clk_tri, UR, buff=0.02)
 
         # Port pin labels inside
         self.d_lbl = Text("D", font=th.MONO, weight=BOLD, font_size=12, color=th.TEXT).move_to(self.chassis.get_left() + RIGHT * 0.3 + UP * 0.4)
@@ -349,7 +349,8 @@ class DFlipFlopNode(VGroup):
         if has_leads:
             self.d_wire = Line(self.chassis.get_left() + UP * 0.4 + LEFT * 0.7, self.chassis.get_left() + UP * 0.4, color=th.TEXT, stroke_width=2.2)
             self.q_wire = Line(self.chassis.get_right() + UP * 0.4, self.chassis.get_right() + UP * 0.4 + RIGHT * 0.7, color=th.GREEN_LIGHT, stroke_width=2.2)
-            self.clk_wire = Line(self.chassis.get_left() + DOWN * 0.75 + LEFT * 0.7, self.chassis.get_left() + DOWN * 0.75, color=th.AMBER, stroke_width=2.2)
+            clk_port = np.array([self.chassis.get_left()[0], clk_y, 0.0])
+            self.clk_wire = Line(clk_port + LEFT * 0.7, clk_port, color=th.AMBER, stroke_width=2.2)
             self.add(self.d_wire, self.q_wire, self.clk_wire)
 
     def set_value(self, new_val, color=th.GREEN_LIGHT):

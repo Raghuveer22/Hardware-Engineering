@@ -30,6 +30,7 @@ from components.kinematics import (
     KineticSiliconScene,
     VoiceoverTracker,
     StageContext,
+    WorldContext,
 )
 from components.signals import (
     KineticClock,
@@ -83,6 +84,7 @@ __all__ = [
     "KineticSiliconScene",
     "VoiceoverTracker",
     "StageContext",
+    "WorldContext",
     "KineticClock",
     "LiveOscilloscope",
     "StoryboardTimeline",

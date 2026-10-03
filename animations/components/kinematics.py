@@ -144,16 +144,15 @@ class StageContext:
 
         fit_to_bounds(self.header_group, max_width=header_w)
         self.header_group.to_edge(UP, buff=th.SPACE_MD)
-        self.scene.play(FadeIn(self.header_group, shift=DOWN * th.SPACE_SM), run_time=0.5)
-
-        # Build bottom narration banner if provided.
-        # Only the first sentence goes on screen. The rest of a paragraph
-        # would spoil the beat, and the 1-line banner cannot hold it.
+        # Header and caption arrive together so an act does not open on an
+        # empty frame with only a fading title.
+        enter = [FadeIn(self.header_group, shift=DOWN * th.SPACE_SM)]
         if self.narration:
             self.banner = th.narration_banner(
                 _lead_sentence(self.narration), width=self._banner_width(),
             )
-            self.scene.play(FadeIn(self.banner, shift=UP * th.SPACE_SM), run_time=0.4)
+            enter.append(FadeIn(self.banner, shift=UP * th.SPACE_SM))
+        self.scene.play(*enter, run_time=0.35)
 
         self.refresh_content()
         return self
@@ -176,7 +175,11 @@ class StageContext:
     def update_narration(self, new_narration: str, run_time=0.5):
         """Smoothly updates the bottom-third guidance banner."""
         self.narration = new_narration
-        new_banner = th.narration_banner(new_narration, width=self._banner_width())
+        # Same rule as the opening banner: one sentence. A wrapped second
+        # line grows into whatever was placed just above the caption.
+        new_banner = th.narration_banner(
+            _lead_sentence(new_narration), width=self._banner_width(),
+        )
         if self.banner is not None:
             self.scene.play(Transform(self.banner, new_banner), run_time=run_time)
         else:
@@ -237,7 +240,137 @@ class StageContext:
             for mob in self.mobjects:
                 cleanups.append(FadeOut(mob))
             if cleanups:
-                self.scene.play(*cleanups, run_time=0.6)
+                self.scene.play(*cleanups, run_time=0.35)
+
+
+class WorldContext:
+    """
+    One picture for a whole scene.
+
+    No act title, no narration banner, no takeaway lane. The cast stays
+    when the context exits, so a later beat can move the camera or morph
+    what is already on screen instead of fading up a new slide.
+    """
+
+    def __init__(self, scene):
+        self.scene = scene
+        self.cast = []
+        frame = scene.camera.frame
+        self.content = content_region(frame, header=None, footer=None, margin=th.SPACE_LG, gap=0)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+    def keep(self, *mobs):
+        for mob in mobs:
+            if mob is not None and mob not in self.cast:
+                self.cast.append(mob)
+        if len(mobs) == 1:
+            return mobs[0]
+        return mobs
+
+    def show(self, *mobs, run_time=0.5, shift=UP * 0.1):
+        """Fade mobjects in and remember them as part of the picture."""
+        self.keep(*mobs)
+        anims = [FadeIn(m, shift=shift) for m in mobs if m is not None]
+        if anims:
+            self.scene.play(*anims, run_time=run_time)
+        return run_time
+
+    def drop(self, *mobs, run_time=0.35):
+        """Remove a temporary piece. Anything not passed here stays."""
+        present = [m for m in mobs if m is not None]
+        if not present:
+            return 0.0
+        self.scene.play(*[FadeOut(m) for m in present], run_time=run_time)
+        self.scene.remove(*present)
+        for mob in present:
+            if mob in self.cast:
+                self.cast.remove(mob)
+        return run_time
+
+    def say(self, line, already=0.0):
+        """Hold for the spoken line. The words are not drawn on screen."""
+        if not line:
+            return 0.0
+        dur = VoiceoverTracker(line).duration
+        remain = dur - float(already)
+        if remain > 0.05:
+            self.scene.wait(remain)
+        return dur
+
+    def play_and_say(self, line, *anims, run_time=0.7):
+        """Play motion and keep the voice overlapping it, not trailing a caption."""
+        if anims:
+            self.scene.play(*anims, run_time=run_time)
+            spent = run_time
+        else:
+            spent = 0.0
+        self.say(line, already=spent)
+        return spent
+
+    def _fit(self, text, font_size, weight, color):
+        label = Text(text, font=th.SANS, weight=weight, font_size=font_size, color=color)
+        max_w = float(self.scene.camera.frame.width) * 0.78
+        if label.width > max_w:
+            label.scale_to_fit_width(max_w)
+        return label
+
+    def _clamp(self, mob, margin=0.28):
+        frame = self.scene.camera.frame
+        left = frame.get_left()[0] + margin
+        right = frame.get_right()[0] - margin
+        bottom = frame.get_bottom()[1] + margin
+        top = frame.get_top()[1] - margin
+        dx = 0.0
+        dy = 0.0
+        if mob.get_left()[0] < left:
+            dx += left - mob.get_left()[0]
+        if mob.get_right()[0] > right:
+            dx -= mob.get_right()[0] - right
+        if mob.get_bottom()[1] < bottom:
+            dy += bottom - mob.get_bottom()[1]
+        if mob.get_top()[1] > top:
+            dy -= mob.get_top()[1] - top
+        if dx or dy:
+            mob.shift(RIGHT * dx + UP * dy)
+        return mob
+
+    def ask(self, text, target=None, hold=1.15, direction=DOWN):
+        """
+        One short question beside the action. It holds, then leaves.
+        The picture underneath is not cleared.
+        """
+        question = self._fit(text, 28, BOLD, th.WHITE)
+        if target is not None:
+            question.next_to(target, direction, buff=0.22)
+        else:
+            question.move_to(self.scene.camera.frame.get_bottom() + UP * 0.55)
+        self._clamp(question)
+        self.scene.play(FadeIn(question, shift=UP * 0.05), run_time=0.25)
+        self.scene.wait(hold)
+        self.scene.play(FadeOut(question), run_time=0.2)
+        self.scene.remove(question)
+        return 0.45 + hold
+
+    def name(self, text, target, direction=UP, color=None, hold=1.25):
+        """
+        After the picture already works, attach a short name beside `target`.
+        The label leaves so it does not become a caption bar.
+        """
+        if color is None:
+            color = th.CYAN_LIGHT
+        label = self._fit(text, 24, BOLD, color)
+        label.next_to(target, direction, buff=0.16)
+        self._clamp(label)
+        self.scene.play(FadeIn(label), run_time=0.28)
+        self.scene.wait(hold)
+        self.scene.play(FadeOut(label), run_time=0.22)
+        self.scene.remove(label)
+        return 0.5 + hold
 
 
 class SiliconCameraRig(MovingCameraScene):
@@ -318,8 +451,13 @@ class KineticSiliconScene(SiliconCameraRig):
         """
         Declarative stage context manager.
         Automates headers, mobject tracking, and smooth transitions.
+        New scenes use world() so the picture persists across beats.
         """
         return StageContext(self, act_id, title, subtitle, narration)
+
+    def world(self):
+        """Persistent picture. No title card, banner, or takeaway."""
+        return WorldContext(self)
 
     def morph_components(self, source, target, run_time=th.RATE_NORMAL):
         """Performs continuous morphing transformation between two silicon components."""

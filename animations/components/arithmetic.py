@@ -54,8 +54,8 @@ class TwosComplementWheel(VGroup):
         label_configs = [
             (0, np.pi / 2, "0", th.TEXT),
             (self.config.max_val // 2, np.pi / 4, f"+{self.config.max_val // 2}", th.GREEN_LIGHT),
-            (self.config.max_val, -np.pi / 2 + 0.15, f"+{self.config.max_val}", th.GREEN),
-            (self.config.min_val, -np.pi / 2 - 0.15, f"{self.config.min_val}", th.RED),
+            (self.config.max_val, -np.pi / 2 + 0.50, f"+{self.config.max_val}", th.GREEN),
+            (self.config.min_val, -np.pi / 2 - 0.50, f"{self.config.min_val}", th.RED),
             (self.config.min_val // 2, -3 * np.pi / 4, f"{self.config.min_val // 2}", th.RED_LIGHT),
         ]
         for val, angle, lbl_str, col in label_configs:
@@ -71,8 +71,8 @@ class TwosComplementWheel(VGroup):
             color=th.AMBER,
             stroke_width=2.5
         )
-        disc_label = Text("OVERFLOW BOUNDARY", font=th.MONO, font_size=th.FONT_MICRO, color=th.AMBER)
-        disc_label.next_to(discontinuity_line, DOWN, buff=0.45)
+        disc_label = Text("OVERFLOW\nBOUNDARY", font=th.MONO, font_size=th.FONT_MICRO, color=th.AMBER, line_spacing=0.9)
+        disc_label.next_to(discontinuity_line, DOWN, buff=0.16)
         self.discontinuity_marker = VGroup(discontinuity_line, disc_label)
 
         # Needle pointer
@@ -92,7 +92,7 @@ class TwosComplementWheel(VGroup):
         self.readout_bin = Text("Binary:  00000000", font=th.MONO,
                                 font_size=th.FONT_TINY, color=th.MUTED)
         self.readout_group = VGroup(self.readout_dec, self.readout_bin).arrange(DOWN, buff=0.1)
-        self.readout_group.move_to(DOWN * (radius * 0.4))
+        self.readout_group.next_to(disc_label, DOWN, buff=0.14)
 
         # Clamp barrier (hidden by default, registered as child so it auto-cleans on exit)
         self.clamp_bar = Rectangle(
@@ -103,10 +103,10 @@ class TwosComplementWheel(VGroup):
             stroke_color=th.WHITE,
             stroke_width=2.0
         )
-        self.clamp_bar.move_to(DOWN * (radius - 0.05) + RIGHT * 0.15)
+        self.clamp_bar.move_to(DOWN * (radius + 0.02))
         self.clamp_label = Text("SATURATION CLAMP (+127)", font=th.MONO, weight=BOLD,
                                 font_size=th.FONT_MICRO, color=th.AMBER)
-        self.clamp_label.next_to(self.clamp_bar, RIGHT, buff=0.15)
+        self.clamp_label.next_to(self.dial_frame, RIGHT, buff=0.18)
         self.clamp_unit = VGroup(self.clamp_bar, self.clamp_label)
         self.clamp_unit.set_opacity(0)
         self.clamp_active = False
@@ -135,8 +135,13 @@ class TwosComplementWheel(VGroup):
         """Immediately snaps needle and readout to val."""
         self.current_val = val
         angle = self.val_to_angle(val)
-        target_pt = np.array([np.cos(angle), np.sin(angle), 0]) * (self.radius * 0.8)
-        self.needle.put_start_and_end_on(ORIGIN, target_pt)
+        direction = np.array([np.cos(angle), np.sin(angle), 0.0])
+        # place() may have scaled and shifted the dial. Rebuild the needle
+        # from the hub in that frame, or it stays pinned to the world origin
+        # and grows past the rim.
+        hub = self.center_hub.get_center()
+        rim = np.linalg.norm(self.positive_arc.point_from_proportion(0.0) - hub)
+        self.needle.put_start_and_end_on(hub, hub + direction * (rim * 0.78))
         col = th.GREEN_LIGHT if val >= 0 else th.RED
         self.readout_dec.become(
             Text(f"Decimal: {val:+d}", font=th.MONO, weight=BOLD,
@@ -152,31 +157,41 @@ class TwosComplementWheel(VGroup):
         Smoothly sweeps the needle across the dial.
         If clamp=True, stops at +127 and emits an elastic clamp bounce.
         """
+        if clamp:
+            # Leave the wrapped value along the negative arc back to 0, then
+            # rise and stop at +127. Do not linspace across the barrier.
+            if self.current_val < 0:
+                back_steps = 10
+                back_dt = (run_time * 0.4) / back_steps
+                for v in np.linspace(self.current_val, 0, back_steps):
+                    self.set_value_instant(int(round(v)))
+                    scene.wait(back_dt)
+                rise_time = run_time * 0.6
+            else:
+                rise_time = run_time
+            rise_steps = 16
+            rise_dt = rise_time / rise_steps
+            start = self.current_val
+            for v in np.linspace(start, self.config.max_val, rise_steps):
+                self.set_value_instant(min(self.config.max_val, int(round(v))))
+                scene.wait(rise_dt)
+            self.set_value_instant(self.config.max_val)
+            return
+
         start_val = self.current_val
-        is_overflow = (target_val > self.config.max_val) and not clamp
-        final_val = min(self.config.max_val, target_val) if clamp else (
+        final_val = (
             ((target_val + 128) % 256) - 128 if target_val > self.config.max_val else target_val
         )
-
-        # Animate continuous intermediate steps
         steps = 30
-        val_path = np.linspace(start_val, target_val, steps)
         dt = run_time / steps
-
-        for v in val_path:
+        for v in np.linspace(start_val, target_val, steps):
             int_v = int(round(v))
-            if clamp and int_v >= self.config.max_val:
-                self.set_value_instant(self.config.max_val)
-                scene.wait(dt)
-                break
-            elif not clamp and int_v > self.config.max_val:
-                # Wrapped around!
+            if int_v > self.config.max_val:
                 wrapped = ((int_v + 128) % 256) - 128
                 self.set_value_instant(wrapped)
             else:
                 self.set_value_instant(int_v)
             scene.wait(dt)
-
         self.set_value_instant(final_val)
 
     def deploy_clamp_barrier(self, scene):

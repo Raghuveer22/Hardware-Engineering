@@ -13,7 +13,8 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$REPO_ROOT"
 
 echo -e "\n${CYAN}======================================================================${NC}"
 echo -e "${CYAN}🛠️  SETTING UP AI HARDWARE & PRE-SILICON EMULATION PLATFORM${NC}"
@@ -123,7 +124,7 @@ echo -e "  ${GREEN}✅ Python dependencies installed successfully.${NC}"
 
 # 5. Run Environment Diagnostics
 echo -e "\n${CYAN}[4/4] Verifying System Setup...${NC}"
-python check_env.py
+python "$SCRIPT_DIR/check_env.py"
 
 echo -e "\n${GREEN}======================================================================${NC}"
 echo -e "${GREEN}🎉 SETUP COMPLETED SUCCESSFULLY!${NC}"
@@ -132,4 +133,5 @@ echo -e "\nNext Steps:"
 echo -e "  1. Activate virtual environment:  ${CYAN}source .venv/bin/activate${NC}"
 echo -e "  2. Run all tests and emulator:     ${CYAN}./build_and_run.sh${NC} (or ${CYAN}python run_all.py${NC})"
 echo -e "  3. Launch live 2D visualizer:      ${CYAN}python visualizer/serve.py${NC}"
-echo -e "  4. Explore interactive schematics: ${CYAN}open schematics/index.html${NC}\n"
+echo -e "  4. Explore interactive schematics: ${CYAN}open schematics/index.html${NC}"
+echo -e "  5. Verilog to gate schematic:      ${CYAN}python synthesis/playground_server.py${NC}\n"

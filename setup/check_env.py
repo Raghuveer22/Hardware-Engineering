@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 ==============================================================================
-File: check_env.py
+File: setup/check_env.py
 Description: Cross-Platform Environment Doctor & Dependency Checker
 Works on: macOS (Apple Silicon & Intel), Windows (Native & WSL2), and Linux.
 
@@ -265,14 +265,14 @@ def main():
         print(f"  Run the following commands in your terminal:")
         print(f"  {CYAN}brew update{RESET}")
         print(f"  {CYAN}brew install icarus-verilog verilator yosys graphviz gtkwave{RESET}")
-        print(f"  {CYAN}./setup.sh{RESET}")
+        print(f"  {CYAN}./setup/setup.sh{RESET}")
 
     elif os_name == "Windows":
         if is_wsl:
             print(f"\n{BOLD}Windows Subsystem for Linux (WSL2 Ubuntu/Debian):{RESET}")
             print(f"  Run inside WSL terminal:")
             print(f"  {CYAN}sudo apt update && sudo apt install -y build-essential clang iverilog verilator yosys graphviz gtkwave python3-venv python3-pip{RESET}")
-            print(f"  {CYAN}./setup.sh{RESET}")
+            print(f"  {CYAN}./setup/setup.sh{RESET}")
         else:
             print(f"\n{BOLD}Windows (Native):{RESET}")
             print(f"  Option A (Recommended for EDA: WSL2):")
@@ -283,12 +283,12 @@ def main():
             print(f"       (Or download from: https://bleyer.org/icarus/ - ensure 'Add to PATH' is checked)")
             print(f"    2. Graphviz:       {CYAN}winget install Graphviz.Graphviz{RESET}")
             print(f"    3. C++ Compiler:   Install Visual Studio C++ build tools or MinGW (MSYS2)")
-            print(f"    4. Run setup:      {CYAN}powershell -ExecutionPolicy Bypass -File .\\setup.ps1{RESET}")
+            print(f"    4. Run setup:      {CYAN}powershell -ExecutionPolicy Bypass -File .\\setup\\setup.ps1{RESET}")
 
     else:
         print(f"\n{BOLD}Linux (Debian/Ubuntu):{RESET}")
         print(f"  {CYAN}sudo apt update && sudo apt install -y build-essential clang iverilog verilator yosys graphviz gtkwave python3-venv python3-pip{RESET}")
-        print(f"  {CYAN}./setup.sh{RESET}")
+        print(f"  {CYAN}./setup/setup.sh{RESET}")
 
     print()
     return 1

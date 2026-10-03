@@ -4,7 +4,8 @@
 
 $ErrorActionPreference = "Stop"
 
-Set-Location -Path $PSScriptRoot
+$RepoRoot = Split-Path -Parent $PSScriptRoot
+Set-Location -Path $RepoRoot
 
 Write-Host "======================================================================" -ForegroundColor Cyan
 Write-Host "🛠️  SETTING UP AI HARDWARE & PRE-SILICON EMULATION PLATFORM (WINDOWS)" -ForegroundColor Cyan
@@ -41,7 +42,7 @@ if ($missingTools.Count -gt 0) {
     Write-Host "💡 WINDOWS INSTALLATION TIPS:" -ForegroundColor Cyan
     Write-Host "  Option A (Recommended for EDA: WSL2 Ubuntu):"
     Write-Host "    Run in Administrator PowerShell: wsl --install"
-    Write-Host "    Then run ./setup.sh inside WSL Ubuntu terminal."
+    Write-Host "    Then run ./setup/setup.sh inside WSL Ubuntu terminal."
     Write-Host ""
     Write-Host "  Option B (Native Windows with Winget):"
     Write-Host "    iverilog:  winget install -e --id Bleyer.IcarusVerilog"
@@ -95,7 +96,7 @@ Write-Host "  ✅ Python dependencies installed." -ForegroundColor Green
 # 4. Run Diagnostics
 Write-Host ""
 Write-Host "[4/4] Verifying System Setup..." -ForegroundColor Cyan
-& $VenvPython check_env.py
+& $VenvPython "$PSScriptRoot\check_env.py"
 
 Write-Host ""
 Write-Host "======================================================================" -ForegroundColor Green

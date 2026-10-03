@@ -29,16 +29,16 @@ else:
     PYTHON_BIN = sys.executable
 
 SCENES = [
-    ("scene_lab00_prep.py", "Lab00PrepPrimer", "Lab 00-Prep: Hardware Primer"),
-    ("scene_lab00_saturation.py", "Lab00SaturationIntro", "Lab 00: Signed Adder & Saturation"),
-    ("scene_lab01_multiplier.py", "Lab01Multiplier", "Lab 01: INT8 Multiplier & Area"),
-    ("scene_lab02_mac_unit.py", "Lab02MACUnit", "Lab 02: MAC Unit & Accumulator"),
-    ("scene_lab03_pe.py", "Lab03ProcessingElement", "Lab 03: Weight-Stationary PE"),
-    ("scene_lab04_systolic_array.py", "Lab04SystolicArray", "Lab 04: 4x4 Systolic Wavefront"),
-    ("scene_lab05_sqrt.py", "Lab05SquareRoot", "Lab 05: Hardware Square Root"),
-    ("scene_lab06_softmax.py", "Lab06Softmax", "Lab 06: Safe Softmax & FlashAttention"),
-    ("scene_lab07_rsqrt.py", "Lab07RSQRT", "Lab 07: Fast RSQRT for RMSNorm"),
-    ("scene_lab08_exp2_sfu.py", "Lab08ExponentialSFU", "Lab 08: Exponential SFU for SwiGLU"),
+    ("scene_lab00_prep.py", "Lab00PrepPrimer", "Lab 00-Prep: The Other Two Lines"),
+    ("scene_lab00_saturation.py", "Lab00SaturationIntro", "Lab 00: 100 + 50 = -106"),
+    ("scene_lab01_multiplier.py", "Lab01Multiplier", "Lab 01: Multiply Is a Pile of Copies"),
+    ("scene_lab02_mac_unit.py", "Lab02MACUnit", "Lab 02: The Second Product Changes Sign"),
+    ("scene_lab03_pe.py", "Lab03ProcessingElement", "Lab 03: Stop Re-Reading the Weight"),
+    ("scene_lab04_systolic_array.py", "Lab04SystolicArray", "Lab 04: The Row That Arrived Too Early"),
+    ("scene_lab05_sqrt.py", "Lab05SquareRoot", "Lab 05: The Score That Ran Off the Chart"),
+    ("scene_lab06_softmax.py", "Lab06Softmax", "Lab 06: The Exponential That Left the Register"),
+    ("scene_lab07_rsqrt.py", "Lab07RSQRT", "Lab 07: Arrows of Different Lengths"),
+    ("scene_lab08_exp2_sfu.py", "Lab08ExponentialSFU", "Lab 08: The Box Could Not Hold the Exponential"),
 ]
 
 def get_video_duration(path):

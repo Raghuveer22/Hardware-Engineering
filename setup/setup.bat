@@ -3,7 +3,7 @@ REM ============================================================================
 REM Automated Setup Script for Windows Command Prompt (CMD)
 REM ==============================================================================
 
-cd /d "%~dp0"
+cd /d "%~dp0.."
 
 echo ======================================================================
 echo 🛠️  SETTING UP AI HARDWARE PLATFORM (WINDOWS CMD)
@@ -32,7 +32,7 @@ python -m pip install -r requirements.txt --quiet
 
 echo.
 echo [3/3] Running environment diagnostics...
-python check_env.py
+python "%~dp0check_env.py"
 
 echo.
 echo ======================================================================

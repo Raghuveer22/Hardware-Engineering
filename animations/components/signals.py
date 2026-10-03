@@ -54,25 +54,41 @@ class KineticClock:
         self.badge = VGroup(self.badge_bg, self.badge_txt)
         return self.badge
 
+    def badge_change(self, cycle):
+        """Return the badge transform for `cycle`. The caller plays it.
+
+        Playing this together with the register update keeps the HUD from
+        ticking before the picture does.
+        """
+        cycle = int(cycle)
+        self.tracker.set_value(cycle)
+        if self.badge_txt is None:
+            return None
+        new_txt = Text(
+            f"{self.prefix}{cycle} [posedge ↑]",
+            font=th.MONO,
+            weight=BOLD,
+            font_size=th.FONT_CAPTION,
+            color=self.color,
+        ).move_to(self.badge_bg)
+        return Transform(self.badge_txt, new_txt)
+
+    def set_cycle(self, scene, cycle, run_time=0.2):
+        """Jump the HUD to an absolute cycle. Use this at an act boundary."""
+        anim = self.badge_change(cycle)
+        if anim is not None and run_time > 0:
+            scene.play(anim, run_time=run_time)
+        elif run_time > 0:
+            scene.wait(run_time)
+
     def advance(self, scene, delta_cycles=1, cycles=None, run_time=th.RATE_NORMAL, rate_func=linear):
         """Advances hardware clock by delta_cycles with animation."""
         if cycles is not None:
             delta_cycles = cycles
         target = int(round(self.tracker.get_value())) + delta_cycles
-        self.tracker.set_value(target)
-        if self.badge_txt is not None:
-            new_txt = Text(
-                f"{self.prefix}{target} [posedge ↑]",
-                font=th.MONO,
-                weight=BOLD,
-                font_size=th.FONT_CAPTION,
-                color=self.color
-            ).move_to(self.badge_bg)
-            scene.play(
-                Transform(self.badge_txt, new_txt),
-                run_time=run_time,
-                rate_func=rate_func
-            )
+        anim = self.badge_change(target)
+        if anim is not None:
+            scene.play(anim, run_time=run_time, rate_func=rate_func)
         else:
             scene.wait(run_time)
 

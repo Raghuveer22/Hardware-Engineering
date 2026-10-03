@@ -1,17 +1,14 @@
 """
-Lab 01: The Area Monster — Signed INT8 Hardware Multiplier & O(N^2) Silicon Scaling
-Wallace Trees, Radix-4 Modified Booth Encoding & Silicon Area Dynamics.
+Lab 01: Multiply is a pile of copies.
 
-Tailored for Software Engineers (3Blue1Brown Visual Standard):
-- Act 0: The Elementary Atom: 1-Bit Multiplier as an AND Gate
-- Act 1: The O(N^2) Silicon Area Explosion (Adder vs Multiplier Die Footprints)
-- Act 2: The 8x8 AND Matrix & The Asymmetric Corner Case ((-128) * (-128) = +16,384)
-- Act 3: Radix-4 Booth Recoding & Wallace Tree Compression (Logarithmic Reduction)
-- Act 4: Dynamic Power & NVIDIA Tensor Core mma.sync Architecture
+6 x 5 is copied by hand, then added to 30. An 8-bit grid fills
+toward 64 copies beside a 42-gate adder and a multiplier that
+grows to 456. -128 x -128 is +16384, and a 15-bit window reads
+the sign bit as negative. The tall pile folds after it is shown.
+3 x 5 is predicted one AND row at a time.
 """
 
 from manim import *
-import numpy as np
 import sys
 from pathlib import Path
 
@@ -20,278 +17,426 @@ if str(ANIM_DIR) not in sys.path:
     sys.path.insert(0, str(ANIM_DIR))
 
 import theme as th
-from components import (
-    KineticSiliconScene,
-    KineticClock,
-    HardwareConfig,
-    TextRole,
-    SemanticText,
-    SemanticMath,
-    HStack,
-    VStack,
-    ConstraintAnchor,
-    DieFootprint,
-    PinProbe,
-    fit_to_bounds,
+from components import KineticSiliconScene
+
+L_COPY = (
+    "Six times five is the product you can already finish by hand. "
+    "The lower number is zero one zero one. Where that bit is one, "
+    "copy zero one one zero into a fresh row. Where that bit is zero, "
+    "copy nothing and leave the shift blank."
 )
+L_ROWS = (
+    "Three rows are sitting under the problem now. The first copy is six, "
+    "and it is not shifted at all. The middle copy is zero because that bit "
+    "was off. The last copy is six moved two places, so it is worth twenty four."
+)
+L_SIX = (
+    "Add the slow way, one copy at a time, the way you would check a column "
+    "on paper. Six plus the blank middle row is still six. The zero bit "
+    "contributed nothing, so the running total does not move. Keep that six."
+)
+L_JOIN = (
+    "The shifted copy, worth twenty four, is the one that still has to join. "
+    "Add it to the six you just kept. Look down the columns from the right "
+    "before you trust a written total. Let the bits gather into a single pattern you can check."
+)
+L_THIRTY = (
+    "Six plus twenty four is thirty. The columns settled on zero zero one one "
+    "one one zero. That pattern is sixteen plus eight plus four plus two, and "
+    "the ones place stays off. The pile of copies and the decimal agree."
+)
+L_GRID = (
+    "Four bits needed only a few copies, and one of them was empty. Count every "
+    "pair of bits in an eight bit multiply and the pile becomes sixty four copies. "
+    "Watch the grid fill. Each new square is another copy to keep."
+)
+L_GATES = (
+    "Beside the full grid sits a small adder, marked forty two gates. It only "
+    "joins two numbers. The multiplier has to form every copy and then add the "
+    "shifted rows, so its box grows until the count reads four hundred fifty six."
+)
+L_SIZE = (
+    "The picture is the size you see. The adder stays small because adding is a "
+    "short job. The multiplier keeps this large body because every copy has to "
+    "be formed and then added, and sixty four copies are a lot of work."
+)
+L_NEG = (
+    "The same pile works for negative numbers, until the window is too narrow "
+    "to hold the answer. Take negative one hundred twenty eight times itself. "
+    "Two negatives should give a positive, and the true product is sixteen "
+    "thousand three hundred eighty four."
+)
+L_WINDOW = (
+    "Write that product in bits. It is a one followed by fourteen zeros, with "
+    "a leading zero still in front. In a wide enough row that leading zero keeps "
+    "the number positive. A fifteen bit window cuts the leading zero off."
+)
+L_FLIP = (
+    "The bit that used to mean sixteen thousand three hundred eighty four is now "
+    "the sign. It did not change its ink. The window changed its job. Read as a "
+    "sign, that same one flips the product, and the box shows a negative."
+)
+L_TALL = (
+    "Come back to the copies themselves. Four partial product rows already stand "
+    "in a tall stack, and a real multiply has many more. Adding every row one "
+    "after another takes a long path. The stack can fold instead of waiting."
+)
+L_PAIRS = (
+    "Watch the pairs close. The top two rows fold into one shorter row. The bottom "
+    "two rows fold into one shorter row. The product does not change. Only the "
+    "height changes. Two rows now hold what four rows held."
+)
+L_SHORT = (
+    "That shorter stack is the compression. Each pair was reduced before the final "
+    "add, so the waiting height is the two rows you see, not the four you started "
+    "with. The copies are still all there. They are stacked in pairs."
+)
+L_PREDICT = (
+    "Try one you can finish before the picture does. Three times five. Three is "
+    "zero zero one one. Five is zero one zero one. Cover the answer and call the "
+    "rows yourself. Every one bit in five copies three. Every zero bit copies nothing."
+)
+L_AND = (
+    "The lowest bit of five is one, so the first row is a copy of three, zero zero "
+    "one one. An and gate does that copy. It does not add yet. It only decides "
+    "whether this shift position keeps the bits or throws them away."
+)
+L_BLANK = (
+    "The next bit of five is zero, so the second row copies nothing. You should see "
+    "a blank shift, zeros all the way across, moved one place to the left. If a one "
+    "appears there, the rule was broken. Hold the blank and check it."
+)
+L_FIFTEEN = (
+    "The following bit of five is one again, so another copy of three appears, "
+    "shifted two places. That shift is worth twelve. Three plus a blank plus twelve "
+    "is fifteen. The bits read zero zero one one one one, and the pile agrees."
+)
+
+GRID = DOWN * 8.2
+SIGN = DOWN * 16.4
+FOLD = DOWN * 24.6
+PRED = DOWN * 32.8
+PITCH = 0.46
+
+
+def _mark(scene, tag):
+    renderer = getattr(scene, "renderer", None)
+    t = float(getattr(renderer, "time", 0.0) or 0.0)
+    path = Path("/tmp") / f"hw_marks_{type(scene).__name__}.txt"
+    with path.open("a") as handle:
+        handle.write(f"{tag}\t{t:.3f}\n")
+
+
+def _mono(text, size=22, color=th.TEXT):
+    return Text(text, font=th.MONO, font_size=size, color=color)
+
+
+def _num(text, size=32, color=th.WHITE):
+    return Text(text, font=th.MONO, weight=BOLD, font_size=size, color=color)
+
+
+def _mini(ch, color):
+    box = RoundedRectangle(
+        corner_radius=0.04,
+        width=0.40,
+        height=0.48,
+        stroke_width=1.5,
+        stroke_color=color,
+        fill_color="#0e1526",
+        fill_opacity=0.96,
+    )
+    glyph = _mono(ch, 16, color)
+    glyph.move_to(box)
+    return VGroup(box, glyph)
+
+
+def _bits_at(pattern, shift, color, lsb):
+    cells = []
+    for i, ch in enumerate(reversed(pattern)):
+        ink = color if ch == "1" else th.MUTED
+        cell = _mini(ch, ink)
+        cell.move_to(lsb + LEFT * (i + shift) * PITCH)
+        cells.append(cell)
+    return VGroup(*cells)
+
+
+def _entry(shift, num, color):
+    label = _mono(shift, 18, th.MUTED)
+    value = _num(num, 32, color)
+    label.next_to(value, LEFT, buff=0.32)
+    return VGroup(label, value), value
 
 
 class Lab01Multiplier(KineticSiliconScene):
     def construct(self):
-        config = HardwareConfig(data_width=8)
-        clock = KineticClock(initial_cycle=0)
+        Path("/tmp/hw_marks_Lab01Multiplier.txt").write_text("")
+        with self.world() as w:
+            row2 = self._opening(w)
+            self._sum_to_thirty(w, row2)
+            self._eight_bit(w)
+            self._signed_window(w)
+            self._fold(w)
+            self._three_times_five(w)
 
-        # Ambient Clock HUD at top right (compact)
-        ticker = clock.create_ticker_badge(prefix="CLK: T = ", color=th.AMBER_LIGHT)
-        ticker.to_corner(UR, buff=0.25)
-        self.add(ticker)
-
-        # =====================================================================
-        # ACT 0: PRELORE — 1-BIT MULTIPLIER AS AN AND GATE
-        # =====================================================================
-        prelore_narration = (
-            "Every integer multiplier is built from one humble cell: the AND gate. "
-            "Multiply two binary digits and you get a one only when both inputs are one. "
-            "Multiply two 8-bit numbers and you need every pair of bits—that's where the cost comes from."
+    def _go(self, dest, run_time=1.0):
+        self.play(
+            self.camera.frame.animate.set_width(self.default_frame_width).move_to(dest),
+            run_time=run_time,
+            rate_func=smooth,
         )
-        with self.stage("PRIMER", "What a Multiplier Is Made Of", "AND Gates: The Elementary Multiplier Cell", narration=prelore_narration) as st:
-            with self.voiceover(prelore_narration) as trk:
-                # 3b1b style: Show the 1-bit multiplication definition and gate truth table
-                mult_def = MathTex(
-                    r"a \times b = a \land b",
-                    font_size=42,
-                    color=th.AMBER_LIGHT
-                ).to_edge(UP, buff=1.3)
-                st.add(mult_def)
-                self.play(Write(mult_def), run_time=0.8)
+        return run_time
 
-                # Visual AND gate with live input toggles
-                and_gate = VGroup(
-                    Circle(radius=0.75, color=th.AMBER, stroke_width=2.5, fill_color="#1a1205", fill_opacity=0.9),
-                    Text("&", font=th.MONO, weight=BOLD, font_size=36, color=th.AMBER_LIGHT)
-                )
-                and_gate[1].move_to(and_gate[0])
+    def _opening(self, w):
+        head = VGroup(
+            _mono("    0 1 1 0", 26, th.WHITE),
+            _mono("  × 0 1 0 1", 26, th.AMBER_LIGHT),
+            _mono("  ---------", 26, th.MUTED),
+        ).arrange(DOWN, aligned_edge=LEFT, buff=0.08)
+        head.move_to(UP * 1.6 + LEFT * 3.2)
+        w.show(head, run_time=0.4)
+        _mark(self, "start")
 
-                in_wire1 = Line(LEFT * 1.6 + UP * 0.4, LEFT * 0.75 + UP * 0.4, color=th.CYAN_LIGHT, stroke_width=2.5)
-                in_wire2 = Line(LEFT * 1.6 + DOWN * 0.4, LEFT * 0.75 + DOWN * 0.4, color=th.CYAN_LIGHT, stroke_width=2.5)
-                out_wire = Line(RIGHT * 0.75, RIGHT * 1.6, color=th.GREEN_LIGHT, stroke_width=2.5)
+        row1 = _mono("    0 1 1 0    ×1", 24, th.GREEN_LIGHT)
+        row0 = _mono("  0 0 0 0      ×0", 24, th.MUTED)
+        row2 = _mono("0 1 1 0        ×1", 24, th.GREEN_LIGHT)
+        rows = VGroup(row1, row0, row2).arrange(DOWN, aligned_edge=LEFT, buff=0.1)
+        rows.next_to(head, DOWN, buff=0.2, aligned_edge=LEFT)
+        self.play(FadeIn(row1, shift=UP * 0.05), run_time=0.35)
+        self.play(FadeIn(row0, shift=UP * 0.05), run_time=0.3)
+        self.play(FadeIn(row2, shift=UP * 0.05), run_time=0.35)
+        w.keep(rows)
+        w.say(L_COPY, already=1.4)
+        return row2
 
-                lbl_a = Text("A = 1", font=th.MONO, font_size=13, color=th.CYAN_LIGHT).next_to(in_wire1, LEFT, buff=0.1)
-                lbl_b = Text("B = 1", font=th.MONO, font_size=13, color=th.CYAN_LIGHT).next_to(in_wire2, LEFT, buff=0.1)
-                lbl_y = Text("Y = 1", font=th.MONO, weight=BOLD, font_size=13, color=th.GREEN_LIGHT).next_to(out_wire, RIGHT, buff=0.1)
+    def _sum_to_thirty(self, w, row2):
+        e6, n6 = _entry("shift 0", "6", th.GREEN_LIGHT)
+        e0, n0 = _entry("shift 1", "0", th.MUTED)
+        e24, n24 = _entry("shift 2", "24", th.AMBER_LIGHT)
+        col = VGroup(e6, e0, e24).arrange(DOWN, aligned_edge=RIGHT, buff=0.18)
+        col.move_to(RIGHT * 2.55 + UP * 0.45)
+        spent = w.show(col, run_time=0.5)
+        w.say(L_ROWS, already=spent)
 
-                gate_schematic = VGroup(and_gate, in_wire1, in_wire2, out_wire, lbl_a, lbl_b, lbl_y).move_to(LEFT * 3.2 + DOWN * 0.3)
+        sub = _num("6", 32, th.GREEN_LIGHT).next_to(n0, RIGHT, buff=0.65)
+        spent = w.show(sub, run_time=0.35)
+        w.say(L_SIX, already=spent)
 
-                # Truth table visual on right
-                tt_rows = [
-                    ("0 × 0 =", "0", th.MUTED),
-                    ("0 × 1 =", "0", th.MUTED),
-                    ("1 × 0 =", "0", th.MUTED),
-                    ("1 × 1 =", "1", th.GREEN_LIGHT),
-                ]
-                tt_lines = VGroup(*[
-                    HStack(
-                        Text(eq, font=th.MONO, font_size=18, color=th.TEXT),
-                        Text(ans, font=th.MONO, weight=BOLD, font_size=20, color=col),
-                        gap=0.15
-                    )
-                    for eq, ans, col in tt_rows
-                ]).arrange(DOWN, aligned_edge=LEFT, buff=0.25).move_to(RIGHT * 3.2 + DOWN * 0.3)
-
-                st.add(gate_schematic, tt_lines)
-                self.play(FadeIn(gate_schematic, shift=LEFT * 0.2), FadeIn(tt_lines, shift=RIGHT * 0.2), run_time=0.9)
-
-                # Flash the 1 x 1 = 1 condition
-                self.play(
-                    and_gate[0].animate.set_stroke(color=th.WHITE, width=4.0),
-                    tt_lines[3].animate.scale(1.2),
-                    run_time=0.6
-                )
-                self.play(
-                    and_gate[0].animate.set_stroke(color=th.AMBER, width=2.5),
-                    tt_lines[3].animate.scale(1/1.2),
-                    run_time=0.6
-                )
-                self.wait(max(0.3, trk.duration - 2.9))
-                st.takeaway("Multiply two digits = one AND gate.", wait=1.2)
-
-        # =====================================================================
-        # ACT 1: THE SILICON AREA MONSTER & O(N²) DIE SCALING
-        # =====================================================================
-        act1_narration = (
-            "Now the cost. An 8-bit adder is about 42 gates. An 8-bit multiplier is about 456, "
-            "so its die is drawn about three times wider, the square root of that area ratio. "
-            "A 32-bit float multiplier is about 7,000 gates. At this scale it would be roughly thirteen times wider than the adder, so it is not drawn."
+        self.play(
+            n24.animate.set_color(th.WHITE),
+            sub.animate.set_color(th.AMBER_LIGHT),
+            run_time=0.35,
         )
-        with self.stage("ACT 1", "The O(N²) Silicon Area Monster", "Adder vs Multiplier Die Footprints", narration=act1_narration) as st:
-            with self.voiceover(act1_narration) as trk:
-                # Linear size tracks sqrt(gates), so area tracks the gate count.
-                # sqrt(456/42) ≈ 3.3. sqrt(7000/42) ≈ 12.9, which does not fit.
-                adder_die = DieFootprint("8-BIT ADDER", gates=42, width=1.15, height=1.35, color=th.GREEN)
-                mult_die = DieFootprint("INT8 MULTIPLIER", gates=456, width=3.8, height=3.6, color=th.AMBER)
-                fp_note = Text(
-                    "FP32 multiplier\n~7,000 gates\nnot drawn:\n~13× the adder's width",
-                    font=th.MONO, font_size=14, color=th.PURPLE_LIGHT, line_spacing=1.15,
-                )
-                die_stage = HStack(adder_die, mult_die, fp_note, gap=th.SPACE_LG).move_to(self.layout.main_stage_center())
-                st.add(die_stage)
+        w.say(L_JOIN, already=0.35)
 
-                self.play(FadeIn(die_stage, shift=UP * 0.2), run_time=1.0)
-                self.wait(max(0.3, trk.duration - 1.0))
-                st.takeaway("456 gates is about 11× the area of 42. The picture uses that scale.", wait=1.2)
+        bits = _mono("0 0 1 1 1 1 0", 26, th.CYAN_LIGHT)
+        bits.next_to(row2, DOWN, buff=0.32, aligned_edge=LEFT)
+        total = _num("30", 40, th.WHITE).next_to(n24, RIGHT, buff=0.55)
+        spent = w.show(bits, total, run_time=0.45)
+        w.say(L_THIRTY, already=spent)
 
-        # =====================================================================
-        # ACT 2: 8x8 AND MATRIX & ASYMMETRIC CORNER CASE
-        # =====================================================================
-        act2_narration = (
-            "Watch a real multiply: 6 times 5. Each 1 in the multiplier copies the multiplicand; each 0 copies nothing. "
-            "The same rule at 8 bits is 64 AND gates. And negative 128 times negative 128 is positive 16,384, "
-            "which a 15-bit register misreads as negative 16,384. You need all 16 bits."
+    def _eight_bit(self, w):
+        cells = VGroup(*[
+            Rectangle(
+                width=0.32,
+                height=0.32,
+                stroke_width=1.2,
+                stroke_color=th.AMBER,
+                fill_color=th.AMBER,
+                fill_opacity=0.06,
+            )
+            for _ in range(64)
+        ]).arrange_in_grid(rows=8, cols=8, buff=0.05)
+        cells.move_to(GRID + LEFT * 3.55)
+
+        adder_box = RoundedRectangle(
+            corner_radius=0.08,
+            width=1.8,
+            height=1.7,
+            stroke_color=th.GREEN,
+            stroke_width=2.2,
+            fill_color="#0e1526",
+            fill_opacity=0.95,
         )
-        with self.stage("ACT 2", "The 8×8 AND Matrix & 16-Bit Growth", "Partial Products & The Asymmetric Corner Case", narration=act2_narration) as st:
-            with self.voiceover(act2_narration) as trk:
-                # 6 × 5 = 30. Rows that correspond to a 1 in 0101 are copies of 0110.
-                school = Text(
-                    "      0 1 1 0     6\n"
-                    "    × 0 1 0 1     5\n"
-                    "    ---------\n"
-                    "      0 1 1 0     ×1\n"
-                    "    0 0 0 0       ×0\n"
-                    "  0 1 1 0         ×1\n"
-                    "0 0 0 0           ×0\n"
-                    "= 0 1 1 1 1 0    30",
-                    font=th.MONO, font_size=16, color=th.WHITE, line_spacing=1.05,
-                )
-                grid_title = Text("PARTIAL PRODUCTS ARE AND GATES", font=th.MONO, weight=BOLD, font_size=12, color=th.AMBER)
-                grid_note = Text("INT8 is this picture with 64 ANDs, not 64 identical dots.", font=th.MONO, font_size=11, color=th.MUTED)
-                grid_group = VGroup(grid_title, school, grid_note).arrange(DOWN, buff=0.14).move_to(LEFT * 3.3 + DOWN * 0.15)
+        adder_lab = _mono("adder", 16, th.GREEN)
+        adder_num = _num("42", 26, th.WHITE)
+        adder_inner = VGroup(adder_lab, adder_num).arrange(DOWN, buff=0.08).move_to(adder_box)
+        adder = VGroup(adder_box, adder_inner)
+        adder.move_to(GRID + RIGHT * 0.15)
 
-                # Asymmetric proof card with LaTeX clarity
-                proof_box = RoundedRectangle(corner_radius=0.12, width=5.6, height=3.4, stroke_color=th.CYAN, stroke_width=2.0, fill_color="#09182a", fill_opacity=0.92)
-                p_hdr = Text("ASYMMETRIC TWO'S COMPLEMENT TRAP", font=th.MONO, weight=BOLD, font_size=13, color=th.CYAN)
-                p_eq = MathTex(r"(-128) \times (-128) = +16{,}384 = +2^{14}", font_size=24, color=th.WHITE)
-                p_15 = Text("15-bit signed: bit 14 is SIGN ➔ -16,384 (CORRUPT!)", font=th.MONO, font_size=11, color=th.RED_LIGHT)
-                p_16 = Text("16-bit signed: bit 15 is 0    ➔ +16,384 (SAFE!)", font=th.MONO, font_size=11, color=th.GREEN_LIGHT)
-                p_content = VStack(p_hdr, p_eq, p_15, p_16, gap=th.SPACE_SM).move_to(proof_box)
-                proof_group = VGroup(proof_box, p_content).move_to(RIGHT * 3.4 + DOWN * 0.2)
-
-                st.add(grid_group, proof_group)
-
-                self.play(FadeIn(grid_group, shift=LEFT * 0.2), FadeIn(proof_group, shift=RIGHT * 0.2), run_time=1.0)
-                self.wait(max(0.3, trk.duration - 1.0))
-                st.takeaway("64 AND gates, and 16 full bits to hold the result.", wait=1.2)
-
-        # =====================================================================
-        # ACT 3: RADIX-4 BOOTH RECODING & WALLACE COMPRESSION (CONCEPT)
-        # =====================================================================
-        act3_narration = (
-            "Now, an important honest note. Our teaching RTL simply writes a times b and lets the synthesis tool "
-            "infer the multiplier. But real silicon rarely does that. Industry multipliers use two tricks: Booth recoding "
-            "scans the multiplier in overlapping 3-bit windows, halving eight rows down to four, and a Wallace tree "
-            "squeezes those four rows into just two vectors in logarithmic time."
+        mult_box = RoundedRectangle(
+            corner_radius=0.08,
+            width=1.45,
+            height=1.3,
+            stroke_color=th.AMBER,
+            stroke_width=2.2,
+            fill_color="#0e1526",
+            fill_opacity=0.95,
         )
-        with self.stage("ACT 3", "Booth Recoding & Wallace Tree", "CONCEPT: How Industry Chips Optimize the Multiplier", narration=act3_narration) as st:
-            with self.voiceover(act3_narration) as trk:
-                # Concept badge
-                concept_badge = VGroup(
-                    RoundedRectangle(corner_radius=0.08, width=3.4, height=0.5, stroke_color=th.AMBER, stroke_width=1.5, fill_color="#1a1205", fill_opacity=0.9),
-                    Text("CONCEPT (not rtl/)", font=th.MONO, weight=BOLD, font_size=12, color=th.AMBER_LIGHT)
-                )
-                concept_badge[1].move_to(concept_badge[0])
+        mult_lab = _mono("multiply", 16, th.AMBER_LIGHT)
+        mult_lab.move_to(mult_box.get_center() + UP * 0.22)
+        mult = VGroup(mult_box, mult_lab)
+        mult.move_to(GRID + RIGHT * 3.85)
 
-                # y = 0b01011010, with the Booth y[-1] = 0 on the right.
-                # Windows step from the LSB by two bits. The digit is the triplet, not a canned string.
-                bits = ["0", "1", "0", "1", "1", "0", "1", "0", "0"]
-                bit_row = th.bit_row(bits, cell_w=0.48, cell_h=0.62, font_size=16)
-                bit_caption = Text("y7 … y0 | y-1     multiplier 0b01011010", font=th.MONO, font_size=12, color=th.MUTED)
+        copies = _num("64", 32, th.AMBER_LIGHT).next_to(cells, DOWN, buff=0.18)
 
-                # 3 cells + 2 gaps of 0.08
-                window = RoundedRectangle(
-                    corner_radius=0.08, width=1.60, height=0.78,
-                    stroke_color=th.CYAN, stroke_width=2.5,
-                    fill_color=th.CYAN_DARK, fill_opacity=0.3,
-                )
-
-                # (y1,y0,y-1)=100 → -2; (y3,y2,y1)=111 → 0; (y5,y4,y3)=011 → +2; (y7,y6,y5)=010 → +1
-                booth_digits = ["-2 × M", "0 × M", "+2 × M", "+1 × M"]
-                rule_probe = PinProbe("BOOTH DIGIT", booth_digits[0], color=th.CYAN)
-
-                row4 = VGroup(*[Dot(radius=0.07, color=th.AMBER) for _ in range(8)]).arrange(RIGHT, buff=0.12)
-                row3 = VGroup(*[Dot(radius=0.07, color=th.AMBER) for _ in range(8)]).arrange(RIGHT, buff=0.12)
-                row2 = VGroup(*[Dot(radius=0.07, color=th.GREEN_LIGHT) for _ in range(8)]).arrange(RIGHT, buff=0.12)
-                row1 = VGroup(*[Dot(radius=0.07, color=th.GREEN_LIGHT) for _ in range(8)]).arrange(RIGHT, buff=0.12)
-                four_rows = VGroup(row4, row3, row2, row1).arrange(DOWN, buff=0.08)
-                two_rows = VGroup(row2.copy(), row1.copy()).arrange(DOWN, buff=0.1)
-                four_lbl = Text("4 Booth rows", font=th.MONO, font_size=12, color=th.AMBER)
-                two_lbl = Text("2 vectors", font=th.MONO, font_size=12, color=th.GREEN_LIGHT)
-                wallace = VGroup(
-                    VGroup(four_lbl, four_rows).arrange(DOWN, buff=0.08),
-                    Text("→", font=th.MONO, font_size=28, color=th.WHITE),
-                    VGroup(two_lbl, two_rows).arrange(DOWN, buff=0.08),
-                ).arrange(RIGHT, buff=0.35)
-
-                booth_layout = VGroup(concept_badge, bit_caption, bit_row, rule_probe, wallace).arrange(DOWN, buff=0.22)
-                booth_layout.move_to(self.layout.main_stage_center())
-                # Window covers the LSB triplet (cells 6, 7, 8) after the row has been placed.
-                window.move_to(VGroup(bit_row[6], bit_row[7], bit_row[8]).get_center())
-                booth_layout.add(window)
-                st.add(booth_layout)
-
-                self.play(FadeIn(concept_badge), FadeIn(bit_caption), Create(bit_row), Create(window), FadeIn(rule_probe), FadeIn(wallace), run_time=0.9)
-
-                pitch = 0.48 + 0.08
-                for step, digit in enumerate(booth_digits[1:], start=1):
-                    self.play(
-                        window.animate.shift(LEFT * (2 * pitch)),
-                        rule_probe.set_value(digit),
-                        run_time=0.45,
-                    )
-                self.wait(max(0.3, trk.duration - 2.6))
-                st.takeaway("Each digit is the triplet under the window. Four rows then become two.", wait=1.2)
-
-        # =====================================================================
-        # ACT 4: DYNAMIC POWER & TENSOR CORE SCALING
-        # =====================================================================
-        act4_narration = (
-            "Area matters because dynamic power grows with capacitance. "
-            "The 4,096 number is not the gate-count ratio. One mma.sync instruction shaped m16 n8 k32 "
-            "performs 16 times 8 times 32, which is 4,096 multiply-accumulates. That is an instruction shape."
+        move = self._go(GRID, run_time=1.0)
+        shown = w.show(cells, adder, mult, run_time=0.4)
+        self.play(
+            LaggedStart(
+                *[c.animate.set_fill(th.AMBER, opacity=0.92) for c in cells],
+                lag_ratio=0.03,
+            ),
+            run_time=8.4,
         )
-        with self.stage("ACT 4", "Tensor Core Co-Design", "Silicon Power Formula & mma.sync Tensor Core Mapping", narration=act4_narration) as st:
-            with self.voiceover(act4_narration) as trk:
-                power_eq = MathTex(
-                    r"\mathcal{P}_{\text{dyn}} = \alpha \cdot C_{\text{wire}} \cdot V_{\text{DD}}^2 \cdot f",
-                    font_size=38,
-                    color=th.AMBER_LIGHT
-                ).to_edge(UP, buff=1.4)
-                st.add(power_eq)
-                self.play(Write(power_eq), run_time=0.8)
+        label = w.show(copies, run_time=0.3)
+        w.say(L_GRID, already=move + shown + 8.4 + label)
 
-                # Visual feature tiles
-                tile1 = RoundedRectangle(corner_radius=0.1, width=3.4, height=2.4, stroke_color=th.CYAN, stroke_width=2.0, fill_color="#091b2e", fill_opacity=0.92)
-                t1_val = Text("m16n8k32", font=th.SANS, weight=BOLD, font_size=28, color=th.CYAN_LIGHT)
-                t1_lbl = Text("16 × 8 × 32 = 4,096", font=th.MONO, font_size=12, color=th.TEXT)
-                t1_sub = Text("instruction shape, not die area", font=th.MONO, font_size=10, color=th.CYAN)
-                c1 = VStack(t1_val, t1_lbl, t1_sub, gap=0.1).move_to(tile1)
-                grp1 = VGroup(tile1, c1)
+        self.play(mult.animate.scale(1.9), run_time=1.25)
+        gates = _num("456", 32, th.WHITE)
+        gates.move_to(mult.get_center() + DOWN * 0.4)
+        gate_in = w.show(gates, run_time=0.3)
+        w.say(L_GATES, already=1.25 + gate_in)
+        w.say(L_SIZE, already=0)
 
-                tile2 = RoundedRectangle(corner_radius=0.1, width=3.4, height=2.4, stroke_color=th.GREEN, stroke_width=2.0, fill_color="#071b11", fill_opacity=0.92)
-                t2_val = Text("4,096", font=th.SANS, weight=BOLD, font_size=36, color=th.GREEN_LIGHT)
-                t2_lbl = Text("MACs per Instruction", font=th.MONO, font_size=12, color=th.TEXT)
-                t2_sub = Text("NVIDIA mma.sync warp", font=th.MONO, font_size=10, color=th.GREEN)
-                c2 = VStack(t2_val, t2_lbl, t2_sub, gap=0.1).move_to(tile2)
-                grp2 = VGroup(tile2, c2)
+    def _signed_window(self, w):
+        move = self._go(SIGN, run_time=1.0)
+        expr = _num("-128  ×  -128", 30, th.WHITE).move_to(SIGN + UP * 2.15)
+        positive = _num("+16384", 36, th.GREEN_LIGHT).move_to(SIGN + UP * 1.15)
+        shown = w.show(expr, positive, run_time=0.45)
+        w.say(L_NEG, already=move + shown)
 
-                tile3 = RoundedRectangle(corner_radius=0.1, width=3.4, height=2.4, stroke_color=th.PURPLE, stroke_width=2.0, fill_color="#1e0a2e", fill_opacity=0.92)
-                t3_val = Text("456 Gates", font=th.SANS, weight=BOLD, font_size=30, color=th.PURPLE_LIGHT)
-                t3_lbl = Text("Silicon Gate Budget", font=th.MONO, font_size=12, color=th.TEXT)
-                t3_sub = Text("FP32 ~7,000, not drawn to scale", font=th.MONO, font_size=10, color=th.PURPLE)
-                c3 = VStack(t3_val, t3_lbl, t3_sub, gap=0.1).move_to(tile3)
-                grp3 = VGroup(tile3, c3)
+        pattern = "0100000000000000"
+        row = VGroup(*[
+            _mini(ch, th.AMBER_LIGHT if i == 1 else th.MUTED)
+            for i, ch in enumerate(pattern)
+        ]).arrange(RIGHT, buff=0.045)
+        row.move_to(SIGN + DOWN * 0.35)
+        left = row[1].get_left()[0] - 0.08
+        right = row[15].get_right()[0] + 0.08
+        bracket = RoundedRectangle(
+            corner_radius=0.06,
+            width=right - left,
+            height=row.height + 0.18,
+            stroke_color=th.AMBER,
+            stroke_width=2.6,
+            fill_opacity=0,
+        )
+        bracket.move_to([(left + right) / 2, row.get_y(), 0])
+        spent = w.show(row, run_time=0.4)
+        self.play(
+            FadeIn(bracket),
+            row[0].animate.set_opacity(0.22),
+            run_time=0.45,
+        )
+        w.keep(bracket)
+        w.say(L_WINDOW, already=spent + 0.45)
+        w.ask("What sign will this window report?", target=bracket, direction=DOWN)
 
-                tiles = HStack(grp1, grp2, grp3, gap=th.SPACE_MD).move_to(DOWN * 0.8)
-                st.add(tiles)
+        negative = _num("-16384", 36, th.RED_LIGHT).move_to(positive)
+        hot_box = row[1][0]
+        hot_glyph = row[1][1]
+        self.play(FadeOut(positive), run_time=0.16)
+        self.remove(positive)
+        dim = [
+            row[i].animate.set_opacity(0.32)
+            for i in range(16)
+            if i != 1
+        ]
+        self.play(
+            FadeIn(negative),
+            hot_box.animate.set_fill(th.RED, opacity=0.96).set_stroke(th.RED_LIGHT, width=3.2),
+            hot_glyph.animate.set_color(th.WHITE),
+            bracket.animate.set_stroke(th.RED, width=3.2),
+            *dim,
+            run_time=0.5,
+        )
+        w.keep(negative)
+        self.screen_shake(intensity=0.04, cycles=2, run_time=0.22)
+        self.focus_on(row[1], buffer_factor=9, run_time=0.85)
+        _mark(self, "break")
+        w.say(L_FLIP, already=0.16 + 0.5 + 0.22 + 0.85)
 
-                self.play(FadeIn(tiles, shift=UP * 0.2), run_time=0.9)
-                self.wait(max(0.3, trk.duration - 1.7))
-                st.takeaway("4,096 MACs is 16×8×32. It is not the 7,000-over-456 gate ratio.", wait=1.2)
+    def _fold(self, w):
+        bars = VGroup(*[
+            RoundedRectangle(
+                corner_radius=0.05,
+                width=5.4 - i * 0.55,
+                height=0.42,
+                stroke_width=0,
+                fill_color=th.AMBER,
+                fill_opacity=0.92,
+            )
+            for i in range(4)
+        ]).arrange(DOWN, buff=0.16)
+        bars.move_to(FOLD)
+        move = self._go(FOLD, run_time=1.05)
+        shown = w.show(bars, run_time=0.4)
+        w.say(L_TALL, already=move + shown)
+
+        folded = VGroup(*[
+            RoundedRectangle(
+                corner_radius=0.05,
+                width=width,
+                height=0.5,
+                stroke_width=0,
+                fill_color=th.GREEN,
+                fill_opacity=0.92,
+            )
+            for width in (5.2, 4.5)
+        ]).arrange(DOWN, buff=0.2)
+        folded.move_to(bars)
+        self.play(ReplacementTransform(bars, folded), run_time=1.15)
+        w.keep(folded)
+        w.say(L_PAIRS, already=1.15)
+        w.say(L_SHORT, already=0)
+        _mark(self, "repair")
+        w.name("Wallace", folded, direction=DOWN)
+
+    def _three_times_five(self, w):
+        lsb3 = PRED + RIGHT * 1.9 + UP * 2.05
+        lsb5 = PRED + RIGHT * 1.9 + UP * 1.35
+        lsb_p0 = PRED + RIGHT * 1.9 + UP * 0.25
+        lsb_p1 = PRED + RIGHT * 1.9 + DOWN * 0.45
+        lsb_p2 = PRED + RIGHT * 1.9 + DOWN * 1.15
+        lsb_sum = PRED + RIGHT * 1.9 + DOWN * 2.05
+
+        three = _num("3", 28, th.WHITE).move_to(lsb3 + LEFT * 2.6)
+        five = _num("5", 28, th.AMBER_LIGHT).move_to(lsb5 + LEFT * 2.6)
+        times = _mono("×", 26, th.AMBER_LIGHT).move_to(five.get_center() + LEFT * 0.7)
+        factor3 = _bits_at("0011", 0, th.WHITE, lsb3)
+        factor5 = _bits_at("0101", 0, th.AMBER_LIGHT, lsb5)
+
+        move = self._go(PRED, run_time=1.0)
+        shown = w.show(three, five, times, factor3, factor5, run_time=0.45)
+        w.say(L_PREDICT, already=move + shown)
+
+        row_and = _bits_at("0011", 0, th.GREEN_LIGHT, lsb_p0)
+        tag1 = _mono("×1", 16, th.GREEN_LIGHT).move_to(lsb_p0 + RIGHT * 0.7)
+        running = _num("3", 36, th.GREEN_LIGHT).move_to(PRED + RIGHT * 4.55 + UP * 0.15)
+        spent = w.show(row_and, tag1, running, run_time=0.4)
+        self.play(factor5[0][0].animate.set_stroke(th.GREEN_LIGHT, width=3.2), run_time=0.25)
+        w.say(L_AND, already=spent + 0.25)
+
+        row_zero = _bits_at("0000", 1, th.MUTED, lsb_p1)
+        tag0 = _mono("×0", 16, th.MUTED).move_to(lsb_p1 + RIGHT * 0.7)
+        spent = w.show(row_zero, tag0, run_time=0.4)
+        self.play(factor5[1][0].animate.set_stroke(th.MUTED, width=3.0), run_time=0.25)
+        w.say(L_BLANK, already=spent + 0.25)
+
+        row_shift = _bits_at("0011", 2, th.GREEN_LIGHT, lsb_p2)
+        tag2 = _mono("×1", 16, th.GREEN_LIGHT).move_to(lsb_p2 + RIGHT * 0.7)
+        rule = Line(
+            lsb_sum + LEFT * 2.5 + UP * 0.38,
+            lsb_sum + RIGHT * 0.35 + UP * 0.38,
+            color=th.MUTED,
+            stroke_width=2,
+        )
+        total_bits = _bits_at("001111", 0, th.WHITE, lsb_sum)
+        fifteen = _num("15", 40, th.GREEN_LIGHT).move_to(running)
+        spent = w.show(row_shift, tag2, run_time=0.4)
+        self.play(factor5[2][0].animate.set_stroke(th.GREEN_LIGHT, width=3.2), run_time=0.25)
+        self.play(FadeOut(running), run_time=0.16)
+        self.remove(running)
+        self.play(FadeIn(rule), FadeIn(total_bits), FadeIn(fifteen), run_time=0.4)
+        w.keep(rule, total_bits, fifteen)
+        w.say(L_FIFTEEN, already=spent + 0.25 + 0.16 + 0.4)
