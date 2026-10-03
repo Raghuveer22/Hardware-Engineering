@@ -38,7 +38,7 @@ In AI accelerators, the MAC unit executes continuously across thousands of clock
 Let $a_k, b_k \in [-128, +127]$ be $K$ consecutive signed INT8 operands. When summing their products into an `INT32` two's complement accumulator initialized to $0$:
 $$S_K = \sum_{k=1}^K (a_k \cdot b_k)$$
 the accumulator is mathematically guaranteed never to overflow for all reduction lengths:
-$$K \le 131,072$$
+$$K \le 131,071$$
 
 ---
 
@@ -66,14 +66,14 @@ $$\text{Range}(\text{INT32}) = \left[ -2^{31}, \ 2^{31} - 1 \right] = \left[ -2,
 To guarantee no positive overflow:
 $$K \cdot 2^{14} \le 2^{31} - 1$$
 $$K \le \frac{2^{31} - 1}{2^{14}} = 2^{17} - \frac{1}{2^{14}} = 131,072 - \frac{1}{16,384}$$
-Since $K$ must be an integer:
-$$K_{max} = 131,072$$
+Since $K$ must be an integer, take the floor. $131{,}072 \times 16{,}384 = 2^{31}$, which is not a positive INT32 value:
+$$K_{max} = 131,071$$
 
 To guarantee no negative overflow:
 $$|S_K^{min}| = K \cdot 16,256 \le 2^{31} \implies K \le \frac{2,147,483,648}{16,256} \approx 132,104.06$$
 
 The global limiting constraint is positive accumulation:
-$$K \le 131,072 \quad \text{(Q.E.D.)}$$
+$$K \le 131,071 \quad \text{(Q.E.D.)}$$
 
 ---
 
@@ -93,7 +93,8 @@ In contemporary Large Language Models (e.g., LLaMA 3 70B, GPT-4, Mistral Large):
 * Hidden dimension $d_{model} \in \{4096, 8192, 12288\}$
 * Reduction dimension $K \le 8192$
 * An INT32 accumulator provides:
-  $$\text{Guard Bits} = \log_2\left(\frac{131,072}{8192}\right) = 17 - 13 = \mathbf{4\text{ guard bits}}$$
+  $$\text{Guard Bits} = 31 - 27 = \mathbf{4\text{ guard bits}}$$
+  because $8192 \times 16{,}384 = 2^{27}$ and a signed 32-bit value has 31 magnitude bits.
 This guarantees that even with extreme adversarial activation spikes, a 32-bit accumulator will never experience mathematical overflow during attention projections or MLP layers.
 
 ---
@@ -207,7 +208,7 @@ endmodule
 > * **Sequential Registers (DFF):** `0 DFFs` (Combinational Datapath Core)
 > * **Standard Cell Count:** $\approx 310$ equivalent gates (Multiplier array, bit sign-extension bus, 32-bit adder)
 > * **Combinational Critical Path:** $\approx 3.6\text{ ns}$ (Wallace tree multiplier + CLA accumulator)
-> * **Dynamic Headroom:** Supports up to $131,072$ consecutive INT8 inner product steps without overflow.
+> * **Dynamic Headroom:** Supports up to $131,071$ consecutive INT8 inner product steps without positive overflow.
 > * **Interactive Netlist:** Open [`schematics/mac_unit.svg`](../../schematics/mac_unit.svg) in a browser to trace connections between the multiplier core, sign extension bus, and 32-bit accumulator.
 
 ---
@@ -249,6 +250,6 @@ python labs/run_lab.py --lab lab02
 
 ## 8. Review & Engineering Analysis Questions
 
-1. **Formal Induction Bound:** Prove why $K = 131,072$ is the exact mathematical upper bound for summing products of two INT8 numbers into an INT32 accumulator before positive overflow occurs.
+1. **Formal Induction Bound:** Prove why $K = 131,071$ is the largest integer count of maximum INT8 products that still fits in a positive INT32 accumulator. $131{,}072 \times 16{,}384 = 2^{31}$, which is not representable as a positive INT32.
 2. **Sign vs Zero Extension:** Demonstrate mathematically why zero-extending a negative 16-bit product results in a $+65,536$ offset error in the accumulator.
 3. **Pipelining Frequency Trade-off:** If an unpipelined MAC achieves $F_{max} = 227\text{ MHz}$, calculate the theoretical $F_{max}$ improvement when splitting the datapath into balanced 2-stage and 3-stage pipelines.

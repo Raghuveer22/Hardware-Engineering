@@ -1,0 +1,18 @@
+# ==============================================================================
+# Hardware Engineering & Pre-Silicon Emulation Platform
+# Core Dependencies for Simulation, Verification, and Testing
+# ==============================================================================
+
+# Hardware Verification Framework (Python testbenches for RTL)
+cocotb>=1.8.0,<3.0.0
+cocotb-bus>=0.2.1
+
+# Numerical Computing & Golden References
+numpy>=1.23.0
+
+# Unit Testing & Test Runners
+pytest>=7.0.0
+
+# Console UI & Diagnostics Formatting
+tabulate>=0.9.0
+rich>=12.0.0

@@ -14,6 +14,7 @@ import sys
 import argparse
 from pathlib import Path
 import re
+import shutil
 
 MODULE_SOURCES = {
     "adder": ["rtl/adder.sv"],
@@ -106,6 +107,23 @@ def main():
                         help="Which module to synthesize (default: all)")
     parser.add_argument("--out", default="schematics", help="Output directory for schematics")
     args = parser.parse_args()
+
+    # Pre-check Yosys
+    if not shutil.which("yosys"):
+        print("\n❌ Error: 'yosys' logic synthesizer not found in PATH!")
+        print("   To install:")
+        print("   - macOS:   brew install yosys")
+        print("   - WSL/Deb: sudo apt-get install yosys")
+        print("   - Windows (MSYS2): pacman -S mingw-w64-x86_64-yosys")
+        print("   - Windows (OSS CAD Suite): https://github.com/YosysHQ/oss-cad-suite-build")
+        sys.exit(1)
+
+    if not shutil.which("dot"):
+        print("\n⚠️ Warning: 'dot' (Graphviz) not found in PATH. PNG schematic rendering will be skipped.")
+        print("   To install:")
+        print("   - macOS:   brew install graphviz")
+        print("   - WSL/Deb: sudo apt-get install graphviz")
+        print("   - Windows: winget install Graphviz.Graphviz\n")
 
     if args.top == "all":
         for mod in MODULE_SOURCES:

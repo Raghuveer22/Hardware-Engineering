@@ -80,27 +80,122 @@ For large context windows (e.g. **1 Million Tokens**):
 
 ---
 
-## 🚀 How to Run
+## 🛠️ Environment Setup (macOS & Windows)
 
-### 1. Run All Lab Testbenches (Labs 00 - 08)
+This platform supports **macOS (Apple Silicon & Intel)** and **Windows (WSL2 & Native)**.
+
+### 🔍 Quick Environment Check
+Run the built-in diagnostic tool at any time to verify your system readiness:
 ```bash
-source .venv/bin/activate
-python labs/run_lab.py --lab all
+python check_env.py
 ```
 
-### 2. Synthesize All Hardware Modules & Generate Interactive Schematics
-```bash
-python3 synthesis/synthesize.py --top all
-```
+---
 
-### 3. Launch Interactive Hardware Visualizer & Schematics
-```bash
-# 2D Systolic Array Compute Wavefront:
-python3 visualizer/serve.py
+### 🍎 Option 1: macOS Setup (Apple Silicon M1/M2/M3/M4 & Intel)
 
-# Interactive Schematics Explorer:
-open schematics/index.html
-```
+1. **Install Prerequisites via Homebrew:**
+   ```bash
+   brew update
+   brew install icarus-verilog verilator yosys graphviz gtkwave python@3.12
+   ```
+
+2. **Automated Setup:**
+   Run the setup script to create `.venv` and install Python dependencies:
+   ```bash
+   chmod +x setup.sh
+   ./setup.sh
+   ```
+
+3. **Run Full Verification & Emulation:**
+   ```bash
+   ./build_and_run.sh
+   # Or using universal cross-platform runner:
+   python run_all.py
+   ```
+
+---
+
+### 🪟 Option 2: Windows Setup
+
+#### Method A: WSL2 (Ubuntu / Debian) — *Recommended for Open-Source EDA*
+WSL2 provides a native Linux kernel with full compatibility for open-source EDA tools (Verilator, Icarus, Yosys).
+
+1. **Open Windows PowerShell as Administrator:**
+   ```powershell
+   wsl --install
+   ```
+   *(Reboot your PC if prompted, then launch Ubuntu from the Start menu)*
+
+2. **Inside WSL Ubuntu Terminal:**
+   ```bash
+   # Install EDA toolchains & C++ compiler
+   sudo apt update && sudo apt install -y build-essential clang iverilog verilator yosys graphviz gtkwave python3-venv python3-pip
+
+   # Clone and setup
+   chmod +x setup.sh
+   ./setup.sh
+
+   # Run tests and C++ emulator
+   ./build_and_run.sh
+   ```
+
+#### Method B: Native Windows (PowerShell / Command Prompt)
+
+1. **Install Simulators & Tools via Winget / Web:**
+   * **Icarus Verilog:** 
+     ```powershell
+     winget install -e --id Bleyer.IcarusVerilog
+     ```
+     *(Or download from [bleyer.org/icarus](https://bleyer.org/icarus/) — **ensure "Add to PATH" is checked** during installation)*
+   * **Graphviz (for schematics):**
+     ```powershell
+     winget install Graphviz.Graphviz
+     ```
+   * **Python 3.10+:**
+     ```powershell
+     winget install Python.Python.3.12
+     ```
+   * **C++ Compiler:** Install [Visual Studio C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) or [MSYS2 MinGW-w64](https://www.msys2.org/).
+
+2. **Automated Setup in PowerShell:**
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File .\setup.ps1
+   ```
+   *(Or in Command Prompt: `setup.bat`)*
+
+3. **Run Full Verification & Emulation:**
+   ```powershell
+   .\build_and_run.ps1
+   # Or using universal cross-platform runner:
+   python run_all.py
+   ```
+
+---
+
+## 🚀 Cross-Platform Execution Cheat Sheet
+
+| Task | macOS / Linux / WSL | Windows (PowerShell) | Windows (CMD) | Universal (Pure Python) |
+| :--- | :--- | :--- | :--- | :--- |
+| **Run All Tests & C++ Emulator** | `./build_and_run.sh` | `.\build_and_run.ps1` | `build_and_run.bat` | `python run_all.py` |
+| **Run Specific Lab (e.g. Lab 04)** | `python labs/run_lab.py --lab lab04` | `python labs\run_lab.py --lab lab04` | `python labs\run_lab.py --lab lab04` | `python labs/run_lab.py --lab lab04` |
+| **Run All Labs (00 - 08)** | `python labs/run_lab.py --lab all` | `python labs\run_lab.py --lab all` | `python labs\run_lab.py --lab all` | `python run_all.py --run-labs` |
+| **Build & Run C++ Emulator** | `python cpp_emulation/build_emulator.py --run` | `python cpp_emulation\build_emulator.py --run` | `python cpp_emulation\build_emulator.py --run` | `python cpp_emulation/build_emulator.py --run` |
+| **Logic Synthesis & Schematics** | `python synthesis/synthesize.py --top all` | `python synthesis\synthesize.py --top all` | `python synthesis\synthesize.py --top all` | `python synthesis/synthesize.py --top all` |
+| **Launch Live 2D Visualizer** | `python visualizer/serve.py` | `python visualizer\serve.py` | `python visualizer\serve.py` | `python visualizer/serve.py` |
+| **Open Schematics Explorer** | `open schematics/index.html` | `Start-Process schematics\index.html` | `start schematics\index.html` | `python -m webbrowser schematics/index.html` |
+| **Check System Readiness** | `python check_env.py` | `python check_env.py` | `python check_env.py` | `python check_env.py` |
+
+---
+
+## 🔧 Troubleshooting & Tips
+
+* **Verilator include paths:** On macOS and Linux, the builder dynamically locates headers via `verilator -getenv VERILATOR_ROOT`. On native Windows, WSL2 is recommended for Verilator emulation.
+* **Paths with Spaces:** Verilator's native GNU Make rejects paths containing spaces (e.g., `Hardware Engineering`). Our custom build runner `cpp_emulation/build_emulator.py` completely bypasses this limitation by driving compilation directly with your C++ compiler.
+* **Viewing Waveforms (`.vcd` and `.fst`):**
+  * macOS: `gtkwave systolic_emulation.vcd` (or use the modern [Surfer](https://surfer-project.org/) waveform viewer: `brew install surfer`).
+  * Windows: GTKWave is bundled with the Bleyer Icarus Verilog installer under `C:\iverilog\gtkwave\bin\gtkwave.exe`.
+* **Port Conflict on Visualizer:** `visualizer/serve.py` automatically binds with socket address reuse and falls back to subsequent ports (8081, 8082, etc.) if 8080 is in use. You can also pass `--port <number>` manually.
 
 ---
 

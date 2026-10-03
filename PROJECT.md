@@ -29,7 +29,7 @@ Every feature discovered in the survey phase is recorded below and assigned to a
 | F12 | Lab 00-Prep Co-Design Depth | Add pJ/bit memory energy hierarchy table; flip-flop setup/hold/metastability equations; PCIe/DMA/MMIO mappings | M2 | Survey Curric |
 | F13 | Lab 00 Adder Saturation Rigor | Add Two's Complement Overflow proof ($V=C_{in} \oplus C_{out}$); RCA vs CLA vs Kogge-Stone timing/area table; TPU adder trees | M2 | Survey Curric |
 | F14 | Lab 01 Multiplier Co-Design Rigor | Add $O(N^2)$ silicon scaling proof; Radix-4 Booth encoding; Wallace/Dadda CSA reduction tree; Tensor Core mapping | M2 | Survey Curric |
-| F15 | Lab 02 MAC Unit Headroom Proof | Formal proof of 32-bit accumulator headroom ($K \le 131,072$); combinational vs pipelined $F_{max}$; Ampere/Hopper MMA | M2 | Survey Curric |
+| F15 | Lab 02 MAC Unit Headroom Proof | Formal proof of 32-bit accumulator headroom ($K \le 131,071$); combinational vs pipelined $F_{max}$; Ampere/Hopper MMA | M2 | Survey Curric |
 | F16 | Lab 03 PE Spatial Dataflow Rigor | Add WS vs OS vs IS taxonomy table; DRAM vs SRAM batch energy reduction math; 48 DFF PE budget; Apple ANE mapping | M2 | Survey Curric |
 | F17 | Lab 04 Systolic Array Math Rigor | Mathematical proof of wavefront arrival ($T = i+j+ROWS-1$); matrix tiling & SRAM double-buffering; TMA & Triton GEMM | M2 | Survey Curric |
 | F18 | Lab 05 Sqrt Variance Proof | Mathematical proof of attention dot-product variance ($\text{Var}(q^T k) = d_k$); vanishing gradient proof; digit recurrence | M2 | Survey Curric |
@@ -51,6 +51,8 @@ Every feature discovered in the survey phase is recorded below and assigned to a
 | **M2** | Technical Depth & Co-Design Rigor | `labs/slides/lab00_prep` through `labs/slides/lab08_exponential_sfu` (architectural trade-offs, pJ/bit hierarchy, KaTeX proofs, real-world accelerator bridges) | None | DONE (+1,873 lines, proofs, pJ/bit, verified) |
 | **M3** | Animation Visual Formatting & Curriculum Content Integration | `animations/scene_lab*.py`: (1) Integrate M2 deepened curriculum content, proofs, pJ/bit metrics, and accelerator architectures into animation scripts; (2) Polish generated video formatting (visual layout, typography, math rendering, spacing, zero clipping/overlapping in rendered frames) | M1, M2 | DONE (Ingested proofs, pJ/bit, verified -ql) |
 | **M4** | E2E Verification & Forensic Integrity Audit | Full suite validation (`render_all.py --low`, Cocotb tests, visual inspection, Forensic Auditor) | M1, M2, M3 | DONE (Gate PASS: 2 APPROVE, 2 APPROVE, CLEAN audit) |
+
+Content and render bugs for labs 00–03 are tracked in [`docs/lab00-03-issue-index.md`](docs/lab00-03-issue-index.md). A clean `--low` render is not a content sign-off.
 
 ---
 

@@ -288,3 +288,71 @@ class ProcessingElementCell(VGroup):
     def update_sum(self, new_val):
         """Updates the partial sum forwarding readout."""
         return self.sum_val.update_text(str(new_val))
+
+
+class LogicGateNode(VGroup):
+    """
+    Standard cell logic gate symbol (AND, OR, ADD, MULT).
+    Encapsulates input wires, gate body, symbol, and output wire with conducts/pulses.
+    """
+    def __init__(self, op_sym=r"\times", title="MULTIPLIER", color=th.GREEN, radius=0.65, **kwargs):
+        super().__init__(**kwargs)
+        self.color = color
+        self.circle = Circle(radius=radius, color=color, stroke_width=2.5, fill_color="#072213", fill_opacity=0.9)
+        self.sym = MathTex(op_sym, color=th.WHITE, font_size=34).move_to(self.circle)
+        self.title_lbl = Text(title, font=th.MONO, font_size=10, color=color).next_to(self.circle, UP, buff=0.08)
+
+        self.in1 = Line(self.circle.get_left() + UP * 0.3 + LEFT * 0.8, self.circle.get_left() + UP * 0.3, color=th.CYAN, stroke_width=2.2)
+        self.in2 = Line(self.circle.get_left() + DOWN * 0.3 + LEFT * 0.8, self.circle.get_left() + DOWN * 0.3, color=th.CYAN, stroke_width=2.2)
+        self.out = Line(self.circle.get_right(), self.circle.get_right() + RIGHT * 0.8, color=th.AMBER, stroke_width=2.2)
+
+        self.add(self.circle, self.sym, self.title_lbl, self.in1, self.in2, self.out)
+
+
+class DFlipFlopNode(VGroup):
+    """
+    IEEE Standard D-Flip-Flop Standard Cell.
+    Features D input (left), Q output (right), dynamic Clock triangle > (lower-left),
+    and active synchronous state display.
+    """
+    def __init__(self, name="DFF", val="0", width=2.2, height=2.8, color=th.CYAN, has_leads=True, **kwargs):
+        super().__init__(**kwargs)
+        self.color = color
+        self.has_leads = has_leads
+        self.chassis = RoundedRectangle(
+            corner_radius=0.12, width=width, height=height,
+            stroke_color=color, stroke_width=2.2, fill_color="#081528", fill_opacity=0.95
+        )
+        self.name_tag = Text(name, font=th.MONO, weight=BOLD, font_size=12, color=color).next_to(self.chassis.get_top(), DOWN, buff=0.16)
+        
+        # Clock triangle on lower left
+        tri_size = 0.20
+        clk_y = self.chassis.get_bottom()[1] + 0.65
+        p1 = np.array([self.chassis.get_left()[0], clk_y + tri_size/2, 0])
+        p2 = np.array([self.chassis.get_left()[0] + tri_size, clk_y, 0])
+        p3 = np.array([self.chassis.get_left()[0], clk_y - tri_size/2, 0])
+        self.clk_tri = Polygon(p1, p2, p3, stroke_color=th.AMBER, fill_color=th.AMBER, fill_opacity=0.85, stroke_width=1.5)
+        self.clk_lbl = Text("clk", font=th.MONO, font_size=9, color=th.AMBER).next_to(self.clk_tri, RIGHT, buff=0.06)
+
+        # Port pin labels inside
+        self.d_lbl = Text("D", font=th.MONO, weight=BOLD, font_size=12, color=th.TEXT).move_to(self.chassis.get_left() + RIGHT * 0.3 + UP * 0.4)
+        self.q_lbl = Text("Q", font=th.MONO, weight=BOLD, font_size=12, color=th.GREEN_LIGHT).move_to(self.chassis.get_right() + LEFT * 0.3 + UP * 0.4)
+
+        # Stored value badge in center
+        self.val_box = RoundedRectangle(corner_radius=0.06, width=1.0, height=0.5, stroke_color=th.BORDER, fill_color="#050a12", fill_opacity=0.92)
+        self.val_box.move_to(self.chassis.get_center() + DOWN * 0.08)
+        self.val_txt = Text(str(val), font=th.MONO, weight=BOLD, font_size=13, color=th.WHITE).move_to(self.val_box)
+
+        self.add(self.chassis, self.name_tag, self.clk_tri, self.clk_lbl, self.d_lbl, self.q_lbl, self.val_box, self.val_txt)
+
+        # Optional external wire leads
+        if has_leads:
+            self.d_wire = Line(self.chassis.get_left() + UP * 0.4 + LEFT * 0.7, self.chassis.get_left() + UP * 0.4, color=th.TEXT, stroke_width=2.2)
+            self.q_wire = Line(self.chassis.get_right() + UP * 0.4, self.chassis.get_right() + UP * 0.4 + RIGHT * 0.7, color=th.GREEN_LIGHT, stroke_width=2.2)
+            self.clk_wire = Line(self.chassis.get_left() + DOWN * 0.75 + LEFT * 0.7, self.chassis.get_left() + DOWN * 0.75, color=th.AMBER, stroke_width=2.2)
+            self.add(self.d_wire, self.q_wire, self.clk_wire)
+
+    def set_value(self, new_val, color=th.GREEN_LIGHT):
+        new_t = Text(str(new_val), font=th.MONO, weight=BOLD, font_size=13, color=color).move_to(self.val_box)
+        return Transform(self.val_txt, new_t)
+

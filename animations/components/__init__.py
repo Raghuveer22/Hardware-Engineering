@@ -14,6 +14,17 @@ from components.layout import (
     ConstraintAnchor,
     fit_to_bounds,
 )
+from components.constraints import (
+    Region,
+    code_line,
+    content_region,
+    edge_at,
+    map_point,
+    snapshot,
+    layout_bands,
+    layout_columns,
+    place,
+)
 from components.kinematics import (
     SiliconCameraRig,
     KineticSiliconScene,
@@ -45,6 +56,8 @@ from components.silicon_cells import (
     DieFootprint,
     MemoryEnergyBar,
     ProcessingElementCell,
+    LogicGateNode,
+    DFlipFlopNode,
 )
 
 __all__ = [
@@ -57,6 +70,15 @@ __all__ = [
     "VStack",
     "ConstraintAnchor",
     "fit_to_bounds",
+    "Region",
+    "code_line",
+    "content_region",
+    "edge_at",
+    "map_point",
+    "snapshot",
+    "layout_bands",
+    "layout_columns",
+    "place",
     "SiliconCameraRig",
     "KineticSiliconScene",
     "VoiceoverTracker",
@@ -77,4 +99,6 @@ __all__ = [
     "DieFootprint",
     "MemoryEnergyBar",
     "ProcessingElementCell",
+    "LogicGateNode",
+    "DFlipFlopNode",
 ]

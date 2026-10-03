@@ -60,9 +60,10 @@ $$\begin{array}{|l|c|c|c|c|l|}
 \hline
 \textbf{Dataflow Paradigm} & \textbf{Stationary Element} & \textbf{Moving Operands} & \textbf{Local PE Storage} & \textbf{DRAM Traffic Bottleneck} & \textbf{Exemplar Accelerators} \\
 \hline
-\textbf{Weight-Stationary (WS)} & \text{Weights } (W) & \text{Activations } (A), \text{ P-Sums } (C) & \text{Weight Register } (w\_reg) & \text{Activation streaming at low batch} & \text{Google TPU v1--v4, Tenstorrent} \\
-\textbf{Output-Stationary (OS)} & \text{Accumulator } (C) & \text{Activations } (A), \text{ Weights } (W) & \text{Accumulator } (32\text{-bit}) & \text{High weight/act fetch bandwidth} & \text{DianNao, ShiDianNao} \\
-\textbf{Input-Stationary (IS)} & \text{Activations } (A) & \text{Weights } (W), \text{ P-Sums } (C) & \text{Activation Register} & \text{High weight streaming bandwidth} & \text{SCNN, Eyeriss (Row-Stationary variant)} \\
+\textbf{Weight-Stationary (WS)} & \text{Weights } (W) & \text{Activations } (A), \text{ P-Sums } (C) & \text{Weight Register } (w\_reg) & \text{Activation streaming at low batch} & \text{Google TPU v1, Tenstorrent} \\
+\textbf{Output-Stationary (OS)} & \text{Accumulator } (C) & \text{Activations } (A), \text{ Weights } (W) & \text{Accumulator } (32\text{-bit}) & \text{High weight/act fetch bandwidth} & \text{ShiDianNao} \\
+\textbf{Row-Stationary (RS)} & \text{A filter row} & \text{Other acts, weights, psums} & \text{Row buffer} & \text{Depends on the convolution} & \text{Eyeriss (Chen, Emer, Sze, ISCA 2016)} \\
+\textbf{Input-Stationary (IS)} & \text{Activations } (A) & \text{Weights } (W), \text{ P-Sums } (C) & \text{Activation Register} & \text{High weight streaming bandwidth} & \text{SCNN} \\
 \hline
 \end{array}$$
 
@@ -97,6 +98,8 @@ $$\text{Total MAC Operations} = M \cdot K \cdot N = 128 \times 128 \times 128 = 
 $$\text{Weight Memory Traffic Reduction} = \frac{M \cdot K \cdot N}{K \cdot N} = M = \mathbf{128\times \text{ Reduction!}}$$
 $$\text{Overall Memory Traffic Reduction} = \frac{4,194,304}{32,768} = \mathbf{128\times \text{ Overall Memory Bandwidth Savings!}}$$
 
+This read model has three assumptions a software engineer will ask about. The array is as wide as $N$, so each activation is fetched once and then streams across the row. There is no cache: a 128³ GEMM that fits in L2 does not move 4.19 MB from DRAM. Output writeback is omitted. Int32 results are $128 \times 128 \times 4 = 65{,}536$ bytes, about 64 KB, which is larger than the weight-stationary read traffic above.
+
 ---
 
 ### C. Total Energy Dissipation Breakdown
@@ -108,16 +111,16 @@ Using empirical pre-silicon energy metrics:
 #### 1. Von Neumann Baseline Energy:
 $$E_{total, VN} = (\text{Total DRAM Reads} \times 200\text{ pJ}) + (\text{Total MACs} \times 0.2\text{ pJ})$$
 $$E_{total, VN} = (4,194,304 \times 200\text{ pJ}) + (2,097,152 \times 0.2\text{ pJ})$$
-$$E_{total, VN} = 838,860,800\text{ pJ} + 419,430\text{ pJ} \approx \mathbf{839.28\text{ mJ}}$$
-*(Note: $99.95\%$ of total energy is wasted on memory traffic!)*
+$$E_{total, VN} = 838,860,800\text{ pJ} + 419,430\text{ pJ} = 839,280,230\text{ pJ} \approx \mathbf{0.839\text{ mJ}}$$
+*(1 mJ $= 10^9$ pJ. The DRAM term is $99.95\%$ of this total.)*
 
 #### 2. Weight-Stationary Spatial Systolic Energy:
 $$E_{total, WS} = (\text{DRAM Reads} \times 200\text{ pJ}) + (\text{Register Reads} \times 0.1\text{ pJ}) + (\text{Total MACs} \times 0.2\text{ pJ})$$
 $$E_{total, WS} = (32,768 \times 200\text{ pJ}) + (2 \times 2,097,152 \times 0.1\text{ pJ}) + (2,097,152 \times 0.2\text{ pJ})$$
-$$E_{total, WS} = 6,553,600\text{ pJ} + 419,430\text{ pJ} + 419,430\text{ pJ} \approx \mathbf{7.39\text{ mJ}}$$
+$$E_{total, WS} = 6,553,600\text{ pJ} + 419,430\text{ pJ} + 419,430\text{ pJ} = 7,392,460\text{ pJ} \approx \mathbf{0.00739\text{ mJ}}$$
 
-$$\text{Energy Reduction} = \frac{839.28\text{ mJ}}{7.39\text{ mJ}} \approx \mathbf{113.5\times \text{ Total System Energy Reduction!}}$$
-By holding weights stationary in flip-flops, the accelerator achieves an order-of-magnitude leap in energy efficiency.
+$$\text{Energy Reduction} = \frac{0.839\text{ mJ}}{0.00739\text{ mJ}} \approx \mathbf{113.5\times}$$
+The ratio is $113.5\times$ rather than $128\times$ because the MAC energy, $2{,}097{,}152 \times 0.2\text{ pJ} \approx 0.000419\text{ mJ}$, is paid on both sides and does not shrink when the weights stay put.
 
 ---
 

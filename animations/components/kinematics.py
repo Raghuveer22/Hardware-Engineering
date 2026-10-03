@@ -16,12 +16,25 @@ if str(ANIM_DIR) not in sys.path:
 
 import theme as th
 from components.layout import StageLayout, TextRole, SemanticText, ConstraintAnchor, fit_to_bounds
+from components.constraints import content_region, layout_bands, layout_columns, place, reserve_lane
+
+
+def _lead_sentence(text: str) -> str:
+    """First sentence, ignoring decimals such as 0.2."""
+    match = re.search(r"[A-Za-z][.!?](?:\s|$)", text.strip())
+    if not match:
+        return text.strip()
+    return text.strip()[: match.end()].strip()
 
 
 class VoiceoverTracker:
     """
-    Tracks voiceover audio clip duration to auto-scale animation runtimes.
-    Eliminates magic self.wait() floats and prevents audio-visual drift.
+    Estimates how long a line takes to say.
+
+    A real duration is used only when audio_path points at a WAV file.
+    Otherwise this is a 145 words-per-minute guess. It does not synthesize
+    speech and it does not lock a later ffmpeg mux to the Manim timeline.
+    narrate_video.py is a separate pass and only covers the scenes in SCRIPTS.
     """
     def __init__(self, text: str, audio_path: Path = None, default_wpm: int = 145):
         self.text = text
@@ -64,29 +77,85 @@ class StageContext:
         self.mobjects = []
         self.header_group = None
         self.banner = None
+        self.content = None
+        self.takeaway_lane = None
         self.morphed = False
+
+    def _header_max_width(self):
+        """Header stays clear of the corner HUD. The HUD width is measured, not guessed."""
+        frame_w = self.scene.camera.frame.width
+        hud = getattr(self.scene, "hud", None)
+        hud_w = float(getattr(hud, "width", 0.0) or 0.0)
+        side = (hud_w + th.SPACE_MD) if hud_w > 0 else th.SPACE_XL
+        return max(4.5, frame_w - 2 * side)
+
+    def _banner_width(self):
+        return max(6.0, self.scene.camera.frame.width - 2 * th.SPACE_LG)
+
+    def refresh_content(self):
+        """
+        Recompute the diagram rectangle from the live header and caption.
+
+        A longer title or a taller banner shrinks `content`. The takeaway
+        keeps a reserved lane at the bottom so it does not cover the diagram.
+        """
+        full = content_region(
+            self.scene.camera.frame,
+            header=self.header_group,
+            footer=self.banner,
+            margin=th.SPACE_MD,
+            gap=th.SPACE_SM,
+        )
+        self.content, self.takeaway_lane = reserve_lane(
+            full, th.TAKEAWAY_HEIGHT, gap=th.SPACE_XS,
+        )
+        return self.content
+
+    def place(self, mob, region=None, padding=0.0):
+        """Fit `mob` inside a solved region. Defaults to the diagram area."""
+        return place(mob, self.content if region is None else region, padding=padding)
+
+    def columns(self, *mobs, weights=None, gap=th.SPACE_LG, padding=0.0, region=None):
+        """Left-to-right slots. Weights are relative shares of the region."""
+        return layout_columns(
+            self.content if region is None else region,
+            mobs, weights=weights, gap=gap, padding=padding,
+        )
+
+    def bands(self, *mobs, weights=None, gap=th.SPACE_SM, padding=0.0, region=None):
+        """Top-to-bottom slots. The first mobject is the top band."""
+        return layout_bands(
+            self.content if region is None else region,
+            mobs, weights=weights, gap=gap, padding=padding,
+        )
 
     def __enter__(self):
         # Build stage header docked to top HUD
         kicker_text = f"{self.act_id}: {self.title.upper()}"
         self.kicker = SemanticText(kicker_text, role=TextRole.STAGE_BADGE, color=th.CYAN)
-        
+        header_w = self._header_max_width()
+
         if self.subtitle:
             self.sub_t = SemanticText(self.subtitle, role=TextRole.STAGE_TITLE, color=th.WHITE)
-            fit_to_bounds(self.sub_t, max_width=8.0)
-            self.header_group = VGroup(self.kicker, self.sub_t).arrange(DOWN, buff=0.10)
+            fit_to_bounds(self.sub_t, max_width=header_w)
+            self.header_group = VGroup(self.kicker, self.sub_t).arrange(DOWN, buff=th.SPACE_XS)
         else:
             self.header_group = VGroup(self.kicker)
 
-        fit_to_bounds(self.header_group, max_width=8.2)
-        self.header_group.to_edge(UP, buff=0.35)
-        self.scene.play(FadeIn(self.header_group, shift=DOWN * 0.2), run_time=0.5)
+        fit_to_bounds(self.header_group, max_width=header_w)
+        self.header_group.to_edge(UP, buff=th.SPACE_MD)
+        self.scene.play(FadeIn(self.header_group, shift=DOWN * th.SPACE_SM), run_time=0.5)
 
-        # Build bottom narration banner if provided
+        # Build bottom narration banner if provided.
+        # Only the first sentence goes on screen. The rest of a paragraph
+        # would spoil the beat, and the 1-line banner cannot hold it.
         if self.narration:
-            self.banner = th.narration_banner(self.narration)
-            self.scene.play(FadeIn(self.banner, shift=UP * 0.2), run_time=0.4)
+            self.banner = th.narration_banner(
+                _lead_sentence(self.narration), width=self._banner_width(),
+            )
+            self.scene.play(FadeIn(self.banner, shift=UP * th.SPACE_SM), run_time=0.4)
 
+        self.refresh_content()
         return self
 
     def add(self, *mobs):
@@ -107,12 +176,12 @@ class StageContext:
     def update_narration(self, new_narration: str, run_time=0.5):
         """Smoothly updates the bottom-third guidance banner."""
         self.narration = new_narration
-        new_banner = th.narration_banner(new_narration)
+        new_banner = th.narration_banner(new_narration, width=self._banner_width())
         if self.banner is not None:
             self.scene.play(Transform(self.banner, new_banner), run_time=run_time)
         else:
             self.banner = new_banner
-            self.scene.play(FadeIn(self.banner, shift=UP * 0.2), run_time=run_time)
+            self.scene.play(FadeIn(self.banner, shift=UP * th.SPACE_SM), run_time=run_time)
 
     def takeaway(self, text: str, wait: float = 1.4, color=th.CYAN, run_time=0.6):
         """
@@ -120,8 +189,19 @@ class StageContext:
         giving the viewer time to absorb the concept before the next depth jump.
         The bar is registered into the stage pool so it cleans up with the act.
         """
-        bar = th.takeaway_callout(text, color=color)
-        bar.move_to(self.scene.layout.main_stage_center())
+        lane = self.takeaway_lane
+        bar = th.takeaway_callout(
+            text,
+            color=color,
+            width=self.content.width if self.content is not None else None,
+            height=th.TAKEAWAY_HEIGHT,
+        )
+        if lane is not None and lane.height > 0:
+            self.place(bar, lane)
+        elif self.banner is not None:
+            bar.next_to(self.banner, UP, buff=th.SPACE_SM)
+        else:
+            bar.to_edge(DOWN, buff=th.SPACE_MD)
         self.scene.play(FadeIn(bar, shift=UP * 0.15), run_time=run_time)
         self.scene.wait(wait)
         self.scene.play(FadeOut(bar), run_time=0.35)
@@ -219,7 +299,7 @@ class KineticSiliconScene(SiliconCameraRig):
     def voiceover(self, text: str, audio_path: Path = None):
         """
         Voiceover context manager pattern.
-        Yields a VoiceoverTracker containing the exact duration of the spoken text.
+        Yields a VoiceoverTracker. Duration is exact only if a WAV path is passed.
         """
         class _VoiceoverContext:
             def __init__(self, scene, txt, apath):

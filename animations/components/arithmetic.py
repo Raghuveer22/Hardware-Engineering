@@ -295,6 +295,32 @@ class RippleCarryChain(VGroup):
 
         self.add(self.cells, self.carry_wires, self.cin_grp, self.cout_grp)
 
+    def operand_labels(self, a_val, b_val):
+        """Bit labels for a real addition, LSB in cells[0] (the rightmost cell).
+
+        Returns (label_group, carries) where carries[i] is the carry into bit i
+        and carries[bits] is the carry out of the last bit.
+        """
+        labels = VGroup()
+        cin = 0
+        carries = []
+        for i in range(self.bits):
+            carries.append(cin)
+            abit = (a_val >> i) & 1
+            bbit = (b_val >> i) & 1
+            total = abit + bbit + cin
+            cin = 1 if total >= 2 else 0
+            txt = Text(
+                f"{abit}+{bbit}",
+                font=th.MONO,
+                font_size=11,
+                color=th.WHITE if cin or (abit and bbit) else th.MUTED,
+            )
+            txt.next_to(self.cells[i], DOWN, buff=0.06)
+            labels.add(txt)
+        carries.append(cin)
+        return labels, carries
+
     def animate_ripple(self, scene, run_time=1.8):
         """Animates carry token rippling from FA 0 to FA 7."""
         dot = Dot(self.cin_grp[0].get_start(), radius=0.08, color=th.AMBER_LIGHT)

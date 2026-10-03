@@ -61,7 +61,6 @@ class Lab02MACUnit(KineticSiliconScene):
                     font_size=34,
                     color=th.GREEN_LIGHT
                 ).to_edge(UP, buff=1.3)
-                dot_eq[0][4:11].set_color(th.CYAN_LIGHT)
                 st.add(dot_eq)
                 self.play(Write(dot_eq), run_time=0.9)
 
@@ -93,32 +92,27 @@ class Lab02MACUnit(KineticSiliconScene):
                 acc_val = Text("sum += p", font=th.MONO, weight=BOLD, font_size=14, color=th.WHITE)
                 acc_unit = VGroup(acc_box, VStack(acc_lbl, acc_val, gap=0.08).move_to(acc_box))
 
-                # Accumulator feedback loop wire
+                # Arrange first, then measure wires. Arrows built before HStack stay at the origin.
+                mac_row = HStack(in_stack, mult_unit, add_unit, acc_unit, gap=0.8)
                 wire_w_m = Arrow(in_w.get_right(), mult_cell.get_left() + UP * 0.2, buff=0.06, color=th.AMBER, stroke_width=2.0)
                 wire_x_m = Arrow(in_x.get_right(), mult_cell.get_left() + DOWN * 0.2, buff=0.06, color=th.CYAN, stroke_width=2.0)
                 wire_m_a = Arrow(mult_cell.get_right(), add_cell.get_left(), buff=0.06, color=th.AMBER_LIGHT, stroke_width=2.5)
                 wire_a_r = Arrow(add_cell.get_right(), acc_box.get_left(), buff=0.06, color=th.GREEN_LIGHT, stroke_width=2.5)
-
-                mac_chain = VGroup(
-                    HStack(in_stack, mult_unit, add_unit, acc_unit, gap=0.8),
-                    wire_w_m, wire_x_m, wire_m_a, wire_a_r
-                ).move_to(DOWN * 0.5)
+                mac_chain = VGroup(mac_row, wire_w_m, wire_x_m, wire_m_a, wire_a_r).move_to(DOWN * 0.5)
 
                 st.add(mac_chain)
                 self.play(FadeIn(mac_chain), run_time=1.0)
 
-                # Animate token multiplying and accumulating
-                dot_m = Dot(mult_cell.get_center(), radius=0.1, color=th.AMBER_LIGHT)
-                dot_a = Dot(add_cell.get_center(), radius=0.1, color=th.GREEN_LIGHT)
+                # A labeled product travels from the multiplier into the accumulator.
+                token = Text("16384", font=th.MONO, weight=BOLD, font_size=16, color=th.AMBER_LIGHT)
+                token.move_to(mult_cell.get_center())
+                st.add(token)
+                self.play(FadeIn(token), mult_cell.animate.set_stroke(color=th.WHITE, width=4.0), run_time=0.35)
                 self.play(
-                    mult_cell.animate.set_stroke(color=th.WHITE, width=4.0),
-                    run_time=0.4
-                )
-                self.play(
+                    token.animate.move_to(acc_box.get_center()),
                     mult_cell.animate.set_stroke(color=th.AMBER, width=2.5),
                     add_cell.animate.set_stroke(color=th.WHITE, width=4.0),
-                    acc_val.animate.set_color(th.GREEN_LIGHT),
-                    run_time=0.4
+                    run_time=0.7,
                 )
                 self.play(add_cell.animate.set_stroke(color=th.GREEN, width=2.5), run_time=0.3)
                 self.wait(max(0.3, trk.duration - 3.0))
@@ -130,7 +124,7 @@ class Lab02MACUnit(KineticSiliconScene):
         act1_narration = (
             "The accumulator is a register, and registers have a fixed size. "
             "One INT8 multiply can reach positive 16,384, while a 16-bit register only holds up to 32,767. "
-            "Add just two of those products and the total bursts straight through the ceiling into negative numbers."
+            "Add a second 16,384 and the mathematical total is 32,768. A signed 16-bit register stores that pattern as negative 32,768."
         )
         with self.stage("ACT 1", "Accumulator Bit Growth", "Why 16-Bit Registers Burst on Term 2", narration=act1_narration) as st:
             with self.voiceover(act1_narration) as trk:
@@ -146,8 +140,9 @@ class Lab02MACUnit(KineticSiliconScene):
                 m_title = Text("INT8 MULTIPLY-ACCUMULATE", font=th.MONO, weight=BOLD, font_size=13, color=th.AMBER_LIGHT)
                 m_eq = Text(
                     "(-128) × (-128) = +16,384\n\n"
-                    "Term 1: Sum = +16,384 (50% Full)\n"
-                    "Term 2: Sum = +32,768 (OVERFLOW!)",
+                    "Term 1: +16,384 fits in int16\n"
+                    "Term 2: math +32,768\n"
+                    "int16 stores 0x8000 = -32,768",
                     font=th.MONO, font_size=11, color=th.WHITE, line_spacing=1.2
                 )
                 m_sub = VStack(m_title, m_eq, gap=th.SPACE_SM).move_to(mult_block)
@@ -164,18 +159,21 @@ class Lab02MACUnit(KineticSiliconScene):
 
                 # Fill Cycle 2: 115% OVERFLOW!
                 clock.advance(self, delta_cycles=1, run_time=0.35)
-                self.play(tank_16.set_fluid_fraction(1.15, color=th.RED), run_time=0.5)
-                self.screen_shake(intensity=0.06, cycles=3, run_time=0.25)
-                self.wait(max(0.3, trk.duration - 2.6))
-                st.takeaway("Two products are enough to burst a 16-bit register.", wait=1.2)
+                self.play(tank_16.set_fluid_fraction(1.0, color=th.RED), run_time=0.45)
+                wrapped = Text("0x8000  =  -32768", font=th.MONO, weight=BOLD, font_size=18, color=th.RED_LIGHT)
+                wrapped.next_to(act1_layout, DOWN, buff=0.15)
+                st.add(wrapped)
+                self.play(FadeIn(wrapped, shift=UP * 0.08), run_time=0.4)
+                self.wait(max(0.3, trk.duration - 2.8))
+                st.takeaway("32,768 does not fit. The register holds -32,768.", wait=1.2)
 
         # =====================================================================
         # ACT 2: 32-BIT HEADROOM INDUCTION PROOF
         # =====================================================================
         act2_narration = (
             "The fix is headroom: widen the accumulator to 32 bits. "
-            "The worst case is every product hitting 16,384, which caps a 32-bit sum at 131,071 terms before overflow—"
-            "far more than LLaMA's 8,192 hidden units, leaving 3 unused guard bits for safety."
+            "The worst case is every product hitting 16,384, which caps a 32-bit sum at 131,071 terms before overflow. "
+            "LLaMA's 8,192-wide hidden size uses 2 to the 27. Signed 32-bit magnitude is 31 bits, so 4 guard bits remain."
         )
         with self.stage("ACT 2", "32-Bit Headroom Theorem", "Inductive Proof of Accumulator Capacity", narration=act2_narration) as st:
             with self.voiceover(act2_narration) as trk:
@@ -195,23 +193,22 @@ class Lab02MACUnit(KineticSiliconScene):
                 c_k_grp = VGroup(c_k, VStack(t_k_val, t_k_lbl, t_k_sub, gap=0.1).move_to(c_k))
 
                 c_g = RoundedRectangle(corner_radius=0.1, width=3.4, height=2.4, stroke_color=th.AMBER, stroke_width=2.0, fill_color="#181106", fill_opacity=0.92)
-                t_g_val = Text("3 Guard Bits", font=th.SANS, weight=BOLD, font_size=30, color=th.AMBER_LIGHT)
-                t_g_lbl = Text("Spare in LLaMA-3", font=th.MONO, font_size=12, color=th.TEXT)
-                t_g_sub = Text("d_model = 8,192 < 131,071", font=th.MONO, font_size=10, color=th.AMBER)
+                t_g_val = Text("4 Guard Bits", font=th.SANS, weight=BOLD, font_size=30, color=th.AMBER_LIGHT)
+                t_g_lbl = Text("31 − 27 magnitude bits", font=th.MONO, font_size=12, color=th.TEXT)
+                t_g_sub = Text("8192 × 16384 = 2^27", font=th.MONO, font_size=10, color=th.AMBER)
                 c_g_grp = VGroup(c_g, VStack(t_g_val, t_g_lbl, t_g_sub, gap=0.1).move_to(c_g))
 
                 c_w = RoundedRectangle(corner_radius=0.1, width=3.4, height=2.4, stroke_color=th.CYAN, stroke_width=2.0, fill_color="#091b2e", fill_opacity=0.92)
                 t_w_val = Text("32 Bits", font=th.SANS, weight=BOLD, font_size=34, color=th.CYAN_LIGHT)
                 t_w_lbl = Text("Standard ACC_WIDTH", font=th.MONO, font_size=12, color=th.TEXT)
-                t_w_sub = Text("16 product + 16 headroom", font=th.MONO, font_size=10, color=th.CYAN)
+                t_w_sub = Text("holds 131,071 × 2^14", font=th.MONO, font_size=10, color=th.CYAN)
                 c_w_grp = VGroup(c_w, VStack(t_w_val, t_w_lbl, t_w_sub, gap=0.1).move_to(c_w))
 
                 stat_headroom = HStack(c_k_grp, c_g_grp, c_w_grp, gap=th.SPACE_MD).move_to(DOWN * 0.8)
                 st.add(stat_headroom)
 
                 self.play(FadeIn(stat_headroom, shift=UP * 0.2), run_time=0.9)
-                clock.advance(self, delta_cycles=1, run_time=0.3)
-                self.wait(max(0.3, trk.duration - 2.1))
+                self.wait(max(0.3, trk.duration - 1.8))
                 st.takeaway("32 bits of headroom absorbs the worst-case dot product.", wait=1.2)
 
         # =====================================================================
@@ -249,7 +246,6 @@ class Lab02MACUnit(KineticSiliconScene):
                 st.add(sign_stack)
 
                 self.play(FadeIn(grp_prod, shift=DOWN * 0.2), run_time=0.6)
-                clock.advance(self, delta_cycles=1, run_time=0.3)
                 self.play(FadeIn(grp_good, shift=UP * 0.1), run_time=0.6)
                 self.play(FadeIn(grp_bad, shift=UP * 0.1), run_time=0.6)
                 self.wait(max(0.3, trk.duration - 2.1))
@@ -260,8 +256,8 @@ class Lab02MACUnit(KineticSiliconScene):
         # =====================================================================
         act4_narration = (
             "Speed is the last lesson. Our teaching MAC is combinational, so its multiplier and adder chain into one "
-            "4-nanosecond critical path, capping the clock around 250 megahertz. Real chips fix this by inserting a "
-            "pipeline register between the two stages, cutting the path to 2.8 nanoseconds and pushing toward 350 megahertz."
+            "4-nanosecond critical path, about 250 megahertz. A pipeline register leaves the multiplier stage at 2.8 nanoseconds, "
+            "about 350 megahertz. That is 1.4 times, not double, because the multiplier still sets the period."
         )
         with self.stage("ACT 4", "Combinational vs Pipelined MAC", "CONCEPT: Critical Path & Timing Closure", narration=act4_narration) as st:
             with self.voiceover(act4_narration) as trk:
@@ -277,17 +273,17 @@ class Lab02MACUnit(KineticSiliconScene):
                 grp_m = VGroup(m_stage, m_lbl)
 
                 pipe_reg = RoundedRectangle(corner_radius=0.08, width=1.6, height=2.2, stroke_color=th.CYAN, stroke_width=2.0, fill_color="#091f33", fill_opacity=0.95)
-                pipe_lbl = VStack(Text("DFF REG", font=th.MONO, font_size=11, color=th.CYAN_LIGHT), Text("16 DFFs\n(t_cq ≈ 0.2ns)", font=th.MONO, font_size=10, color=th.CYAN, line_spacing=1.3)).move_to(pipe_reg)
+                pipe_lbl = VStack(Text("DFF REG", font=th.MONO, font_size=11, color=th.CYAN_LIGHT), Text("16 DFFs\nbetween stages", font=th.MONO, font_size=10, color=th.CYAN, line_spacing=1.3)).move_to(pipe_reg)
                 grp_pipe = VGroup(pipe_reg, pipe_lbl)
 
                 a_stage = RoundedRectangle(corner_radius=0.1, width=3.2, height=2.2, stroke_color=th.GREEN, stroke_width=1.5, fill_color="#071b11", fill_opacity=0.92)
                 a_lbl = VStack(Text("STAGE 2", font=th.MONO, font_size=11, color=th.GREEN), Text("32-bit Adder\nt_add ≈ 1.2 ns", font=th.MONO, font_size=11, color=th.TEXT, line_spacing=1.3)).move_to(a_stage)
                 grp_a = VGroup(a_stage, a_lbl)
 
+                pipe_row = HStack(grp_m, grp_pipe, grp_a, gap=th.SPACE_LG)
                 w_m_p = Arrow(m_stage.get_right(), pipe_reg.get_left(), buff=0.08, color=th.CYAN_LIGHT, stroke_width=2.0)
                 w_p_a = Arrow(pipe_reg.get_right(), a_stage.get_left(), buff=0.08, color=th.GREEN_LIGHT, stroke_width=2.0)
-
-                pipe_chain = VGroup(HStack(grp_m, grp_pipe, grp_a, gap=th.SPACE_LG), w_m_p, w_p_a)
+                pipe_chain = VGroup(pipe_row, w_m_p, w_p_a)
 
                 # Frequency comparison tiles
                 tile_comb = RoundedRectangle(corner_radius=0.1, width=4.5, height=1.8, stroke_color=th.RED, stroke_width=2.0, fill_color="#200a0a", fill_opacity=0.92)
@@ -299,7 +295,7 @@ class Lab02MACUnit(KineticSiliconScene):
                 tile_pipe = RoundedRectangle(corner_radius=0.1, width=4.5, height=1.8, stroke_color=th.GREEN, stroke_width=2.0, fill_color="#071b11", fill_opacity=0.92)
                 pipe_val = Text("~350 MHz", font=th.SANS, weight=BOLD, font_size=28, color=th.GREEN_LIGHT)
                 pipe_lbl = Text("Pipelined MAC (Concept)", font=th.MONO, font_size=11, color=th.TEXT)
-                pipe_sub = Text("t_crit = max(2.8, 1.2) = 2.8 ns", font=th.MONO, font_size=10, color=th.GREEN)
+                pipe_sub = Text("2.8 ns → ~350 MHz, not 500", font=th.MONO, font_size=10, color=th.GREEN)
                 grp_pipe_tile = VGroup(tile_pipe, VStack(pipe_val, pipe_lbl, pipe_sub, gap=0.08).move_to(tile_pipe))
 
                 stat_pipe = HStack(grp_comb, grp_pipe_tile, gap=th.SPACE_LG)
@@ -308,7 +304,6 @@ class Lab02MACUnit(KineticSiliconScene):
                 st.add(timing_layout)
 
                 self.play(FadeIn(concept_badge), FadeIn(pipe_chain, shift=DOWN * 0.2), run_time=0.9)
-                clock.advance(self, delta_cycles=1, run_time=0.3)
                 self.play(FadeIn(stat_pipe, shift=UP * 0.2), run_time=0.8)
-                self.wait(max(0.3, trk.duration - 2.0))
-                st.takeaway("One pipeline register nearly doubles the clock speed.", wait=1.2)
+                self.wait(max(0.3, trk.duration - 1.7))
+                st.takeaway("250 MHz becomes about 350 MHz. The multiplier stage still dominates.", wait=1.2)

@@ -1,0 +1,22 @@
+# ==============================================================================
+# Hardware Engineering & Pre-Silicon Emulation Platform
+# Extended / Developer Dependencies (Animations, Slides, Media)
+# ==============================================================================
+
+-r requirements.txt
+
+# Manim Math Animation Suite
+manim>=0.18.0
+moderngl>=5.8.0
+moderngl-window>=2.4.0
+
+# Scientific & Signal Processing
+scipy>=1.10.0
+
+# Audio & Media Processing
+pydub>=0.25.1
+pillow>=9.0.0
+srt>=3.5.0
+
+# Presentation Generation
+python-pptx>=0.6.21

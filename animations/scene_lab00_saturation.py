@@ -33,7 +33,7 @@ from components import (
     VStack,
     ConstraintAnchor,
     PinProbe,
-    fit_to_bounds,
+    edge_at,
 )
 
 
@@ -44,7 +44,8 @@ class Lab00SaturationIntro(KineticSiliconScene):
 
         # Ambient Clock HUD at top right (compact)
         ticker = clock.create_ticker_badge(prefix="CLK: T = ", color=th.AMBER_LIGHT)
-        ticker.to_corner(UR, buff=0.25)
+        ticker.to_corner(UR, buff=th.SPACE_SM)
+        self.hud = ticker
         self.add(ticker)
 
         # =====================================================================
@@ -59,11 +60,16 @@ class Lab00SaturationIntro(KineticSiliconScene):
             with self.voiceover(prelore_narration) as trk:
                 # 3b1b mathematical definition of two's complement place values
                 formula = MathTex(
-                    r"X = -b_7 \cdot 2^7 + \sum_{i=0}^{6} b_i \cdot 2^i",
-                    font_size=36
-                ).to_edge(UP, buff=1.3)
-                formula[0][2:7].set_color(th.RED_LIGHT)  # -b7 * 2^7 in red
-                formula[0][8:].set_color(th.GREEN_LIGHT)  # positive weights in green
+                    r"X =",
+                    r"-b_7 \cdot 2^7",
+                    r"+",
+                    r"\sum_{i=0}^{6} b_i \cdot 2^i",
+                    font_size=36,
+                )
+                formula_band, bit_band = st.content.split_y(0.32, 0.68, gap=th.SPACE_SM)
+                st.place(formula, formula_band)
+                formula[1].set_color(th.RED_LIGHT)
+                formula[3].set_color(th.GREEN_LIGHT)
                 st.add(formula)
                 self.play(Write(formula), run_time=0.8)
 
@@ -79,7 +85,8 @@ class Lab00SaturationIntro(KineticSiliconScene):
                     i_txt = Text(idx, font=th.MONO, font_size=11, color=th.FAINT)
                     cell_sub = VStack(w_txt, i_txt, gap=0.08).move_to(box)
                     bit_cells.add(VGroup(box, cell_sub))
-                bit_cells.arrange(RIGHT, buff=0.12).move_to(DOWN * 0.4)
+                bit_cells.arrange(RIGHT, buff=th.SPACE_XS)
+                st.place(bit_cells, bit_band)
                 st.add(bit_cells)
 
                 self.play(FadeIn(bit_cells, shift=UP * 0.2), run_time=0.8)
@@ -102,9 +109,9 @@ class Lab00SaturationIntro(KineticSiliconScene):
         # ACT 1: THE SILICON BIT OVERFLOW BUG
         # =====================================================================
         act1_narration = (
-            "Now watch what happens when two positive numbers get too big. "
-            "Plus 100 plus plus 50 should equal 150, but 8 bits only reach 127, so the carry flips the sign bit. "
-            "The sum becomes negative 106. In an LLM attention head, that softmax value collapses to zero, wrecking the model."
+            "Run this in Python: numpy int8 of 100 plus numpy int8 of 50. "
+            "The mathematical sum is 150, but 8 bits only reach 127, so the stored result is negative 106. "
+            "A later exponential of a large negative underflows toward zero. We do not pretend e to the 150 fits in float32."
         )
         with self.stage("ACT 1", "Signed INT8 Overflow", "Why Adding Positive Numbers Yields Negative Results", narration=act1_narration) as st:
             with self.voiceover(act1_narration) as trk:
@@ -116,30 +123,33 @@ class Lab00SaturationIntro(KineticSiliconScene):
                 add_title = Text("COLUMN-BY-COLUMN SILICON ADDITION", font=th.MONO, weight=BOLD, font_size=15, color=th.AMBER)
                 row_a = Text(f"  {a_bits}    (+100)", font=th.MONO, font_size=20, color=th.GREEN_LIGHT)
                 row_b = Text(f"+ {b_bits}    ( +50)", font=th.MONO, font_size=20, color=th.GREEN_LIGHT)
-                div_line = Line(LEFT * 3.8, RIGHT * 2.8, color=th.BORDER, stroke_width=2.0)
                 row_s = Text(f"= {s_bits}    (-106!)", font=th.MONO, weight=BOLD, font_size=20, color=th.RED_LIGHT)
+                span = max(row_a.width, row_b.width, row_s.width)
+                div_line = Line(ORIGIN, RIGHT * span, color=th.BORDER, stroke_width=2.0)
 
-                add_block = VGroup(add_title, row_a, row_b, div_line, row_s).arrange(DOWN, aligned_edge=LEFT, buff=0.18)
-                add_block.move_to(LEFT * 2.5 + DOWN * 0.2)
+                py_line = Text("np.int8(100) + np.int8(50)", font=th.MONO, font_size=18, color=th.AMBER_LIGHT)
+                add_block = VGroup(py_line, add_title, row_a, row_b, div_line, row_s).arrange(DOWN, aligned_edge=LEFT, buff=0.16)
+                sum_slot, note_slot = st.content.split_x(1.35, 0.85, gap=th.SPACE_LG)
+                st.place(add_block, sum_slot)
 
-                # LLM Softmax Collapse Box on right
-                llm_box = RoundedRectangle(corner_radius=0.12, width=4.5, height=3.2, stroke_color=th.RED, stroke_width=2.0, fill_color="#200a0a", fill_opacity=0.92)
-                l_title = Text("LLM ATTENTION IMPACT", font=th.MONO, weight=BOLD, font_size=14, color=th.RED)
-                l_math = MathTex(r"\text{softmax}(x_i) = \frac{e^{x_i}}{\sum e^{x_k}}", font_size=26, color=th.WHITE)
-                l_exp = Text("e^(+150) ➔ Signal Preserved\ne^(-106) = 0.0000 ➔ COLLAPSED!", font=th.MONO, font_size=11, color=th.RED_LIGHT, line_spacing=1.3)
-                l_content = VStack(l_title, l_math, l_exp, gap=th.SPACE_SM).move_to(llm_box)
-                llm_group = VGroup(llm_box, l_content).move_to(RIGHT * 3.8 + DOWN * 0.2)
+                st.add(add_block)
+                self.play(FadeIn(add_block[:5]), run_time=0.7)
+                self.play(Write(row_s), run_time=0.6)
 
-                st.add(add_block, llm_group)
-
-                self.play(FadeIn(add_block[:4]), FadeIn(llm_group, shift=RIGHT * 0.2), run_time=0.9)
-
-                # Carry animation highlighting the sign bit flip
-                clock.advance(self, delta_cycles=1, run_time=0.35)
-                self.play(Write(row_s), run_time=0.7)
-                self.screen_shake(intensity=0.04, cycles=2, run_time=0.25)
-                self.play(row_s[2].animate.set_color(th.WHITE).scale(1.3), run_time=0.3)
-                self.play(row_s[2].animate.set_color(th.RED).scale(1/1.3), run_time=0.3)
+                # Reveal the consequence only after the bits have flipped.
+                note = Text(
+                    "Stored value is -106.\nA later exp of a large\nnegative underflows.\nfloat32 cannot hold e^150.",
+                    font=th.MONO, font_size=14, color=th.RED_LIGHT, line_spacing=1.15,
+                )
+                note_box = RoundedRectangle(
+                    corner_radius=0.1, width=4.2, height=2.4,
+                    stroke_color=th.RED, stroke_width=1.6, fill_color="#200a0a", fill_opacity=0.92,
+                )
+                note.move_to(note_box)
+                note_group = VGroup(note_box, note)
+                st.place(note_group, note_slot)
+                st.add(note_group)
+                self.play(FadeIn(note_group, shift=RIGHT * 0.15), run_time=0.5)
 
                 self.wait(max(0.3, trk.duration - 2.8))
                 st.takeaway("100 + 50 wrapped to -106. The sign bit flipped.", wait=1.2)
@@ -155,13 +165,17 @@ class Lab00SaturationIntro(KineticSiliconScene):
         with self.stage("ACT 2", "Ripple Carry & Overflow Theorem", "Gate-Level Identity: V = C_in[7] XOR C_out[7]", narration=act2_narration) as st:
             with self.voiceover(act2_narration) as trk:
                 # 8-bit Ripple Carry Adder chain
-                rca = RippleCarryChain(bits=8, width=10.5, height=1.4).move_to(self.layout.main_stage_center() + UP * 0.8)
-                st.add(rca)
-                self.play(Create(rca), run_time=0.9)
+                chain_band, eq_band = st.content.split_y(1.05, 0.95, gap=th.SPACE_SM)
+                rca = RippleCarryChain(bits=8, width=10.5, height=1.2)
+                bit_labels, carries = rca.operand_labels(100, 50)
+                chain = VGroup(rca, bit_labels)
+                st.place(chain, chain_band)
+                st.add(chain)
+                self.play(Create(rca), FadeIn(bit_labels), run_time=0.8)
 
-                # Animate the carry token rippling across all 8 bit slices
-                clock.advance(self, delta_cycles=1, run_time=0.3)
-                rca.animate_ripple(self, run_time=1.2)
+                # Carry is 1 only into bit 7. That is the overflow, not a generic sweep.
+                self.play(rca.cells[7][0].animate.set_stroke(color=th.WHITE, width=3.5), run_time=0.4)
+                assert carries[7] == 1 and carries[8] == 0
 
                 # Bit 7 carry callout
                 c_in_badge = PinProbe("C_in[7]", "1", color=th.AMBER)
@@ -178,7 +192,8 @@ class Lab00SaturationIntro(KineticSiliconScene):
                     r"V", r"=", r"C_{\text{in}}[7]", r"\oplus", r"C_{\text{out}}[7]",
                     r"=", r"1", r"\oplus", r"0", r"=", r"1", r"\implies", r"\text{OVERFLOW ASSERTED}",
                     font_size=32
-                ).move_to(DOWN * 1.5)
+                )
+                st.place(overflow_eq, eq_band)
                 overflow_eq[0].set_color(th.RED)
                 overflow_eq[2].set_color(th.AMBER)
                 overflow_eq[4].set_color(th.CYAN)
@@ -202,17 +217,15 @@ class Lab00SaturationIntro(KineticSiliconScene):
         )
         with self.stage("ACT 3", "The Circle of Discontinuity", "Why Wrap-Around Destroys Deep Learning", narration=act3_narration) as st:
             with self.voiceover(act3_narration) as trk:
-                wheel = TwosComplementWheel(radius=1.8).move_to(self.layout.main_stage_center())
+                wheel = TwosComplementWheel(radius=1.8)
+                st.place(wheel)
                 st.add(wheel)
                 self.play(Create(wheel), run_time=0.9)
 
                 # Animate dial sweep wrapping across overflow boundary
-                clock.advance(self, delta_cycles=1, run_time=0.35)
                 wheel.animate_sweep(self, target_val=150, run_time=1.0, clamp=False)
-                self.screen_shake(intensity=0.05, cycles=2, run_time=0.2)
 
                 # Deploy saturation clamp barrier and sweep again to clamp at +127
-                clock.advance(self, delta_cycles=1, run_time=0.35)
                 wheel.deploy_clamp_barrier(self)
                 wheel.animate_sweep(self, target_val=150, run_time=0.8, clamp=True)
                 self.wait(max(0.3, trk.duration - 2.7))
@@ -246,7 +259,10 @@ class Lab00SaturationIntro(KineticSiliconScene):
                 # Center: 3:1 MUX trapezoid
                 mux_box = RoundedRectangle(corner_radius=0.1, width=2.6, height=3.0, stroke_color=th.AMBER, stroke_width=2.0, fill_color="#181106", fill_opacity=0.95)
                 mux_title = Text("3:1 MUX", font=th.MONO, weight=BOLD, font_size=15, color=th.AMBER)
-                mux_sel = Text("sel = {overflow,\n       sign_bit}", font=th.MONO, font_size=10, color=th.AMBER_LIGHT, line_spacing=1.2)
+                mux_sel = Text(
+                    "if overflow:\n  a[7]==0 ? +127\n        : -128",
+                    font=th.MONO, font_size=11, color=th.AMBER_LIGHT, line_spacing=1.05,
+                )
                 mux_group = VGroup(mux_box, VStack(mux_title, mux_sel, gap=th.SPACE_SM).move_to(mux_box))
 
                 # Output on right: Clamped Sum
@@ -255,27 +271,40 @@ class Lab00SaturationIntro(KineticSiliconScene):
                 out_val = Text("+127 (0x7F)", font=th.MONO, weight=BOLD, font_size=15, color=th.WHITE)
                 out_group = VGroup(out_box, VStack(out_title, out_val, gap=th.SPACE_XS).move_to(out_box))
 
-                mux_layout = HStack(inputs_stack, mux_group, out_group, gap=th.SPACE_LG).move_to(self.layout.main_stage_center())
+                mux_layout = HStack(inputs_stack, mux_group, out_group, gap=th.SPACE_LG)
 
-                # Routing wires
-                w_raw = Arrow(in_raw.get_right(), mux_box.get_left() + UP * 0.8, buff=0.08, color=th.MUTED, stroke_width=1.5)
-                w_pos = Arrow(in_pos.get_right(), mux_box.get_left(), buff=0.08, color=th.GREEN, stroke_width=2.0)
-                w_neg = Arrow(in_neg.get_right(), mux_box.get_left() + DOWN * 0.8, buff=0.08, color=th.CYAN, stroke_width=1.5)
-                w_out = Arrow(mux_box.get_right(), out_box.get_left(), buff=0.08, color=th.GREEN_LIGHT, stroke_width=2.5)
+                # Ports are fractions of the mux edge, so a taller mux keeps the same taps.
+                w_raw = Arrow(in_raw.get_right(), edge_at(mux_box, LEFT, 0.82), buff=th.SPACE_XS, color=th.MUTED, stroke_width=1.5)
+                w_pos = Arrow(in_pos.get_right(), edge_at(mux_box, LEFT, 0.50), buff=th.SPACE_XS, color=th.GREEN, stroke_width=2.0)
+                w_neg = Arrow(in_neg.get_right(), edge_at(mux_box, LEFT, 0.18), buff=th.SPACE_XS, color=th.CYAN, stroke_width=1.5)
+                w_out = Arrow(edge_at(mux_box, RIGHT, 0.50), out_box.get_left(), buff=th.SPACE_XS, color=th.GREEN_LIGHT, stroke_width=2.5)
 
                 datapath_complete = VGroup(mux_layout, w_raw, w_pos, w_neg, w_out)
                 st.add(datapath_complete)
 
-                self.play(FadeIn(inputs_stack), FadeIn(mux_group), Create(w_raw), Create(w_pos), Create(w_neg), run_time=0.9)
-                clock.advance(self, delta_cycles=1, run_time=0.3)
+                wrong = Text(
+                    "sum[7] is 1, and would pick -128",
+                    font=th.MONO, font_size=13, color=th.RED_LIGHT,
+                )
+                right = Text(
+                    "rtl uses a[7], which is 0, so the clamp is +127",
+                    font=th.MONO, font_size=13, color=th.GREEN_LIGHT,
+                )
+                choice = VGroup(wrong, right).arrange(DOWN, aligned_edge=LEFT, buff=th.SPACE_XS)
+                body, foot = st.content.split_y(1, 0.28, gap=th.SPACE_XS)
+                st.place(datapath_complete, body)
+                st.place(choice, foot)
 
-                # Active clamping route: highlight MAX_POS through MUX to output
+                self.play(FadeIn(inputs_stack), FadeIn(mux_group), Create(w_raw), Create(w_pos), Create(w_neg), run_time=0.8)
+                st.add(choice)
+                self.play(FadeIn(wrong), run_time=0.35)
                 self.play(
+                    FadeIn(right),
                     grp_pos[0].animate.set_stroke(color=th.GREEN_LIGHT, width=3.0),
                     w_pos.animate.set_color(th.GREEN_LIGHT).set_stroke(width=3.5),
                     Create(w_out),
                     FadeIn(out_group, shift=RIGHT * 0.2),
-                    run_time=0.8
+                    run_time=0.8,
                 )
-                self.wait(max(0.3, trk.duration - 2.0))
-                st.takeaway("One multiplexer turns a wrap-around bug into a safe result.", wait=1.2)
+                self.wait(max(0.3, trk.duration - 2.4))
+                st.takeaway("Clamp with the operand sign. The sum's sign is already wrong.", wait=1.2)

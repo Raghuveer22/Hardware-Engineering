@@ -7,6 +7,7 @@ to generate synchronized, professional voiceover narration, then muxes it
 directly into Manim MP4 videos using FFmpeg.
 
 Usage:
+    python animations/narrate_video.py --scene 00_prep
     python animations/narrate_video.py --scene 04
     python animations/narrate_video.py --voice Samantha
 """
@@ -15,11 +16,54 @@ import sys
 import os
 import subprocess
 import json
+import argparse
+import shutil
 from pathlib import Path
 
 ANIMATIONS_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = ANIMATIONS_DIR.parent
 VIDEOS_DIR = PROJECT_ROOT / "media" / "videos"
+
+# Voiceover for Lab 00-Prep — keep in lockstep with scene_lab00_prep.py banners
+LAB00_PREP_SCRIPT = [
+    # Title
+    ("You think in time: one line, then the next. A chip thinks in space: the circuit is always there.", 0.6),
+
+    # Act 0
+    ("In Python, a function is a recipe: the CPU fetches one instruction, does it, then fetches the next.", 0.5),
+    ("A chip is not a recipe. The adders and the multiplier are physical objects sitting on the die at the same time.", 0.5),
+    ("Same math. Two machines. One walks a list. The other is the list, wired in metal.", 0.7),
+
+    # Act 1
+    ("To compute y equals (a plus b) times (c plus d), a CPU can point its program counter at only one line.", 0.5),
+    ("The chip has no program counter. With a=3, b=2, c=4, d=1, both adders show 5, and the multiplier already holds 25.", 0.5),
+    ("This is not threading. You placed two adder objects on the die. They exist together, so they finish while the CPU is still walking.", 0.7),
+
+    # Act 2
+    ("In Python, a times b and arr of i look equally cheap. In silicon they are not even the same sport.", 0.5),
+    ("An eight-bit multiply-accumulate is about zero point two picojoules. Fetching that byte from off-chip DRAM is about two hundred picojoules — a thousand times more.", 0.5),
+    ("The ratio is one thousand. A linear bar would hide the multiply. Longer wires hold more charge, so the fetch costs more than the math.", 0.7),
+
+    # Act 3
+    ("A combinational gate is an Excel formula: change an input, the output updates immediately. It has no memory.", 0.5),
+    ("A D flip-flop is a snapshot. On the rising clock edge it samples D and freezes it at Q until the next tick.", 0.5),
+    ("Data must be stable just before the edge, and stay stable just after. If it is still changing, you capture garbage — like reading a dict while another thread writes it.", 0.7),
+
+    # Act 4
+    ("The number one RTL bug for software people: blocking equals versus non-blocking less-than-equals.", 0.5),
+    ("Blocking assignment is ordinary Python: b equals a, then c equals b. C sees the new B. A two-stage pipeline collapses into a wire.", 0.5),
+    ("Non-blocking is tuple unpack: b, c equals a, b. Both right-hand sides are the old values. The pipeline survives the clock tick.", 0.7),
+
+    # Act 5
+    ("When you call torch.matmul, the CPU is not doing the multiply. It writes a small descriptor, then rings one memory-mapped register: a doorbell.", 0.5),
+    ("That write wakes a DMA engine. Tensors stream over PCIe into on-chip SRAM while Python keeps running.", 0.5),
+    ("Double buffering is the hardware version of ping-pong queues: one SRAM bank feeds the array while the other fills from the bus.", 0.7),
+
+    # Act 6
+    ("You cannot git revert a chip. A tape-out is tens of millions of dollars. So we test the design as software first.", 0.5),
+    ("Cocotb drives the pins from Python. This adder is combinational, so the sum updates with no clock edge.", 0.5),
+    ("Carry three rules into every lab: the circuit is a live graph, clocked state uses less-than-equals, and moving data costs more than math.", 0.8),
+]
 
 # Complete Voiceover Script for Lab 04 Masterclass (Timed to match scene acts)
 LAB04_SCRIPT = [
@@ -71,16 +115,42 @@ LAB04_SCRIPT = [
     ("Your next step: open rtl slash systolic array dot sv, run the Cocotb testbench, and launch the interactive visualizer to see the wavefront live.", 0.5),
 ]
 
+SCRIPTS = {
+    "00_prep": (
+        LAB00_PREP_SCRIPT,
+        "scene_lab00_prep",
+        "Lab00PrepPrimer",
+        "lab00_prep_master_voiceover.wav"
+    ),
+    "04": (
+        LAB04_SCRIPT,
+        "scene_lab04_systolic_array",
+        "Lab04SystolicArray",
+        "lab04_master_voiceover.wav"
+    ),
+}
 
-def generate_audio_track(output_wav, voice="Samantha"):
+
+def generate_audio_track(script, output_wav, voice="Samantha"):
     """Generate audio speech files and concatenate them with exact pauses."""
+    if sys.platform != "darwin" or not shutil.which("say"):
+        print("❌ Error: Speech synthesis via 'say' is only available natively on macOS.")
+        print("   On Windows/Linux, you can provide an external WAV voiceover or run on macOS.")
+        sys.exit(1)
+
+    if not shutil.which("ffmpeg"):
+        print("❌ Error: 'ffmpeg' executable not found in PATH!")
+        print("   macOS: brew install ffmpeg")
+        print("   Windows: winget install Gyan.FFmpeg")
+        sys.exit(1)
+
     temp_dir = ANIMATIONS_DIR / "temp_audio"
     temp_dir.mkdir(exist_ok=True)
 
     file_list = []
     print(f"🎙 Generating voiceover using macOS voice '{voice}'...")
 
-    for idx, (sentence, pause_sec) in enumerate(LAB04_SCRIPT):
+    for idx, (sentence, pause_sec) in enumerate(script):
         aiff_path = temp_dir / f"line_{idx:03d}.aiff"
         wav_path = temp_dir / f"line_{idx:03d}.wav"
 
@@ -125,6 +195,9 @@ def mux_video_and_audio(input_mp4, input_wav, output_mp4):
         "ffmpeg", "-y",
         "-i", str(input_mp4),
         "-i", str(input_wav),
+        "-filter_complex", "[1:a]apad[aout]",
+        "-map", "0:v",
+        "-map", "[aout]",
         "-c:v", "copy",
         "-c:a", "aac",
         "-b:a", "192k",
@@ -136,15 +209,32 @@ def mux_video_and_audio(input_mp4, input_wav, output_mp4):
 
 
 def main():
-    target_video = VIDEOS_DIR / "scene_lab04_systolic_array" / "720p30" / "Lab04SystolicArray.mp4"
+    parser = argparse.ArgumentParser(description="Voiceover Narration Generator")
+    parser.add_argument("--scene", default="00_prep", choices=["00_prep", "04", "prep", "00"], help="Scene key to narrate")
+    parser.add_argument("--voice", default="Samantha", help="macOS TTS voice (Samantha, Daniel, etc.)")
+    parser.add_argument("--quality", default="720p30", choices=["480p15", "720p30", "1080p60"], help="Video quality directory")
+    args = parser.parse_args()
+
+    key = "00_prep" if args.scene in ["00_prep", "prep", "00"] else "04"
+    script, folder, scene_name, wav_name = SCRIPTS[key]
+
+    target_video = VIDEOS_DIR / folder / args.quality / f"{scene_name}.mp4"
+    if not target_video.exists():
+        # Fallback to any existing quality folder
+        for q in ["480p15", "720p30", "1080p60"]:
+            alt = VIDEOS_DIR / folder / q / f"{scene_name}.mp4"
+            if alt.exists():
+                target_video = alt
+                break
+
     if not target_video.exists():
         print(f"❌ Video not found at {target_video}. Please render it first!")
         sys.exit(1)
 
-    master_audio = ANIMATIONS_DIR / "temp_audio" / "lab04_master_voiceover.wav"
-    output_video = VIDEOS_DIR / "scene_lab04_systolic_array" / "720p30" / "Lab04SystolicArray_narrated.mp4"
+    master_audio = ANIMATIONS_DIR / "temp_audio" / wav_name
+    output_video = target_video.parent / f"{scene_name}_narrated.mp4"
 
-    generate_audio_track(master_audio, voice="Samantha")
+    generate_audio_track(script, master_audio, voice=args.voice)
     mux_video_and_audio(target_video, master_audio, output_video)
 
 

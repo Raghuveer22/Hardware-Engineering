@@ -32,11 +32,16 @@ results.xml
 cpp_emulation/verilated/
 cpp_emulation/obj_dir/
 cpp_emulation/emulator
+cpp_emulation/emulator.exe
 obj_dir/
 *.o
 *.d
 *.so
 *.a
+*.exe
+*.dll
+*.dylib
+*.out
 .agents/
 # Temporary generated visualization data
 visualizer/trace.json

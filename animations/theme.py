@@ -75,6 +75,10 @@ RATE_FAST   = 0.40  # Snappy transitions, packet step
 RATE_NORMAL = 0.80  # Standard animations, transforms
 RATE_SLOW   = 1.40  # Dramatic reveals, camera zoom-ins, circuit unfold
 
+# Stage chrome. The constraint solver reads these; scenes do not copy them.
+BANNER_HEIGHT = 1.05
+TAKEAWAY_HEIGHT = 1.15
+
 
 # ---------------------------------------------------------------------------
 # REUSABLE CONSTRUCTORS
@@ -437,17 +441,21 @@ def tex_free_number_line(x_range, length=6, include_numbers=True, **kwargs):
 # LONG-FORM VIDEO PEDAGOGICAL WIDGETS (CSE / SOFTWARE-TO-HARDWARE)
 # ---------------------------------------------------------------------------
 
-def narration_banner(text, font_size=15, width=12.2, height=1.05, color=TEXT,
+def narration_banner(text, font_size=15, width=None, height=None, color=TEXT,
                      accent=CYAN):
     """
     Sleek bottom-third caption bar displaying timed narrative guidance.
-    Ensures the animation is 100% understandable, engaging, and readable.
+    Width follows the camera frame unless the stage solver passes one.
     """
+    if width is None:
+        width = config.frame_width - 2 * SPACE_LG
+    if height is None:
+        height = BANNER_HEIGHT
     bg = RoundedRectangle(
         corner_radius=0.15, width=width, height=height,
         stroke_color=BORDER, stroke_width=1.5,
         fill_color="#0b1120", fill_opacity=0.92,
-    ).to_edge(DOWN, buff=0.35)
+    ).to_edge(DOWN, buff=SPACE_MD)
 
     pip = Dot(point=bg.get_left() + RIGHT * 0.35, radius=0.07, color=accent)
     pip.match_y(bg)
@@ -466,12 +474,16 @@ def narration_banner(text, font_size=15, width=12.2, height=1.05, color=TEXT,
     return VGroup(bg, pip, t)
 
 
-def takeaway_callout(text, color=CYAN, font_size=17, width=11.4, height=1.15):
+def takeaway_callout(text, color=CYAN, font_size=17, width=None, height=None):
     """
     Transition "takeaway" bar shown at the END of an act, before moving to the
     next stage: a one-line "so the point is..." summary that bridges acts and
     gives the viewer time to absorb the concept before the next depth jump.
     """
+    if width is None:
+        width = config.frame_width - 2 * SPACE_XL
+    if height is None:
+        height = TAKEAWAY_HEIGHT
     c = card(width, height, stroke=color, radius=0.15)
     pip = Dot(point=c.get_left() + RIGHT * 0.32, radius=0.06, color=color)
     pip.match_y(c)

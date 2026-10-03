@@ -75,6 +75,23 @@ def run_lab_test(lab_id, simulator="icarus"):
     else:
         raise ValueError(f"Unknown lab: {lab_id}")
 
+    # Check simulator binary availability
+    import shutil
+    if simulator == "icarus" and not shutil.which("iverilog"):
+        print("\n❌ Error: Icarus Verilog ('iverilog') executable not found in PATH!")
+        print("   To install:")
+        print("   - macOS:   brew install icarus-verilog")
+        print("   - WSL/Deb: sudo apt-get install iverilog")
+        print("   - Windows: winget install -e --id Bleyer.IcarusVerilog")
+        sys.exit(1)
+    elif simulator == "verilator" and not shutil.which("verilator"):
+        print("\n❌ Error: Verilator ('verilator') executable not found in PATH!")
+        print("   To install:")
+        print("   - macOS:   brew install verilator")
+        print("   - WSL/Deb: sudo apt-get install verilator")
+        print("   - Windows: Use WSL2 (recommended) or MSYS2")
+        sys.exit(1)
+
     runner = get_runner(simulator)
     compile_args = ["-g2012"] if simulator == "icarus" else ["-Wno-WIDTHEXPAND", "-Wno-WIDTHTRUNC"]
 

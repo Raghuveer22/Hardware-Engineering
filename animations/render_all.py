@@ -19,8 +19,14 @@ ANIMATIONS_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = ANIMATIONS_DIR.parent
 
 # Detect project virtual environment
-VENV_PYTHON = PROJECT_ROOT / ".venv" / "bin" / "python"
-PYTHON_BIN = str(VENV_PYTHON) if VENV_PYTHON.exists() else sys.executable
+VENV_PYTHON_WIN = PROJECT_ROOT / ".venv" / "Scripts" / "python.exe"
+VENV_PYTHON_UNIX = PROJECT_ROOT / ".venv" / "bin" / "python"
+if VENV_PYTHON_WIN.exists():
+    PYTHON_BIN = str(VENV_PYTHON_WIN)
+elif VENV_PYTHON_UNIX.exists():
+    PYTHON_BIN = str(VENV_PYTHON_UNIX)
+else:
+    PYTHON_BIN = sys.executable
 
 SCENES = [
     ("scene_lab00_prep.py", "Lab00PrepPrimer", "Lab 00-Prep: Hardware Primer"),
