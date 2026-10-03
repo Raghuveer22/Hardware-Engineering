@@ -1,174 +1,362 @@
 # Lab 00 — Write a Signed Adder in SystemVerilog
-### Camera deck · concepts → code → test
+### Camera deck · type the file with them
 
-* **You will write:** [`rtl/adder.sv`](../../rtl/adder.sv)
-* **You will run:** `python labs/run_lab.py --lab lab00`
-* **How to use:** short on-screen text · speak the **SAY** lines
+* **Write along in:** [`labs/labs_playground/lab0/adder.sv`](../labs_playground/lab0/adder.sv) *(blank teaching file)*
+* **Finished reference:** [`rtl/adder.sv`](../../rtl/adder.sv)
+* **How to use:** keep the editor full screen · type what is on each slide · speak the **SAY** lines
 
 ---
 
 ## Hook
 
 ### Software: `100 + 50 = 150`
-### INT8 wire: `100 + 50 = −106`
+### Eight signed wires: `100 + 50 = −106`
 
 **SAY:**  
-“Today we don’t just explain that — we **write the SystemVerilog** that adds, flags overflow, and optionally saturates.  
-Beginner lab: signed ints first, then we type the module line by line.”
+“Today we open a blank `.sv` and type an adder.  
+We start with three pins and one `+`. Signed, overflow, and saturation come after that works.”
 
 ---
 
-## Dual goal of this lab
+## Goal
 
-| Goal | What “done” looks like |
-| :--- | :--- |
-| **Understand** | two’s complement, full adder, overflow |
-| **Write** | a parameterized `adder` module that simulates clean |
+| Done when |
+| :--- |
+| You can type a module from a blank file |
+| You can read one port left to right |
+| You know what `a + b` becomes in silicon |
 
 **SAY:**  
-“If you only watch diagrams, you miss the point.  
-By the end you should be able to open a blank `.sv` and build this adder.”
+“No parameter yet. Fixed eight bits. One idea at a time.”
 
 ---
 
-## Roadmap
+## Roadmap — type in this order
 
-| # | Block |
+| # | Type this |
 | :---: | :--- |
-| 1 | Signed integers (why the bits look like that) |
-| 2 | Full-adder intuition (what silicon is doing) |
-| 3 | **Write SystemVerilog** (main skill) |
-| 4 | Overflow + saturation in code |
-| 5 | Run Cocotb |
+| 1 | `module` / `endmodule` box |
+| 2 | Three pins: `a`, `b`, `sum` |
+| 3 | `assign sum = a + b` |
+| 4 | Add `signed` |
+| 5 | Wider add + `overflow` |
+| 6 | `saturate` clamp |
+| 7 | *(later)* replace `8` with `DATA_WIDTH` |
 
 **SAY:**  
-“Blocks 1–2 are short. Block 3 is where we live — typing RTL.”
+“We live in the editor. Diagrams are short. Typing is the lab.”
 
 ---
 
-# PART 1 — Signed integers (fast)
+# STEP 0 — Open the blank file
 
 ---
 
-## Bits vs numbers
+## File
 
-### Bits = wires (`0` / `1`)
-### Number = **interpretation** of the pattern
+Open [`labs/labs_playground/lab0/adder.sv`](../labs_playground/lab0/adder.sv).  
+Delete everything except a blank page (or leave a short file header).
 
 **SAY:**  
-“Python hides encoding. SystemVerilog does not.  
-`logic signed [7:0]` means: eight wires, two’s complement meaning.”
+“This is practice RTL. Not the graded `rtl/adder.sv` yet.  
+We grow this file slide by slide.”
 
 ---
 
-## INT8 two’s complement
-
-### MSB weight = **−128** · rest = +64 … +1  
-### Range: **[−128 … +127]**
-
-| Bits | Value |
-| :---: | :---: |
-| `0000_0101` | +5 |
-| `1111_1111` | −1 |
-| `1000_0000` | −128 |
-| `0111_1111` | +127 |
-
-**SAY:**  
-“Decode one out loud. That’s enough signed-int for writing the adder.”
+# STEP 1 — Timescale + empty module
 
 ---
 
-## The bug we’ll fix in RTL
-
-```
-  +100 + +50  →  pattern looks like −106
-```
-
-**SAY:**  
-“True math is +150 — won’t fit in 8 signed bits.  
-Our module must **detect** that. Optionally **clamp**. First: understand the adder.”
-
----
-
-# PART 2 — Adder intuition (fast)
-
----
-
-## 1-bit full adder
-
-![1-bit full adder block](../../schematics/full_adder_block.svg)
-
-### A, B, Cin → Sum, Cout
-
-**SAY:**  
-“Every bit slice is this box.  
-We won’t instantiate FAs by hand — synthesis builds them from `+`.  
-But you must know what `+` becomes.”
-
----
-
-## Gates inside
-
-![Full adder gate-level schematic](../../schematics/full_adder_gates.svg)
-
-### Sum = XOR path · Cout = AND/OR (majority)
-
-**SAY:**  
-“Glance and move on. The RTL uses the `+` operator; the tool maps it to these gates.”
-
----
-
-## Ripple = many FAs
-
-![4-bit ripple-carry adder](../../schematics/ripple_carry_adder.svg)
-
-**SAY:**  
-“N-bit add ≈ N full adders chained.  
-When we write `a + b` in SV, this is the hardware idea.”
-
----
-
-# PART 3 — Write the SystemVerilog
-
----
-
-## Mental shift before typing
-
-| Software | SystemVerilog |
-| :--- | :--- |
-| Runs line-by-line on a CPU | Describes **gates and wires** |
-| `int x` lives in memory | `logic [7:0] x` is **8 wires** |
-| Function is called | Module is **always there** |
-
-**SAY:**  
-“You are not writing a program. You are drawing a circuit with text.”
-
----
-
-## Skeleton — start here
+## Type this first
 
 ```systemverilog
 `timescale 1ns/1ps
 
-module adder #(
-    parameter int DATA_WIDTH = 8
-)(
-    // ports next...
+module adder (
 );
 
 endmodule
 ```
 
 **SAY:**  
-“Open `rtl/adder.sv` or a blank file.  
-`module` / `endmodule` is the chip boundary.  
-`parameter` makes width reusable — default 8.”
+“`1ns` is the time unit in a testbench. `#1` means one nanosecond.  
+`1ps` is the simulation precision — the finest time step.  
+This line does not change the gates. The adder has no delays.  
+`module` / `endmodule` is the chip boundary. Name: `adder`.”
 
 ---
 
-## Ports — name the pins
+## What you just drew
+
+```
+        ┌─────────┐
+        │  adder  │
+        └─────────┘
+```
+
+**SAY:**  
+“A box with no pins yet. Next we name the wires that cross the boundary.”
+
+---
+
+# STEP 2 — Three pins (unsigned on purpose)
+
+---
+
+## Type the ports
 
 ```systemverilog
+`timescale 1ns/1ps
+
+module adder (
+    input  logic [7:0] a,
+    input  logic [7:0] b,
+    output logic [7:0] sum
+);
+
+endmodule
+```
+
+**SAY:**  
+“Read one pin left to right. Same words every time.”
+
+---
+
+## Read one pin (keep on screen)
+
+| Word | Means |
+| :--- | :--- |
+| `input` | This pin enters the module |
+| `logic` | The signal (each bit is a wire) |
+| `[7:0]` | Eight bits. Bit 7 is the MSB (left) |
+| `a` | Name of that signal |
+
+**SAY:**  
+“`output logic [7:0] sum` is the same sentence with the pin leaving.  
+`[7:0]` is hard-coded eight. No parameter yet — keep it simple.”
+
+---
+
+## Box with pins
+
+```
+   a[7:0] ──►┌─────────┐──► sum[7:0]
+   b[7:0] ──►│  adder  │
+             └─────────┘
+```
+
+**SAY:**  
+“Two operands in. One result out. The inside is still empty.”
+
+---
+
+# STEP 3 — Make it add
+
+---
+
+## Type the body
+
+```systemverilog
+`timescale 1ns/1ps
+
+module adder (
+    input  logic [7:0] a,
+    input  logic [7:0] b,
+    output logic [7:0] sum
+);
+    assign sum = a + b;
+endmodule
+```
+
+**SAY:**  
+“`a` and `b` are the operands. `+` is the adder. `sum` is the result.  
+`assign` means: this wire is continuously that expression. No clock.”
+
+---
+
+## Tiny check (say out loud)
+
+```
+a = 8'b0000_0101   (+5)
+b = 8'b0000_0011   (+3)
+sum → 8'b0000_1000 (+8)
+```
+
+**SAY:**  
+“If they can read that, the first module works.  
+Next we make the same eight wires mean signed numbers.”
+
+---
+
+# STEP 4 — Add `signed`
+
+---
+
+## Change only the types
+
+```systemverilog
+module adder (
+    input  logic signed [7:0] a,
+    input  logic signed [7:0] b,
+    output logic signed [7:0] sum
+);
+    assign sum = a + b;
+endmodule
+```
+
+**SAY:**  
+“Same eight wires. `signed` changes how `+` reads the top bit.  
+MSB weight is −128. Range is −128 … +127.  
+Without `signed`, this lab’s math is wrong.”
+
+---
+
+## The wrap you will see
+
+```
+100 + 50  →  true math +150
+         →  eight signed bits look like −106
+```
+
+**SAY:**  
+“The circuit did not ‘fail.’ Eight bits cannot hold 150 as signed.  
+Next we detect that. Then optionally clamp.”
+
+---
+
+# STEP 5 — Wider add + overflow
+
+---
+
+## Mental picture first
+
+### Bits = wires · Number = how you read the pattern
+
+| Bits | Signed value |
+| :---: | :---: |
+| `0111_1111` | +127 |
+| `1000_0000` | −128 |
+| `1111_1111` | −1 |
+
+**SAY:**  
+“Glance and type. We need one extra bit so carry and overflow are visible.”
+
+---
+
+## Replace `assign` with this
+
+```systemverilog
+module adder (
+    input  logic signed [7:0] a,
+    input  logic signed [7:0] b,
+    output logic signed [7:0] sum,
+    output logic              overflow
+);
+    logic signed [8:0] raw_sum;   // 9 bits: room for carry
+
+    always_comb begin
+        // Sign-extend, then add
+        raw_sum  = {a[7], a} + {b[7], b};
+        overflow = (a[7] == b[7]) && (raw_sum[7] != a[7]);
+        sum      = raw_sum[7:0];   // wrap: keep low 8 bits
+    end
+endmodule
+```
+
+**SAY:**  
+“`{a[7], a}` copies the sign bit — grows the operand by one.  
+Do not zero-extend.  
+`overflow`: same signs in, different sign in the result.  
+`always_comb` = combinational. Use `=` inside, not `<=`.”
+
+---
+
+## Overflow examples (while that line is up)
+
+```
++100 + +50 → sign flips → overflow = 1
+−100 + −50 → sign flips → overflow = 1
+ +40 + −10 → opposite signs → overflow = 0
+```
+
+**SAY:**  
+“Match the code to one example out loud.”
+
+---
+
+# STEP 6 — Saturation
+
+---
+
+## Add the control pin and clamp
+
+```systemverilog
+module adder (
+    input  logic signed [7:0] a,
+    input  logic signed [7:0] b,
+    input  logic              saturate,
+    output logic signed [7:0] sum,
+    output logic              carry_out,
+    output logic              overflow
+);
+    logic signed [8:0] raw_sum;
+    localparam logic signed [7:0] MAX_POS = 8'sd127;   // +127
+    localparam logic signed [7:0] MAX_NEG = -8'sd128;  // −128
+
+    always_comb begin
+        raw_sum   = {a[7], a} + {b[7], b};
+        carry_out = raw_sum[8];
+        overflow  = (a[7] == b[7]) && (raw_sum[7] != a[7]);
+
+        if (saturate && overflow) begin
+            if (a[7] == 1'b0)
+                sum = MAX_POS;   // positive overflow → +127
+            else
+                sum = MAX_NEG;   // negative overflow → −128
+        end else begin
+            sum = raw_sum[7:0];  // wrap
+        end
+    end
+endmodule
+```
+
+**SAY:**  
+“`saturate` is one control wire.  
+If saturate and overflow: clamp.  
+Use **operand** sign `a[7]` to pick +127 vs −128 — not the wrapped sum’s sign.  
+Else wrap. Walk both branches.”
+
+---
+
+## Cases to say out loud
+
+| Inputs | saturate | Expect |
+| :--- | :---: | :--- |
+| `100 + 50` | 0 | sum `−106`, overflow 1 |
+| `100 + 50` | 1 | sum `+127`, overflow 1 |
+| `−100 + −50` | 1 | sum `−128`, overflow 1 |
+| `50 + 50` | 0 or 1 | sum `100`, overflow 0 |
+
+---
+
+# STEP 7 — Parameter (only after the 8-bit file works)
+
+---
+
+## Why wait until now
+
+**SAY:**  
+“`DATA_WIDTH` is the count `8`. The pins are the eight signals that count describes.  
+If we open with `parameter`, beginners mix `int` on the count with `logic` on the pins.  
+Now that `[7:0]` is solid, we lift the width.”
+
+---
+
+## Swap hard-coded 8 → `DATA_WIDTH`
+
+```systemverilog
+`timescale 1ns/1ps
+
 module adder #(
     parameter int DATA_WIDTH = 8
 )(
@@ -178,180 +366,6 @@ module adder #(
     output logic signed [DATA_WIDTH-1:0] sum,
     output logic                         carry_out,
     output logic                         overflow
-);
-```
-
-**SAY:**  
-“Read each pin:  
-`logic` = wire type.  
-`signed` = two’s complement math.  
-`[DATA_WIDTH-1:0]` = MSB on the left.  
-`saturate` is 1-bit control — we wire it later.”
-
----
-
-## Keyword cheat sheet (keep on screen)
-
-| Write this | Means |
-| :--- | :--- |
-| `logic` | 1-bit or bus wire / variable |
-| `signed` | treat bus as two’s complement |
-| `[7:0]` | 8 bits, bit 7 is MSB |
-| `parameter` | constant chosen at compile / instance |
-| `input` / `output` | direction through the module |
-
-**SAY:**  
-“Beginners trip on forgetting `signed`.  
-Without it, `a + b` is unsigned — wrong for our lab.”
-
----
-
-## Internals — declare before use
-
-```systemverilog
-    // Wider sum: one extra bit
-    logic signed [DATA_WIDTH:0] raw_sum;
-
-    // Clamp constants for INT8: +127 and -128
-    localparam logic signed [DATA_WIDTH-1:0] MAX_POS =
-        {1'b0, {(DATA_WIDTH-1){1'b1}}};
-    localparam logic signed [DATA_WIDTH-1:0] MAX_NEG =
-        {1'b1, {(DATA_WIDTH-1){1'b0}}};
-```
-
-**SAY:**  
-“`raw_sum` is DATA_WIDTH+1 bits — room to see carry.  
-`localparam` builds +127 / −128 from the width — don’t hardcode only for 8 if you can avoid it.  
-Replication: `{(DATA_WIDTH-1){1'b1}}` means repeat `1` that many times.”
-
----
-
-## `always_comb` — combinational block
-
-```systemverilog
-    always_comb begin
-        // assignments with =  (blocking)
-    end
-```
-
-**SAY:**  
-“No clock in Lab 00. Pure combo.  
-Rule from the prep lab: inside `always_comb`, use `=` not `<=`.  
-Every output you drive must be assigned on all paths — or you infer a latch.”
-
----
-
-## Step 1 — write the add (wide)
-
-```systemverilog
-        // Sign-extend each operand by 1 bit, then add
-        raw_sum = {a[DATA_WIDTH-1], a} + {b[DATA_WIDTH-1], b};
-```
-
-**SAY:**  
-“`{sign, a}` copies the MSB to make a wider signed value.  
-Then `+` is the adder.  
-This is the most important line in the file.”
-
----
-
-## Why sign-extend? (point while coding)
-
-| Wrong | Right |
-| :--- | :--- |
-| `raw_sum = a + b` in same width | lose the extra bit |
-| zero-extend `{1'b0, a}` | breaks negatives |
-| `{a[MSB], a}` | keeps sign, grows width by 1 |
-
-**SAY:**  
-“We need one extra bit to read carry and to reason about overflow.  
-Sign-extend, don’t zero-extend.”
-
----
-
-## Step 2 — carry_out
-
-```systemverilog
-        carry_out = raw_sum[DATA_WIDTH];
-```
-
-**SAY:**  
-“Top bit of the wide sum is the unsigned-style carry.  
-One wire. Assign it.”
-
----
-
-## Step 3 — overflow flag
-
-```systemverilog
-        overflow = (a[DATA_WIDTH-1] == b[DATA_WIDTH-1]) &&
-                   (raw_sum[DATA_WIDTH-1] != a[DATA_WIDTH-1]);
-```
-
-**SAY:**  
-“Same signs in, different sign in the result → overflow.  
-Type it carefully — two compares and an AND.”
-
----
-
-## Overflow examples (while that line is on screen)
-
-```
-+100 + +50 → sign flips → overflow = 1
-−100 + −50 → sign flips → overflow = 1
- +40 + −10 → opposite signs → overflow = 0
-```
-
-**SAY:**  
-“Match the code to the examples.  
-If the flag doesn’t match, the compare is wrong.”
-
----
-
-## Step 4 — choose sum (wrap first)
-
-```systemverilog
-        // Default: wrap (take low DATA_WIDTH bits)
-        sum = raw_sum[DATA_WIDTH-1:0];
-```
-
-**SAY:**  
-“Before saturation, always assign wrap.  
-`100+50` becomes `−106` in the low 8 bits — that’s correct wrap.”
-
----
-
-## Step 5 — saturation MUX
-
-```systemverilog
-        if (saturate && overflow) begin
-            if (a[DATA_WIDTH-1] == 1'b0)
-                sum = MAX_POS;   // was positive overflow
-            else
-                sum = MAX_NEG;   // was negative overflow
-        end else begin
-            sum = raw_sum[DATA_WIDTH-1:0];
-        end
-```
-
-**SAY:**  
-“If saturate and overflow: clamp.  
-Use **operand** sign `a[MSB]` to pick +max vs −max.  
-Else wrap. Walk both branches out loud.”
-
----
-
-## Full module (assemble — don’t rush)
-
-```systemverilog
-`timescale 1ns/1ps
-module adder #(
-    parameter int DATA_WIDTH = 8
-)(
-    input  logic signed [DATA_WIDTH-1:0] a, b,
-    input  logic                         saturate,
-    output logic signed [DATA_WIDTH-1:0] sum,
-    output logic                         carry_out, overflow
 );
     logic signed [DATA_WIDTH:0] raw_sum;
     localparam logic signed [DATA_WIDTH-1:0] MAX_POS =
@@ -373,91 +387,71 @@ endmodule
 ```
 
 **SAY:**  
-“Scroll top to bottom once: ports → locals → always_comb four jobs.  
-Compare to [`rtl/adder.sv`](../../rtl/adder.sv) — should match in spirit.”
+“`parameter int DATA_WIDTH = 8` — `int` is only the type of the number 8.  
+Pins stay `logic signed [DATA_WIDTH-1:0]`.  
+Compare to [`rtl/adder.sv`](../../rtl/adder.sv). Should match in spirit.”
 
 ---
 
-## Beginner mistakes (fix these)
+# Short silicon picture (after code exists)
 
-| Mistake | Fix |
-| :--- | :--- |
-| Forgot `signed` | add `signed` on `a`, `b`, `sum`, `raw_sum` |
-| Used `<=` in combo | use `=` in `always_comb` |
-| `sum` not set in an `else` | always assign `sum` every path |
-| Hardcoded `[7:0]` only | use `DATA_WIDTH` |
-| Zero-extend instead of sign-extend | `{a[MSB], a}` |
+---
+
+## What `+` becomes
+
+![1-bit full adder block](../../schematics/full_adder_block.svg)
+
+### A, B, Cin → Sum, Cout · N-bit ≈ N of these chained
 
 **SAY:**  
-“If sim fails weirdly, check `signed` first.  
-If synth warns latch, you missed an else.”
+“We never instantiate full adders by hand.  
+`a + b` is the text; synthesis draws the chain.”
 
 ---
 
-## What synthesis thinks you drew
+## Your netlist
 
 ![adder Synthesis Schematic](../../schematics/adder.svg)
 
 # Combinational only · O(N) gates · no DFFs
 
-**SAY:**  
-“Your text became an adder + compare + MUX.  
-That’s the point of HDL.”
+---
+
+# Prove it
 
 ---
 
-# PART 4 — Prove it with Cocotb
-
----
-
-## Run
+## Run (when playground matches `rtl/adder.sv`)
 
 ```bash
 python labs/run_lab.py --lab lab00
 ```
 
 **SAY:**  
-“Cocotb drives `a`, `b`, `saturate` from Python and checks `sum` / `overflow`.  
-You’re testing the circuit you described.”
+“Cocotb drives `a`, `b`, `saturate` and checks `sum` / `overflow`.  
+Copy the finished playground into `rtl/adder.sv` when you are ready to test.”
 
 ---
 
-## Cases your code must pass
+## Beginner mistakes
 
-| Inputs | saturate | Expect |
-| :--- | :---: | :--- |
-| `100 + 50` | 0 | sum `−106`, overflow 1 |
-| `100 + 50` | 1 | sum `+127`, overflow 1 |
-| `−100 + −50` | 1 | sum `−128`, overflow 1 |
-| `50 + 50` | 0 or 1 | sum `100`, overflow 0 |
-
-**SAY:**  
-“Narrate one wrap and one saturate live if you can.”
-
----
-
-## Recap — concept + SV skill
-
-| Concept | SystemVerilog move |
+| Mistake | Fix |
 | :--- | :--- |
-| Two’s complement | `logic signed [N-1:0]` |
-| Adder | `raw_sum = {sign,a} + {sign,b}` |
-| Carry | `raw_sum[N]` |
-| Overflow | same MSB in, flipped MSB out |
-| Saturation | `if (saturate && overflow) clamp` |
-
-**SAY:**  
-“Next lab (multiplier): same port style, same `always_comb` habits — more arithmetic.”
+| Forgot `signed` | add `signed` on `a`, `b`, `sum`, `raw_sum` |
+| Used `<=` in combo | use `=` in `always_comb` |
+| `sum` not set in an `else` | assign `sum` on every path |
+| Zero-extend instead of sign-extend | `{a[MSB], a}` |
+| Opened with `parameter` first | learn `[7:0]` first, then lift |
 
 ---
 
-## Review (ask them to write, not only talk)
+## Review (they write, you watch)
 
-1. From memory: write the module ports for `adder`.
-2. Write the `raw_sum` line with sign-extend.
-3. Write the `overflow` expression.
-4. Explain why `always_comb` uses `=` here.
-5. What does `100+50` return with `saturate=0` vs `1`?
+1. From a blank file: `module` + three unsigned pins + `assign sum = a + b`.
+2. Add `signed` on those ports.
+3. Write the `raw_sum` line with sign-extend.
+4. Write the `overflow` expression.
+5. Say what `100+50` returns with `saturate=0` vs `1`.
 
 ---
 
@@ -465,7 +459,8 @@ You’re testing the circuit you described.”
 
 | Thing | Path |
 | :--- | :--- |
-| RTL to write | [`rtl/adder.sv`](../../rtl/adder.sv) |
+| Write-along file | [`labs/labs_playground/lab0/adder.sv`](../labs_playground/lab0/adder.sv) |
+| Graded / reference RTL | [`rtl/adder.sv`](../../rtl/adder.sv) |
 | Tests | [`labs/test_adder.py`](../test_adder.py) |
 | FA gates | [`schematics/full_adder_gates.svg`](../../schematics/full_adder_gates.svg) |
 | Ripple | [`schematics/ripple_carry_adder.svg`](../../schematics/ripple_carry_adder.svg) |
