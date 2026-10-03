@@ -36,9 +36,9 @@ Every feature discovered in the survey phase is recorded below and assigned to a
 | F19 | Lab 06 Softmax & FlashAttention Rigor | Proof of softmax shift invariance; FlashAttention-1/2/3 online softmax rescaling derivation; Blackwell warp groups | M2 | Survey Curric |
 | F20 | Lab 07 RSQRT & RMSNorm Rigor | Fast Inverse Square Root Newton-Raphson derivation; RMSNorm vs LayerNorm gate comparison; $x=8$ seed gap analysis | M2 | Survey Curric |
 | F21 | Lab 08 Exp2 SFU Rigor | Base-2 decomposition error derivation; SwiGLU / SiLU hardware datapath diagram; Q8.8 dynamic range saturation ($x \approx 5.545$) | M2 | Survey Curric |
-| F22 | KaTeX Currency Delimiter Escaping | Escape currency dollar signs (`\$50M`, `\$100M`, `\$300k`) in README and guides to prevent false KaTeX math mode triggers | M3 | Spec Miner |
-| F23 | Code Block Syntax Standardization | Add `text` language tags to 24 ASCII diagrammatic and architectural code blocks for markdownlint MD040 compliance | M3 | Spec Miner |
-| F24 | Relative Link Polish | Upgrade unlinked backtick paths in `SYSTOLIC_ARRAY_VIDEO_SCRIPT.md` to active relative links; verify 115 links | M3 | Spec Miner |
+| F22 | Visual Layout & Frame Alignment | Eliminate text clipping, text/element overlapping, and misaligned widgets across all rendered Manim scenes | M3 | User Guidance |
+| F23 | Mathematical Typography in Manim | Ensure all rendered math formulas and KaTeX strings in scenes render cleanly with proper scaling, spacing, and font aesthetics | M3 | User Guidance |
+| F24 | Deepened Curriculum Content Integration | Incorporate M2 co-design depth (proofs, pJ/bit numbers, accelerator mappings) directly into animations scripts narration, on-screen formulas, and visual datapaths | M3 | User Guidance |
 | F25 | Full Test & Render Acceptance | Run all animation renders (`--low`), Cocotb testbenches, and conduct independent forensic audit | M4 | Survey Global |
 
 ---
@@ -47,10 +47,10 @@ Every feature discovered in the survey phase is recorded below and assigned to a
 
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| **M1** | Dynamic Silicon Animations Overhaul | `animations/scene_lab00_prep.py` through `animations/scene_lab08_exp2_sfu.py`, `render_all.py` | None | IN_PROGRESS (c32ca710-b184-4f28-8b5d-1a0e40b75df5) |
-| **M2** | Technical Depth & Co-Design Rigor | `labs/slides/lab00_prep` through `labs/slides/lab08_exponential_sfu` | None | IN_PROGRESS (a5626f37-5d1e-4261-a559-569e9ca91af7) |
-| **M3** | Formatting, KaTeX & Document Polish | `labs/slides/*.md`, `animations/*.md`, `README.md` | None | PLANNED |
-| **M4** | E2E Verification & Forensic Integrity Audit | Full suite validation (`render_all.py --low`, Cocotb tests, KaTeX audit, Forensic Auditor) | M1, M2, M3 | PLANNED |
+| **M1** | Dynamic Silicon Animations Overhaul | `animations/scene_lab00_prep.py` through `animations/scene_lab08_exp2_sfu.py`, `render_all.py` (kinetic visualization infrastructure) | None | DONE (All 10 scenes overhauled, verified -ql) |
+| **M2** | Technical Depth & Co-Design Rigor | `labs/slides/lab00_prep` through `labs/slides/lab08_exponential_sfu` (architectural trade-offs, pJ/bit hierarchy, KaTeX proofs, real-world accelerator bridges) | None | DONE (+1,873 lines, proofs, pJ/bit, verified) |
+| **M3** | Animation Visual Formatting & Curriculum Content Integration | `animations/scene_lab*.py`: (1) Integrate M2 deepened curriculum content, proofs, pJ/bit metrics, and accelerator architectures into animation scripts; (2) Polish generated video formatting (visual layout, typography, math rendering, spacing, zero clipping/overlapping in rendered frames) | M1, M2 | DONE (Ingested proofs, pJ/bit, verified -ql) |
+| **M4** | E2E Verification & Forensic Integrity Audit | Full suite validation (`render_all.py --low`, Cocotb tests, visual inspection, Forensic Auditor) | M1, M2, M3 | DONE (Gate PASS: 2 APPROVE, 2 APPROVE, CLEAN audit) |
 
 ---
 

@@ -85,6 +85,13 @@ def set_dark(camera):
     camera.background_color = BG
 
 
+def fit_width(mob, max_width):
+    """Scale a mobject down if it exceeds max_width. Returns the mobject."""
+    if mob.width > max_width:
+        mob.scale_to_fit_width(max_width)
+    return mob
+
+
 def badge(text, color=CYAN, font_size=20):
     """Small all-caps kicker shown above a title."""
     return Text(text, font=SANS, weight=BOLD, font_size=font_size, color=color)
@@ -303,9 +310,14 @@ def recap(scene, title, points, stroke=GREEN, title_color=GREEN_LIGHT,
     card_h = max(3.2, 0.9 + 0.55 * n)
     c = card(card_w, card_h, stroke=stroke, radius=0.22)
     t = Text(title, font=SANS, weight=BOLD, font_size=title_size, color=title_color)
+    max_inner_w = card_w - 0.8
+    if t.width > max_inner_w:
+        t.scale_to_fit_width(max_inner_w)
     t.next_to(c.get_top(), DOWN, buff=0.35)
     pts = bullets(points, font_size=font_size, buff=0.28,
                   bullet_color=bullet_color, color=TEXT)
+    if pts.width > max_inner_w:
+        pts.scale_to_fit_width(max_inner_w)
     pts.next_to(t, DOWN, buff=0.4, aligned_edge=LEFT)
     pts.move_to(c.get_center() + DOWN * 0.15)
     scene.play(Create(c), Write(t), FadeIn(pts, shift=UP * 0.2), run_time=1.1)
@@ -329,6 +341,9 @@ def checkpoint(scene, question, answer_lines, answer_color=GREEN_LIGHT):
     kick.next_to(q_card.get_top(), DOWN, buff=0.3)
     q = Text(question, font=SANS, weight=BOLD, font_size=22, color=TEXT,
              line_spacing=1.3)
+    max_q_w = 10.6 - 0.8
+    if q.width > max_q_w:
+        q.scale_to_fit_width(max_q_w)
     q.next_to(kick, DOWN, buff=0.4)
     q.move_to(q_card.get_center())
 
@@ -348,6 +363,9 @@ def checkpoint(scene, question, answer_lines, answer_color=GREEN_LIGHT):
     ans_title.next_to(q_card.get_top(), DOWN, buff=0.3)
     ans = bullets(answer_lines, font_size=20, buff=0.28,
                   bullet_color=answer_color, color=TEXT)
+    max_ans_w = 10.6 - 0.8
+    if ans.width > max_ans_w:
+        ans.scale_to_fit_width(max_ans_w)
     ans.next_to(ans_title, DOWN, buff=0.4, aligned_edge=LEFT)
     ans.move_to(q_card.get_center() + DOWN * 0.15)
     scene.play(FadeIn(ans_title), FadeIn(ans, shift=UP * 0.15), run_time=0.7)
@@ -371,6 +389,9 @@ def challenge(scene, prompt_lines, answer, accent=AMBER_LIGHT):
     kick.next_to(c.get_top(), DOWN, buff=0.28)
     prompt = bullets(prompt_lines, font_size=20, buff=0.26,
                      bullet_color=AMBER, color=TEXT)
+    max_inner_w = 10.6 - 0.8
+    if prompt.width > max_inner_w:
+        prompt.scale_to_fit_width(max_inner_w)
     prompt.next_to(kick, DOWN, buff=0.35, aligned_edge=LEFT)
     prompt.move_to(c.get_center() + DOWN * 0.1)
 
@@ -389,6 +410,8 @@ def challenge(scene, prompt_lines, answer, accent=AMBER_LIGHT):
                      color=accent)
     ans_title.next_to(c.get_top(), DOWN, buff=0.28)
     ans = Text(answer, font=MONO, weight=BOLD, font_size=21, color=GREEN_LIGHT)
+    if ans.width > max_inner_w:
+        ans.scale_to_fit_width(max_inner_w)
     ans.move_to(c.get_center() + DOWN * 0.1)
     scene.play(FadeIn(ans_title), FadeIn(ans, shift=UP * 0.15), run_time=0.7)
     scene.wait(1.5)
@@ -499,6 +522,9 @@ def code_window(code_lines, title_text="PYTORCH / SOFTWARE", width=5.6, height=3
     dots.move_to(bar).align_to(bar, LEFT).shift(RIGHT * 0.25)
 
     ttl = Text(title_text, font=MONO, weight=BOLD, font_size=13, color=title_color)
+    max_title_w = width - 1.6  # Leave room for window dots
+    if ttl.width > max_title_w:
+        ttl.scale_to_fit_width(max_title_w)
     ttl.move_to(bar)
 
     max_code_w = width - 0.7
@@ -518,10 +544,17 @@ def metric_card(value, label, subtext="", color=CYAN, width=3.4, height=1.9):
     c = card(width, height, stroke=color, radius=0.18)
     val = Text(value, font=SANS, weight=BOLD, font_size=28, color=color)
     val.move_to(c.get_center() + UP * 0.25)
+    max_inner_w = width - 0.5
+    if val.width > max_inner_w:
+        val.scale_to_fit_width(max_inner_w)
     lbl = Text(label, font=SANS, weight=BOLD, font_size=14, color=WHITE)
     lbl.next_to(val, DOWN, buff=0.15)
+    if lbl.width > max_inner_w:
+        lbl.scale_to_fit_width(max_inner_w)
     if subtext:
         sub = Text(subtext, font=MONO, font_size=12, color=MUTED)
+        if sub.width > max_inner_w:
+            sub.scale_to_fit_width(max_inner_w)
         sub.next_to(lbl, DOWN, buff=0.1)
         return VGroup(c, val, lbl, sub)
     return VGroup(c, val, lbl)
@@ -686,8 +719,8 @@ class LiquidTankWidget(VGroup):
                  tank_color=BORDER, fluid_color=CYAN, **kwargs):
         super().__init__(**kwargs)
         self.capacity = capacity
-        self.width = width
-        self.height = height
+        self._tank_width = width
+        self._tank_height = height
         self.tank_color = tank_color
         self.fluid_color = fluid_color
 
@@ -724,15 +757,16 @@ class LiquidTankWidget(VGroup):
         self.max_line = max_line
         self.add(tank_walls, t_lbl, self.fluid, max_line, cap_lbl)
 
-    def set_fluid_fraction(self, frac):
+    def set_fluid_fraction(self, frac, color=None):
         """Returns animation to adjust fluid height."""
         clamped_frac = max(0.01, min(1.2, frac))
-        new_h = self.height * 0.9 * clamped_frac
+        new_h = self._tank_height * 0.9 * clamped_frac
+        fill_col = color if color is not None else self.fluid_color
         new_fluid = Rectangle(
-            width=self.width - 0.15, height=new_h,
-            stroke_width=0, fill_color=self.fluid_color, fill_opacity=0.85
+            width=self._tank_width - 0.15, height=new_h,
+            stroke_width=0, fill_color=fill_col, fill_opacity=0.85
         )
-        new_fluid.move_to(np.array([0, -self.height/2 + new_h/2 + 0.05, 0]))
+        new_fluid.move_to(np.array([0, -self._tank_height/2 + new_h/2 + 0.05, 0]))
         return Transform(self.fluid, new_fluid)
 
 

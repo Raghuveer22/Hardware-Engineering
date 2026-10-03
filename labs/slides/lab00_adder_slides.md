@@ -146,6 +146,60 @@ In 8-bit signed representation ($[-128, +127]$), the MSB (Bit 7) denotes sign (`
 
 ---
 
+### D. Formal Mathematical Proof: Two's Complement Overflow Identity ($V = C_{N-1} \oplus C_N$)
+
+**Theorem:** In an $N$-bit signed two's complement adder, arithmetic overflow $V$ occurs if and only if the carry-in into the most significant bit ($C_{N-1}$) differs from the carry-out from the most significant bit ($C_N$):
+$$V = C_{N-1} \oplus C_N$$
+
+#### Proof:
+Let $a, b$ be two $N$-bit signed two's complement numbers with bit-level values:
+$$a = -a_{N-1} 2^{N-1} + \sum_{i=0}^{N-2} a_i 2^i, \quad b = -b_{N-1} 2^{N-1} + \sum_{i=0}^{N-2} b_i 2^i$$
+where $a_{N-1}, b_{N-1} \in \{0, 1\}$ are the sign bits.
+
+At the most significant bit slice (bit $N-1$), the full adder inputs are $a_{N-1}$, $b_{N-1}$, and the incoming carry $C_{N-1}$ from bit slice $N-2$. The full adder outputs are:
+$$S_{N-1} = a_{N-1} \oplus b_{N-1} \oplus C_{N-1}$$
+$$C_N = a_{N-1} b_{N-1} + C_{N-1}(a_{N-1} \oplus b_{N-1})$$
+
+By definition, signed overflow occurs when two non-negative numbers produce a negative sum ($a_{N-1}=0, b_{N-1}=0, S_{N-1}=1$) OR two negative numbers produce a non-negative sum ($a_{N-1}=1, b_{N-1}=1, S_{N-1}=0$):
+$$V = \overline{a_{N-1}} \cdot \overline{b_{N-1}} \cdot S_{N-1} + a_{N-1} \cdot b_{N-1} \cdot \overline{S_{N-1}}$$
+
+We evaluate $V$ and the XOR expression $C_{N-1} \oplus C_N$ by partitioning into exhaustive operand cases:
+
+1. **Case 1: $a_{N-1} = 0, b_{N-1} = 0$ (Two Positive Operands)**
+   - Carry-out:
+     $$C_N = (0 \cdot 0) + C_{N-1}(0 \oplus 0) = 0$$
+   - Sum bit:
+     $$S_{N-1} = 0 \oplus 0 \oplus C_{N-1} = C_{N-1}$$
+   - Overflow definition:
+     $$V = (\overline{0} \cdot \overline{0} \cdot C_{N-1}) + (0 \cdot 0 \cdot \overline{C_{N-1}}) = 1 \cdot 1 \cdot C_{N-1} + 0 = C_{N-1}$$
+   - Carry XOR term:
+     $$C_{N-1} \oplus C_N = C_{N-1} \oplus 0 = C_{N-1}$$
+   - Hence, $V = C_{N-1} \oplus C_N$.
+
+2. **Case 2: $a_{N-1} = 1, b_{N-1} = 1$ (Two Negative Operands)**
+   - Carry-out:
+     $$C_N = (1 \cdot 1) + C_{N-1}(1 \oplus 1) = 1 + C_{N-1}(0) = 1$$
+   - Sum bit:
+     $$S_{N-1} = 1 \oplus 1 \oplus C_{N-1} = 0 \oplus C_{N-1} = C_{N-1}$$
+   - Overflow definition:
+     $$V = (\overline{1} \cdot \overline{1} \cdot C_{N-1}) + (1 \cdot 1 \cdot \overline{C_{N-1}}) = 0 + 1 \cdot 1 \cdot \overline{C_{N-1}} = \overline{C_{N-1}}$$
+   - Carry XOR term:
+     $$C_{N-1} \oplus C_N = C_{N-1} \oplus 1 = \overline{C_{N-1}}$$
+   - Hence, $V = C_{N-1} \oplus C_N$.
+
+3. **Case 3: $a_{N-1} \ne b_{N-1}$ (Opposite Sign Operands)**
+   - Adding a positive number and a negative number cannot exceed the range $[-2^{N-1}, 2^{N-1}-1]$, so $V = 0$.
+   - In hardware:
+     $$C_N = (a_{N-1} \cdot b_{N-1}) + C_{N-1}(a_{N-1} \oplus b_{N-1}) = 0 + C_{N-1}(1) = C_{N-1}$$
+   - Therefore:
+     $$C_{N-1} \oplus C_N = C_{N-1} \oplus C_{N-1} = 0 = V$$
+
+**Conclusion (Q.E.D.):** For all possible inputs:
+$$V = C_{N-1} \oplus C_N$$
+In hardware synthesis, this identity means overflow detection requires merely a single 2-input XOR gate tapping the carry lines of the MSB slice, completely bypassing complex operand-and-sum sign comparison trees!
+
+---
+
 ## 3. SystemVerilog RTL Architecture ([`rtl/adder.sv`](../../rtl/adder.sv))
 
 ```systemverilog
@@ -200,7 +254,69 @@ endmodule
 
 ---
 
-## 4. Verification & Testing with Cocotb
+## 4. Adder Microarchitectures: Critical Path & Silicon Area Trade-off Matrix
+
+When designing hardware for AI accelerators, choosing an adder topology involves a fundamental trade-off between silicon area (cost/power) and propagation delay ($F_{max}$).
+
+### Critical Path & Area Trade-Off Matrix
+$$\begin{array}{|l|c|c|c|c|c|}
+\hline
+\textbf{Adder Architecture} & \textbf{Delay Complexity} & \textbf{Area Complexity} & \textbf{Fan-Out} & \textbf{Wiring Congestion} & \textbf{Typical Application} \\
+\hline
+\text{Ripple-Carry Adder (RCA)} & O(N) & O(N) & 1\text{ (Minimal)} & \text{Very Low (Planar)} & \text{Edge NPUs, PE MAC Local Adders} \\
+\text{Carry-Skip Adder (CSK)} & O(\sqrt{N}) & O(N) & 2\text{--}3 & \text{Low} & \text{Low-Power Embedded DSPs} \\
+\text{Carry-Lookahead Adder (CLA)} & O(\log N) & O(N \log N) & \text{High } (O(N)) & \text{Medium} & \text{ALU Datapaths (16/32-bit)} \\
+\text{Brent-Kung Parallel-Prefix} & O(2 \log_2 N - 2) & O(N) & 2\text{ (Bounded)} & \text{Low} & \text{High-Speed 64-bit ALUs} \\
+\text{Kogge-Stone Parallel-Prefix} & O(\log_2 N) & O(N \log_2 N) & 2\text{ (Minimal)} & \text{Very High (Dense Tracks)} & \text{Ultra-High-Freq Host ALUs (3+ GHz)} \\
+\text{Carry-Save Adder (CSA Tree)} & O(1) & O(N) & 1 & \text{Very Low} & \text{Systolic MACs \& Tensor Core Trees} \\
+\hline
+\end{array}$$
+
+#### Analytical Propagation Delay Comparison:
+* **Ripple-Carry (RCA):**
+  $$t_{RCA} = (N - 1) t_{carry\_prop} + t_{sum\_gen}$$
+  For $N=8$, delay is $\approx 7 \times 120\text{ ps} + 150\text{ ps} \approx 990\text{ ps}$. Simple, small, and perfectly adequate inside single PE MAC units where cycle times are $\ge 2\text{ ns}$.
+* **Carry-Lookahead (CLA):**
+  Generates carries in parallel via Generate ($G_i = A_i \cdot B_i$) and Propagate ($P_i = A_i \oplus B_i$):
+  $$C_{i+1} = G_i + P_i C_i = G_i + P_i G_{i-1} + P_i P_{i-1} G_{i-2} + \dots$$
+  Reduces delay to $O(\log N)$ at the expense of high gate fan-in and silicon area overhead.
+* **Kogge-Stone Prefix Tree:**
+  Computes prefix carries in $\log_2(N)$ stages using prefix operator cells $(G, P) \circ (G', P') = (G + P \cdot G', P \cdot P')$. For 32-bit accumulators, Kogge-Stone evaluates in just 5 gate levels, but wiring density creates routing congestion in dense silicon floorplans.
+
+---
+
+## 5. Saturation Mechanics in Quantized LLM Datapaths
+
+Why do production AI accelerators insist on hardware saturation rather than native modular wrap-around?
+
+### The "Catastrophic Sign Inversion" Problem in LLMs
+Modern Large Language Models (LLaMA 3, Gemma, Mistral) feature emergent **outlier features**—rare activation channels whose magnitudes exceed normal values by $10\times$ to $100\times$:
+1. **With Wrap-Around ($100 + 50 = -106$):**
+   * A strongly positive attention activation ($+100$) intended to trigger high attention probability wraps around into a large negative number ($-106$).
+   * In Softmax: $e^{-106} \approx 0.0$, completely suppressing the intended attention head!
+   * The sign flip turns an excitatory neuron into a heavy inhibitory neuron, destroying model perplexity and generating gibberish tokens.
+2. **With Hardware Saturation ($100 + 50 \to +127$):**
+   * Clamping enforces the monotonic invariant:
+     $$x_1 > x_2 \implies \text{clamp}(x_1) \ge \text{clamp}(x_2)$$
+   * Outliers are slightly compressed, but their positive polarity and relative significance are strictly preserved, allowing quantized INT8 models to match FP16 accuracy.
+
+---
+
+## 6. Real-World Accelerator Mapping: Google TPU & NVIDIA Tensor Cores
+
+### Google TPU v1 256x256 Matrix Multiply Unit (MXU)
+* The TPU v1 MXU contains $65,536$ MAC units computing INT8 matrix multiplication.
+* Each column of 256 PEs culminates in a **32-bit Accumulator Unit** equipped with programmable hardware saturation.
+* Activations flow horizontally, partial sums accumulate vertically down the column, and final saturation clamps the accumulated results before writing back to the 24MB Unified Buffer.
+
+### NVIDIA Tensor Core Accumulator Trees (Ampere & Hopper)
+* Inside each SM (Streaming Multiprocessor), NVIDIA Tensor Cores execute fused matrix operations (e.g., `mma.sync.aligned.m16n8k32.row.col`).
+* Multiplication of INT8 inputs produces 16-bit intermediate products that are compressed via a multi-operand **Carry-Save Adder (CSA) tree** (Wallace reduction) without propagating carries.
+* Only at the root of the tree does a single high-speed adder resolve the sum and carry vectors into a final 32-bit signed accumulator with optional saturation clamping.
+
+---
+
+## 7. Verification & Testing with Cocotb
 
 The module is verified against a golden Python reference model using Cocotb.
 
@@ -218,7 +334,7 @@ python labs/run_lab.py --lab lab00
 
 ---
 
-## 5. Review & Engineering Analysis Questions
+## 8. Review & Engineering Analysis Questions
 
 1. **Gate Trade-offs:** How does the critical path delay of an $N$-bit Ripple-Carry Adder compare to a Carry-Lookahead Adder (CLA), and what is the associated silicon area overhead?
 2. **Alternative Overflow Formula:** Prove mathematically that signed overflow in two's complement can also be computed as $\text{overflow} = C_{in(\text{MSB})} \oplus C_{out(\text{MSB})}$.

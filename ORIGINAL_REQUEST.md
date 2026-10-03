@@ -41,3 +41,14 @@ Integrity mode: development
 ### Formatting & Structural Integrity
 - [ ] Zero broken relative file links, malformed markdown tables, or unrendered KaTeX mathematical expressions across `labs/slides/` and `animations/`.
 - [ ] All code snippets compile or correspond faithfully to the actual synthesizable RTL and Cocotb testbenches in the repository.
+
+## Follow-up — 2026-10-02T19:16:44Z
+
+The user has requested to continue. Please resume execution and drive the milestones to completion.
+
+## Follow-up — 2026-10-02T19:24:45Z
+
+USER GUIDANCE AND COURSE-CORRECTION:
+1. Milestone 3 Formatting Scope: The user clarifies that "formatting" is NOT for Markdown document linting. It is specifically for the GENERATED RENDERING CONTENT of the Python files in animations/ (i.e. visual layout, typography, element alignment, math rendering, spacing, no text clipping/overlapping in the Manim video frames).
+2. Dependency Flow: Once Milestone 2 finishes (deepened technical content, proofs, pJ/bit numbers, hardware architectures in labs/slides/), that in-depth content MUST BE UPDATED directly into the animations folder Python scripts (scene_lab*.py narration, on-screen formulas, and datapath visual depth).
+Please update PROJECT.md, milestone definitions, and orchestrator instructions accordingly.

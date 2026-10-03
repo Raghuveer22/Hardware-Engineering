@@ -19,43 +19,63 @@ class KineticClock:
     """
     def __init__(self, initial_cycle=0):
         self.tracker = ValueTracker(initial_cycle)
+        self.badge = None
+        self.badge_bg = None
+        self.badge_txt = None
+        self.prefix = "CYCLE: T = "
+        self.color = th.AMBER_LIGHT
 
     @property
     def cycle(self):
         return int(round(self.tracker.get_value()))
 
-    def advance(self, scene, delta_cycles=1, run_time=th.RATE_NORMAL, rate_func=linear):
-        """Advances hardware clock by delta_cycles with animation."""
-        target = self.tracker.get_value() + delta_cycles
-        scene.play(
-            self.tracker.animate.set_value(target),
-            run_time=run_time,
-            rate_func=rate_func
-        )
-
     def create_ticker_badge(self, prefix="CYCLE: T = ", color=th.AMBER_LIGHT):
         """Returns a self-updating HUD badge displaying current clock cycle."""
-        def _build():
-            cyc = int(round(self.tracker.get_value()))
-            txt = Text(
-                f"{prefix}{cyc} [posedge ↑]",
+        self.prefix = prefix
+        self.color = color
+        cyc = int(round(self.tracker.get_value()))
+        self.badge_txt = Text(
+            f"{prefix}{cyc} [posedge ↑]",
+            font=th.MONO,
+            weight=BOLD,
+            font_size=th.FONT_CAPTION,
+            color=color
+        )
+        self.badge_bg = RoundedRectangle(
+            corner_radius=0.1,
+            width=self.badge_txt.width + 0.45,
+            height=self.badge_txt.height + 0.25,
+            stroke_color=color,
+            stroke_width=1.5,
+            fill_color="#0a101d",
+            fill_opacity=0.92
+        )
+        self.badge_txt.move_to(self.badge_bg)
+        self.badge = VGroup(self.badge_bg, self.badge_txt)
+        return self.badge
+
+    def advance(self, scene, delta_cycles=1, cycles=None, run_time=th.RATE_NORMAL, rate_func=linear):
+        """Advances hardware clock by delta_cycles with animation."""
+        if cycles is not None:
+            delta_cycles = cycles
+        target = int(round(self.tracker.get_value())) + delta_cycles
+        self.tracker.set_value(target)
+        if self.badge_txt is not None:
+            new_txt = Text(
+                f"{self.prefix}{target} [posedge ↑]",
                 font=th.MONO,
                 weight=BOLD,
                 font_size=th.FONT_CAPTION,
-                color=color
+                color=self.color
+            ).move_to(self.badge_bg)
+            scene.play(
+                Transform(self.badge_txt, new_txt),
+                run_time=run_time,
+                rate_func=rate_func
             )
-            bg = RoundedRectangle(
-                corner_radius=0.1,
-                width=txt.width + 0.4,
-                height=txt.height + 0.25,
-                stroke_color=color,
-                stroke_width=1.5,
-                fill_color="#0a101d",
-                fill_opacity=0.92
-            )
-            txt.move_to(bg)
-            return VGroup(bg, txt)
-        return always_redraw(_build)
+        else:
+            scene.wait(run_time)
+
 
 
 class LiveOscilloscope(VGroup):

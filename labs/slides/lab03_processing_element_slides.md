@@ -1,27 +1,26 @@
 # 🧪 Lab 03: Weight-Stationary Processing Element (PE)
-### Clocked Registers, Stationary Weights & Spatial Dataflow
+### Spatial Dataflow Taxonomy, Register Budgets & Quantitative Memory Energy Reduction
 
 * **Track:** TPU & 2D Systolic Tensor Cores
 * **RTL:** [`rtl/pe.sv`](../../rtl/pe.sv)
 * **Testbench:** [`tests/test_pe.py`](../../tests/test_pe.py)
+* **Next Lab:** [Lab 04: 2D Systolic Array](lab04_systolic_array_slides.md)
 
 ---
 
-## 1. The Starting Point: Traditional Matrix Multiplication on CPUs
+## 1. The Starting Point: The Von Neumann Memory Wall
 
-Every software engineer learns matrix multiplication ($C = A \times B$) as three nested loops:
-
+Every software engineer learns matrix multiplication ($C = A \times B$) through the canonical triply-nested loop:
 ```python
-# Traditional Matrix Multiplication (O(N^3))
-for i in range(M):          # Loop over Rows of A
-    for j in range(N):      # Loop over Columns of B
-        for k in range(K):  # Dot-product reduction
+# Canonical CPU Matrix Multiplication (O(N^3))
+for i in range(M):          # Rows of Activation Matrix A
+    for j in range(N):      # Columns of Weight Matrix B
+        for k in range(K):  # Inner-product reduction dimension
             C[i][j] += A[i][k] * B[k][j]
 ```
 
-### 🚨 How Traditional CPUs Execute This (The Von Neumann Bottleneck)
-
-On a standard CPU or single ALU processor:
+### 🚨 The Von Neumann Memory Bottleneck
+On a conventional CPU or general-purpose GPU thread, executing this loop requires fetching operands across memory hierarchies:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -29,7 +28,7 @@ On a standard CPU or single ALU processor:
 └──────────────────────────────┬──────────────────────────────┘
                                │  🚨 100x-200x Energy Penalty per fetch!
                                ▼
-                        [ L1/L2 Cache ]
+                       [ L1/L2 Caches ]
                                │
                ┌───────────────┴───────────────┐
                ▼                               ▼
@@ -44,78 +43,198 @@ On a standard CPU or single ALU processor:
                        [ Store C[i][j] ]
 ```
 
-* **The Problem (Redundant Memory Fetches):** To compute an $N \times N$ matrix, the CPU performs $N^3$ operations. Naively, each element $A[i][k]$ is loaded from memory **$N$ separate times**!
-* **The Energy Wall:** 
-  * Computing $1 \text{ MAC}$ in silicon costs **$\approx 0.2 \text{ pJ}$ (picojoules)**.
-  * Fetching $1 \text{ Byte}$ from DRAM costs **$\approx 100\text{--}200 \text{ pJ}$ ($1,000\times$ more energy!)**.
-* **Result:** The CPU spends $>90\%$ of its time and power simply moving numbers back and forth across slow memory buses while the ALU sits idle waiting for data.
+* **Redundant Memory Traffic:** Without spatial data reuse, computing an $N \times N$ matrix requires loading each weight element $B[k][j]$ from memory **$M$ separate times** (once for every batch item / row).
+* **The Energy Penalty:**
+  * Executing an INT8 MAC arithmetic operation in 7nm silicon costs **$\approx 0.2\text{ pJ}$**.
+  * Reading an 8-bit byte from off-chip DRAM costs **$\approx 200\text{ pJ}$ ($1,000\times$ more energy!)**.
+* **The Reality:** A conventional CPU spends over $95\%$ of its total energy simply charging capacitive copper traces to shuttle bits back and forth between memory and compute, while arithmetic ALUs sit idle stalled on cache misses.
 
 ---
 
-## 2. The Silicon Solution: The Weight-Stationary Processing Element (PE)
+## 2. Spatial Dataflow Taxonomy: WS vs. OS vs. IS
 
-To solve the memory wall, AI accelerators (like Google TPU and NVIDIA Tensor Cores) use **Spatial Dataflow**:
-1. **Load Weights Once:** Model weights ($W$) are loaded directly into local flip-flop registers inside the compute cell and **locked in place (stationary)**.
-2. **Stream Activations & Pass to Neighbors:** Activations ($A$) enter from the West, multiply with the stationary weight, and are passed to the Eastern neighbor on the next clock tick.
-3. **Accumulate Partial Sums:** Partial sums flow vertically from North to South, accumulating results as they travel down the column.
+To conquer the memory wall, AI accelerators exploit **Spatial Dataflow Architectures**, where intermediate operands are routed directly between neighboring compute cells via local registers, bypassing memory entirely.
 
-```
-                     Activation a_in [7:0] (from West)
-                               │
-                       [ D-FF Reg (8b) ] ──► a_out (Passes East)
-                               │
-       Weight w_reg [7:0] ───►[*] (8b x 8b Multiplier)
-       (Stationary on-chip)    │  (16b Product)
-                               ▼
-   Accum in sum_in [31:0] ───►[+] (32b Adder)
-   (from North)                │
-                       [ D-FF Reg (32b) ] ──► sum_out (Passes South)
-```
+### Comprehensive Spatial Dataflow Comparison
+$$\begin{array}{|l|c|c|c|c|l|}
+\hline
+\textbf{Dataflow Paradigm} & \textbf{Stationary Element} & \textbf{Moving Operands} & \textbf{Local PE Storage} & \textbf{DRAM Traffic Bottleneck} & \textbf{Exemplar Accelerators} \\
+\hline
+\textbf{Weight-Stationary (WS)} & \text{Weights } (W) & \text{Activations } (A), \text{ P-Sums } (C) & \text{Weight Register } (w\_reg) & \text{Activation streaming at low batch} & \text{Google TPU v1--v4, Tenstorrent} \\
+\textbf{Output-Stationary (OS)} & \text{Accumulator } (C) & \text{Activations } (A), \text{ Weights } (W) & \text{Accumulator } (32\text{-bit}) & \text{High weight/act fetch bandwidth} & \text{DianNao, ShiDianNao} \\
+\textbf{Input-Stationary (IS)} & \text{Activations } (A) & \text{Weights } (W), \text{ P-Sums } (C) & \text{Activation Register} & \text{High weight streaming bandwidth} & \text{SCNN, Eyeriss (Row-Stationary variant)} \\
+\hline
+\end{array}$$
 
-* **Register Budget inside 1 PE:**
-  * $1 \times \text{8-bit}$ stationary weight register (`w_reg`)
-  * $1 \times \text{8-bit}$ horizontal activation forwarding register (`a_out`)
-  * $1 \times \text{32-bit}$ vertical accumulator register (`sum_out`)
-  * **Total:** $48 \text{ D-Flip-Flop registers per PE}$.
-* **Sequential Timing (The 1-Clock Delay):**
-  * **Cycle 0 (Weight Load):** Assert `load_weight = 1` $\to$ weight latched into `w_reg`.
-  * **Cycle 1+ (Compute & Forward):** Apply `a_in` and `sum_in` $\to$ combinational MAC produces product, registered to `a_out` and `sum_out` at the rising clock edge.
+#### Why Weight-Stationary (WS) Dominates Transformer Accelerators:
+1. **Weight Parameter Persistence:** Model weights in Large Language Models (LLMs) remain fixed throughout inference across thousands of generation tokens.
+2. **Minimal Register Overhead:** A stationary weight requires only an 8-bit register (`weight_reg`), whereas Output-Stationary requires a wider 32-bit local accumulator register per cell.
+3. **Simultaneous Daisy-Chain Preloading:** Weights can be shifted into array columns during non-compute cycles using dedicated shift paths without stalling compute pipelines.
 
 ---
 
-## 3. SystemVerilog RTL Architecture
+## 3. Quantitative Memory Energy Derivation: $128\times$ Savings at Batch 128
+
+Let us formally quantify the exact memory traffic and energy reduction achieved by the Weight-Stationary PE.
+
+### A. Mathematical Problem Formulation
+Consider multiplying activation matrix $A \in \mathbb{R}^{M \times K}$ by weight matrix $W \in \mathbb{R}^{K \times N}$, with batch size $M = 128$ and matrix dimensions $K = 128, N = 128$:
+$$\text{Total MAC Operations} = M \cdot K \cdot N = 128 \times 128 \times 128 = 2,097,152 \text{ MACs}$$
+
+### B. Memory Traffic Comparison
+1. **Von Neumann Architecture (No Spatial Reuse):**
+   Every MAC operation independently reads 1 activation byte and 1 weight byte from DRAM:
+   $$\text{Weight Fetches} = M \cdot K \cdot N = 2,097,152 \text{ bytes}$$
+   $$\text{Activation Fetches} = M \cdot K \cdot N = 2,097,152 \text{ bytes}$$
+   $$\text{Total DRAM Traffic} = 4,194,304 \text{ bytes} \approx 4.19 \text{ MB}$$
+
+2. **Weight-Stationary Systolic Array (Spatial Reuse):**
+   Each weight $W_{k, j}$ is loaded into the PE's `weight_reg` **exactly once** and held stationary while all $M = 128$ batch activations stream across it:
+   $$\text{Weight Fetches} = K \cdot N = 128 \times 128 = 16,384 \text{ bytes}$$
+   $$\text{Activation Fetches} = M \cdot K = 128 \times 128 = 16,384 \text{ bytes}$$
+   $$\text{Total DRAM Traffic} = 32,768 \text{ bytes} \approx 32.8 \text{ KB}$$
+
+$$\text{Weight Memory Traffic Reduction} = \frac{M \cdot K \cdot N}{K \cdot N} = M = \mathbf{128\times \text{ Reduction!}}$$
+$$\text{Overall Memory Traffic Reduction} = \frac{4,194,304}{32,768} = \mathbf{128\times \text{ Overall Memory Bandwidth Savings!}}$$
+
+---
+
+### C. Total Energy Dissipation Breakdown
+Using empirical pre-silicon energy metrics:
+* Energy per DRAM access: $E_{DRAM} = 200.0\text{ pJ/byte}$
+* Energy per INT8 MAC operation: $E_{MAC} = 0.2\text{ pJ/op}$
+* Energy per local register flip-flop access: $E_{RF} = 0.1\text{ pJ/access}$
+
+#### 1. Von Neumann Baseline Energy:
+$$E_{total, VN} = (\text{Total DRAM Reads} \times 200\text{ pJ}) + (\text{Total MACs} \times 0.2\text{ pJ})$$
+$$E_{total, VN} = (4,194,304 \times 200\text{ pJ}) + (2,097,152 \times 0.2\text{ pJ})$$
+$$E_{total, VN} = 838,860,800\text{ pJ} + 419,430\text{ pJ} \approx \mathbf{839.28\text{ mJ}}$$
+*(Note: $99.95\%$ of total energy is wasted on memory traffic!)*
+
+#### 2. Weight-Stationary Spatial Systolic Energy:
+$$E_{total, WS} = (\text{DRAM Reads} \times 200\text{ pJ}) + (\text{Register Reads} \times 0.1\text{ pJ}) + (\text{Total MACs} \times 0.2\text{ pJ})$$
+$$E_{total, WS} = (32,768 \times 200\text{ pJ}) + (2 \times 2,097,152 \times 0.1\text{ pJ}) + (2,097,152 \times 0.2\text{ pJ})$$
+$$E_{total, WS} = 6,553,600\text{ pJ} + 419,430\text{ pJ} + 419,430\text{ pJ} \approx \mathbf{7.39\text{ mJ}}$$
+
+$$\text{Energy Reduction} = \frac{839.28\text{ mJ}}{7.39\text{ mJ}} \approx \mathbf{113.5\times \text{ Total System Energy Reduction!}}$$
+By holding weights stationary in flip-flops, the accelerator achieves an order-of-magnitude leap in energy efficiency.
+
+---
+
+## 4. Hardware Microarchitecture: The 48 DFF PE Register Budget
+
+Inside each PE, the datapath is tightly orchestrated by clocked D-Flip-Flop registers:
+
+```
+                          Activation a_in [7:0] (from West)
+                                    │
+                            [ a_reg (8 DFFs) ] ──► a_out (Passes East)
+                                    │
+            Weight w_reg [7:0] ────►[*] (8b x 8b Multiplier)
+            (8 DFFs, stationary)    │ (16b Product)
+                                    ▼
+       Accum in sum_in [31:0] ─────►[+] (32b Adder)
+       (from North)                 │
+                            [ sum_reg (32 DFFs) ] ──► sum_out (Passes South)
+```
+
+### Complete PE Register & Cell Budget
+$$\begin{array}{|l|c|c|l|}
+\hline
+\textbf{Register Name} & \textbf{Bitwidth} & \textbf{DFF Count} & \textbf{Architectural Function} \\
+\hline
+\text{weight\_reg} & \text{DATA\_WIDTH (8b)} & 8\text{ DFFs} & \text{Holds stationary weight; loaded during configuration via } weight\_load\_en \\
+\text{a\_reg} & \text{DATA\_WIDTH (8b)} & 8\text{ DFFs} & \text{Registers activation input from West; forwards to East neighbor next cycle} \\
+\text{sum\_reg} & \text{ACC\_WIDTH (32b)} & 32\text{ DFFs} & \text{Registers accumulated partial sum; forwards to South neighbor next cycle} \\
+\hline
+\textbf{Total PE Registers} & & \mathbf{48\text{ DFFs}} & \mathbf{3\text{ sequential cells (48 storage bits)}} \\
+\hline
+\end{array}$$
+
+### Clock Mesh Skew Buffering Across 2D PE Arrays
+When scaling from 1 PE to an array of $256 \times 256$ PEs ($65,536$ PEs $\times 48\text{ DFFs} = 3.15\text{ Million DFFs}$):
+* **The Hold-Time Race Hazard:**
+  Between horizontally adjacent PEs, the data path from PE $(i, j)$'s `a_reg` to PE $(i, j+1)$'s `a_in` is a direct metal wire with minimal combinational logic ($t_{comb, min} \approx 0$).
+* **The Hold Constraint:**
+  $$t_{cq} + t_{comb, min} \ge t_{hold} + t_{skew}$$
+  If spatial clock skew $t_{skew} > t_{cq} - t_{hold}$, a fast clock edge at the downstream PE will overwrite the old activation before it can be sampled!
+* **Remedy:** Silicon layout employs a balanced **H-Tree or Grid Clock Mesh** with balanced delay buffers inserted between columns to keep $t_{skew} < 50\text{ ps}$ across the entire die.
+
+---
+
+## 5. SystemVerilog RTL Architecture ([`rtl/pe.sv`](../../rtl/pe.sv))
+
+The synthesizable module in `rtl/pe.sv` corresponds directly to this microarchitecture:
 
 ```systemverilog
+`timescale 1ns/1ps
+
 module pe #(
-    parameter int A_WIDTH   = 8,
-    parameter int B_WIDTH   = 8,
-    parameter int ACC_WIDTH = 32
+    parameter int DATA_WIDTH = 8,
+    parameter int ACC_WIDTH  = 32
 )(
-    input  logic clk, rst_n, clr, load_weight,
-    input  logic signed [A_WIDTH-1:0]   a_in,
-    input  logic signed [B_WIDTH-1:0]   w_in,
-    input  logic signed [ACC_WIDTH-1:0] sum_in,
-    output logic signed [A_WIDTH-1:0]   a_out,
-    output logic signed [ACC_WIDTH-1:0] sum_out
+    input  logic                         clk,
+    input  logic                         rst_n,
+    input  logic                         en,
+    input  logic                         weight_load_en,
+    
+    // Weight Input & Daisy-chain Output
+    input  logic signed [DATA_WIDTH-1:0] weight_in,
+    output logic signed [DATA_WIDTH-1:0] weight_out,
+    
+    // Activation Input (West) & Registered Output (East)
+    input  logic signed [DATA_WIDTH-1:0] a_in,
+    output logic signed [DATA_WIDTH-1:0] a_out,
+    
+    // Partial Sum Input (North) & Accumulated Output (South)
+    input  logic signed [ACC_WIDTH-1:0]  sum_in,
+    output logic signed [ACC_WIDTH-1:0]  sum_out
 );
-    logic signed [B_WIDTH-1:0] w_reg;
-    logic signed [ACC_WIDTH-1:0] mac_result;
 
-    mac_unit #(.A_WIDTH(A_WIDTH), .B_WIDTH(B_WIDTH), .ACC_WIDTH(ACC_WIDTH))
-        u_mac (.a(a_in), .b(w_reg), .sum_in(sum_in), .sum_out(mac_result));
+    // Internal Registers
+    logic signed [DATA_WIDTH-1:0] weight_reg;
+    logic signed [DATA_WIDTH-1:0] a_reg;
+    logic signed [ACC_WIDTH-1:0]  sum_reg;
 
-    // Clocked D-Flip-Flop Output Registers
+    // Combinational MAC wires
+    logic signed [ACC_WIDTH-1:0]  mac_result;
+
+    // Instantiate combinational MAC unit
+    mac_unit #(
+        .DATA_WIDTH (DATA_WIDTH),
+        .ACC_WIDTH  (ACC_WIDTH)
+    ) u_mac (
+        .a          (a_in),
+        .b          (weight_reg),
+        .sum_in     (sum_in),
+        .sum_out    (mac_result)
+    );
+
+    // Weight daisy-chain passthrough
+    assign weight_out = weight_reg;
+    assign a_out      = a_reg;
+    assign sum_out    = sum_reg;
+
+    // Sequential Register Updates
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            w_reg   <= '0;
-            a_out   <= '0;
-            sum_out <= '0;
+            weight_reg <= '0;
+            a_reg      <= '0;
+            sum_reg    <= '0;
         end else begin
-            if (load_weight) w_reg <= w_in;
-            a_out   <= a_in;
-            sum_out <= clr ? '0 : mac_result;
+            // Weight Configuration Phase
+            if (weight_load_en) begin
+                weight_reg <= weight_in;
+            end
+            
+            // Compute & Spatial Forwarding Phase
+            if (en) begin
+                a_reg   <= a_in;
+                sum_reg <= mac_result;
+            end
         end
     end
+
 endmodule
 ```
 
@@ -125,33 +244,47 @@ endmodule
 
 > [!NOTE]
 > **Synthesis & Complexity Analysis:**
-> * **Sequential Registers (DFF):** `48 DFFs` per PE (`w_reg [7:0]`: 8 DFFs, `a_out [7:0]`: 8 DFFs, `sum_out [31:0]`: 32 DFFs)
-> * **Gate Complexity:** $O(N^2 + M)$ ($\approx 385$ Logic Gates + 48 D-Flip-Flop Cells)
-> * **Latency & Throughput:** $1\text{ Clock Cycle}$ Latency ($\text{Initiation Interval } II = 1$, $F_{\text{max}} \approx 850\text{ MHz}$)
-> * **Spatial Architecture:** Weight-Stationary Dataflow (local register reuse eliminates DRAM weight-fetch traffic)
-> * **Interactive Controls:** Open [`schematics/pe.svg`](../../schematics/pe.svg) in your browser to interactively expand/collapse the internal registers (`weight_reg`, `a_reg`, `sum_reg`) and the `u_mac` arithmetic core.
+> * **Sequential Cells (DFF):** `3 sequential cells` (`weight_reg [7:0]`, `a_reg [7:0]`, `sum_reg [31:0]`) = **48 DFF bits**.
+> * **Combinational Standard Cells:** 2 macro cells inside `u_mac` (Signed Multiplier + 32-bit Adder).
+> * **Critical Path Latency:** $t_{cq} + t_{comb(MAC)} + t_{setup} \approx 4.1\text{ ns}$ ($F_{max} \approx 240\text{ MHz}$ in unpipelined combinational MAC mode).
+> * **Throughput:** 1 MAC operation completed and forwarded per clock cycle ($\text{Initiation Interval } II = 1$).
+> * **Interactive Controls:** Open [`schematics/pe.svg`](../../schematics/pe.svg) in your browser to inspect the registered feedback paths and the internal `u_mac` instantiation.
 
 ---
 
-## 4. Verification & Testing with Cocotb
+## 6. Real-World Accelerator Mapping: Google TPU & Apple Neural Engine
 
-The cycle-accurate behavior of the PE is verified over clock steps.
+### Google TPU v2 / v3 Matrix Multiply Units (MXU)
+* Google TPU v2/v3 chips deploy dual $128 \times 128$ systolic arrays per core.
+* Each PE cell implements weight-stationary storage, loading weights from on-chip High Bandwidth Memory (HBM) tiles into stationary registers before firing batched inference tokens.
+* The arrays operate at $F_{clk} \approx 940\text{ MHz}$, delivering up to $45\text{ TFLOPS}$ per TensorCore.
 
-* **Cycle-by-Cycle Execution:**
-  * **Cycle 0:** Reset assertion; verify all registers initialize to `0`.
-  * **Cycle 1:** Assert `load_weight = 1`, `w_in = 5` $\to$ `w_reg` latches $5$.
-  * **Cycle 2:** Apply `a_in = 10`, `sum_in = 0` $\to$ on clock edge, `sum_out = 50`, `a_out = 10`.
-  * **Cycle 3:** Apply `a_in = -4`, `sum_in = 50` $\to$ on clock edge, `sum_out = 50 + (-20) = 30`.
+### Apple Neural Engine (ANE) Planar PEs
+* Integrated across Apple A-Series (iPhone) and M-Series (Mac) SoCs.
+* Features planar grids of weight-stationary PEs optimized for power budgets $< 5\text{ Watts}$.
+* Employs aggressive clock-gating: when activations are zero (due to ReLU or sparse activations), PE registers are gated to eliminate dynamic switching power ($P = \alpha C V^2 f \to 0$).
 
-To execute the testbench:
+---
+
+## 7. Verification & Testing with Cocotb
+
+The cycle-accurate behavior of `pe.sv` is verified against golden Python models in [`tests/test_pe.py`](../../tests/test_pe.py):
+
+* **Cycle-by-Cycle Verification Stages:**
+  1. **Asynchronous Reset Verification:** Confirm that asserting `rst_n = 0` deterministically clears all 48 flip-flop bits.
+  2. **Weight Preload Phase:** Assert `weight_load_en = 1`, drive `weight_in = 7` $\to$ verify `weight_out` and `weight_reg` latch $7$.
+  3. **Simultaneous Compute & Forward:** Drive `a_in = 6`, `sum_in = 10` with `en = 1` $\to$ on the next clock edge, verify `a_out = 6` and `sum_out = 10 + (6 \times 7) = 52`.
+  4. **Daisy-Chained Accumulation:** Apply sequential activations while accumulating partial sums, asserting zero-cycle timing violations.
+
+To run the verification suite:
 ```bash
 python labs/run_lab.py --lab lab03
 ```
 
 ---
 
-## 5. Review & Engineering Analysis Questions
+## 8. Review & Engineering Analysis Questions
 
-1. **Dataflow Classification:** Compare Weight-Stationary, Output-Stationary, and Weight-Streaming dataflows in terms of local SRAM buffer bandwidth requirements.
-2. **Register Cost vs Frequency:** Why are `a_out` and `sum_out` both registered with D-Flip-Flops instead of passing directly combinational wires between PEs?
-3. **Control Signals:** What is the functional distinction between asynchronous reset (`rst_n`) and synchronous accumulator clearing (`clr`)?
+1. **Energy Breakdown Derivation:** Using the pre-silicon memory energy hierarchy table, derive the exact energy consumed to compute an inner product of length $K = 2048$ with batch size $M = 64$ for (a) a Von Neumann CPU and (b) a Weight-Stationary PE array.
+2. **Hold-Time Hazard in Systolic Arrays:** Why are systolic arrays particularly susceptible to hold-time violations along horizontal activation paths, and how does standard cell layout mitigate this risk?
+3. **Control Signal Semantics:** In `rtl/pe.sv`, explain what occurs when both `weight_load_en` and `en` are asserted concurrently on the same clock cycle.
