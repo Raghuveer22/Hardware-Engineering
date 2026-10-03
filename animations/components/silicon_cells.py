@@ -219,9 +219,10 @@ class ProcessingElementCell(VGroup):
             stroke_color=th.CYAN, stroke_width=1.5,
             fill_color="#091d2d", fill_opacity=0.9
         ).move_to(self.chassis.get_right() + LEFT * 1.1 + UP * 0.55)
-        self.east_lbl = SemanticText("ACT_EAST", role=TextRole.PROBE_LABEL, color=th.CYAN_LIGHT)
-        self.east_lbl.move_to(self.east_box)
-        self.add(self.east_box, self.east_lbl)
+        self.east_lbl = SemanticText("ACT", role=TextRole.PROBE_LABEL, color=th.CYAN_LIGHT)
+        self.act_val = SemanticText("0", role=TextRole.BUS_VALUE, color=th.WHITE)
+        east_sub = VGroup(self.east_lbl, self.act_val).arrange(DOWN, buff=0.06).move_to(self.east_box)
+        self.add(self.east_box, east_sub)
 
         # 3. MAC Engine (Multiplier + Adder)
         self.mac_box = RoundedRectangle(
@@ -240,9 +241,10 @@ class ProcessingElementCell(VGroup):
             stroke_color=th.GREEN, stroke_width=1.5,
             fill_color="#061e11", fill_opacity=0.9
         ).move_to(self.chassis.get_bottom() + UP * 0.45)
-        self.south_lbl = SemanticText("SUM_SOUTH [32b]", role=TextRole.PROBE_LABEL, color=th.GREEN_LIGHT)
-        self.south_lbl.move_to(self.south_box)
-        self.add(self.south_box, self.south_lbl)
+        self.south_lbl = SemanticText("SUM", role=TextRole.PROBE_LABEL, color=th.GREEN_LIGHT)
+        self.sum_val = SemanticText("0", role=TextRole.BUS_VALUE, color=th.WHITE)
+        south_sub = VGroup(self.south_lbl, self.sum_val).arrange(DOWN, buff=0.06).move_to(self.south_box)
+        self.add(self.south_box, south_sub)
 
         # 5. Internal Datapath Wires (connecting ports and registers)
         w_in_act = Line(self.west_port, self.east_box.get_left(), color=th.CYAN_DARK, stroke_width=1.5)
@@ -278,3 +280,11 @@ class ProcessingElementCell(VGroup):
     def update_weight(self, new_val_hex: str):
         """Updates locked weight register."""
         return self.w_val.update_text(new_val_hex)
+
+    def update_act(self, new_val):
+        """Updates the activation forwarding readout."""
+        return self.act_val.update_text(str(new_val))
+
+    def update_sum(self, new_val):
+        """Updates the partial sum forwarding readout."""
+        return self.sum_val.update_text(str(new_val))

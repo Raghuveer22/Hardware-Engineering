@@ -132,6 +132,10 @@ class TraceDrivenController:
 
             if hasattr(pe, "w_val"):
                 anims.append(pe.w_val.update_text(f"{w_val:d}"))
+            if hasattr(pe, "act_val"):
+                anims.append(pe.act_val.update_text(f"{a_reg:d}"))
+            if hasattr(pe, "sum_val"):
+                anims.append(pe.sum_val.update_text(f"{s_reg:d}"))
             if hasattr(pe, "mac_eq"):
                 anims.append(pe.mac_eq.update_text(f"{s_reg:d}"))
 

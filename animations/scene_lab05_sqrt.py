@@ -39,9 +39,34 @@ class Lab05SquareRoot(KineticSiliconScene):
         self.add(ticker)
 
         # =====================================================================
+        # ACT 0: PRELORE — WHY ATTENTION NEEDS A SQUARE ROOT
+        # =====================================================================
+        prelore_narration = (
+            "Attention starts with a dot product: one vector times another, summed over many dimensions. "
+            "The longer the vectors, the bigger that sum gets—so big it breaks training. "
+            "The fix is to divide by the square root of the length, which needs square-root hardware."
+        )
+        with self.stage("PRIMER", "Why Attention Needs a Square Root", "Dot Products Grow With Dimension", narration=prelore_narration) as st:
+            with self.voiceover(prelore_narration) as trk:
+                pre_cards = HStack(
+                    th.metric_card("Dot Product", "q · k = Σ qᵢkᵢ", "Sums over d_k terms", color=th.CYAN, width=3.6, height=2.3),
+                    th.metric_card("Variance", "grows with d_k", "Scores blow up", color=th.RED, width=3.6, height=2.3),
+                    th.metric_card("1/√d_k", "The fix", "Needs a root unit", color=th.GREEN, width=3.6, height=2.3),
+                    gap=th.SPACE_MD
+                ).move_to(self.layout.main_stage_center())
+                st.add(pre_cards)
+                self.play(FadeIn(pre_cards, shift=UP * 0.2), run_time=1.0)
+                self.wait(max(0.3, trk.duration - 1.0))
+                st.takeaway("Longer vectors mean bigger dot products—so we divide by √d_k.", wait=1.2)
+
+        # =====================================================================
         # ACT 1: ATTENTION VARIANCE COLLAPSE & THE 1/√d_k SCALING PROOF
         # =====================================================================
-        act1_narration = "In transformers, unscaled dot products explode with variance d_k = 128. Scaling by 1 over square root d_k restores unit variance."
+        act1_narration = (
+            "Here is the exact math. With independent inputs, the dot product's variance grows to d_k—128 in this example. "
+            "Dividing by the square root of d_k pulls the variance back down to exactly one, "
+            "so the softmax sees well-behaved numbers instead of exploding scores."
+        )
         with self.stage("ACT 1", "Attention Variance Proof", "Why Attention Explodes Without Square Root Scaling", narration=act1_narration) as st:
             with self.voiceover(act1_narration) as trk:
                 variance_eq = SemanticMath(
@@ -61,12 +86,17 @@ class Lab05SquareRoot(KineticSiliconScene):
 
                 self.play(Write(variance_eq), FadeIn(metric_cards, shift=UP * 0.2), run_time=min(trk.duration, 1.2))
                 self.wait(max(0.2, trk.duration - 1.2))
+                st.takeaway("Divide by √d_k, and the variance lands on one.", wait=1.2)
 
         # =====================================================================
         # ACT 2: UNROLLED 8-STAGE RESTORING SQRT PIPELINE
         # =====================================================================
-        act2_narration = "In silicon, digit recurrence extracts one root bit per clock cycle using shift-and-subtract slices with zero multiplier hardware."
-        with self.stage("ACT 2", "Digit-Recurrence Pipeline", "Non-Restoring Shift-Subtract Architecture in rtl/sqrt.sv", narration=act2_narration) as st:
+        act2_narration = (
+            "Our synthesizable root unit peels the answer off bit by bit, most significant bit first, "
+            "using a digit-by-digit shift-and-subtract loop. Each of the eight stages here produces one bit of the root, "
+            "and it needs no multiplier at all—just compares and subtracts."
+        )
+        with self.stage("ACT 2", "Digit-by-Digit Root Unit", "Bit-by-Bit Shift-and-Subtract in rtl/sqrt.sv", narration=act2_narration) as st:
             with self.voiceover(act2_narration) as trk:
                 # 8 Pipeline Slices
                 slices = VGroup(*[
@@ -90,7 +120,7 @@ class Lab05SquareRoot(KineticSiliconScene):
                 st.add(slices, probe_in, probe_out)
                 self.play(Create(slices), FadeIn(probe_in), run_time=1.0)
 
-                # Step clock and advance pipeline stages
+                # Step clock and light up each bit-slice stage
                 for i in range(8):
                     clock.advance(self, delta_cycles=1, run_time=0.25)
                     self.play(
@@ -100,20 +130,26 @@ class Lab05SquareRoot(KineticSiliconScene):
 
                 self.play(FadeIn(probe_out), run_time=0.5)
                 self.wait(max(0.2, trk.duration - 3.2))
+                st.takeaway("Each slice peels off one bit of the square root.", wait=1.2)
 
         # =====================================================================
         # ACT 3: HARDWARE TRADE-OFFS & SYNTHESIS
         # =====================================================================
-        act3_narration = "Digit recurrence eliminates expensive multipliers, costing only 320 logic gates while guaranteeing exact bit-accurate roots."
+        act3_narration = (
+            "Why this algorithm? It avoids multipliers entirely, which keeps the circuit small. "
+            "The trade-off is latency—one step per bit—but the answer is exact to the last bit, "
+            "which matters when every attention score must be deterministic."
+        )
         with self.stage("ACT 3", "Hardware Trade-Off Matrix", "Digit Recurrence vs CORDIC vs Newton-Raphson", narration=act3_narration) as st:
             with self.voiceover(act3_narration) as trk:
                 tradeoff_cards = HStack(
-                    th.metric_card("320 Gates", "Digit Recurrence (rtl/sqrt.sv)", "Zero multipliers; exact integer root", color=th.GREEN, width=3.8, height=2.2),
-                    th.metric_card("1,200 Gates", "CORDIC Rotation", "Heavy trigonometric overhead", color=th.AMBER, width=3.8, height=2.2),
-                    th.metric_card("2,400 Gates", "Newton-Raphson", "Demands dedicated INT8 multipliers", color=th.RED, width=3.8, height=2.2),
+                    th.metric_card("No Multipliers", "Digit-by-Digit (rtl/sqrt.sv)", "Compares and subtracts only; exact root", color=th.GREEN, width=3.8, height=2.2),
+                    th.metric_card("CORDIC", "Rotation-based method", "Also multiplier-free, needs trig tables", color=th.AMBER, width=3.8, height=2.2),
+                    th.metric_card("Newton-Raphson", "Iterative refinement", "Fast but demands a multiplier", color=th.RED, width=3.8, height=2.2),
                     gap=th.SPACE_MD
                 ).move_to(self.layout.main_stage_center())
                 st.add(tradeoff_cards)
 
                 self.play(FadeIn(tradeoff_cards, shift=UP * 0.2), run_time=min(trk.duration, 1.0))
                 self.wait(max(0.2, trk.duration - 1.0))
+                st.takeaway("No multiplier, exact answer—just one bit at a time.", wait=1.2)
